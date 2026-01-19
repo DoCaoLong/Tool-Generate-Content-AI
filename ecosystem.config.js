@@ -1,11 +1,11 @@
 module.exports = {
   apps: [
     {
-      name: "content-writer-ui",
+      name: "content",
       cwd: __dirname,
 
       script: "node_modules/next/dist/bin/next",
-      args: "start -p 3001",
+      args: "start -p 3004",
 
       exec_mode: "fork",
       instances: 1,
@@ -16,7 +16,7 @@ module.exports = {
 
       env: {
         NODE_ENV: "production",
-        PORT: 3001
+        PORT: 3004
       }
     }
   ]

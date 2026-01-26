@@ -22,6 +22,14 @@ import {
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Copy, Eraser, Eye, EyeOff, ExternalLink, Link2, Moon, Sun, Wand2, Languages } from "lucide-react";
 import { generateWithGemini, generateWithOpenAI, validateGeminiKey, validateOpenAIKey } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
@@ -54,6 +62,7 @@ const DEFAULT_PROMPT = {
       "Make it slightly messy - real people don't write perfectly polished content.",
       "Use specific, concrete details instead of vague generalizations.",
       "Write like you're texting a friend, not writing an essay.",
+      "Include casual, daily-life exclamations naturally (e.g., 'Wow', 'Oh right', 'Seriously?', 'Trust me').",
     ],
     rhythm_and_flow: [
       "Vary your rhythm. Some sentences flow smoothly. Others stop short.",
@@ -61,6 +70,7 @@ const DEFAULT_PROMPT = {
       "Add emphasis with italics or caps occasionally (but don't overdo it).",
       "Let some thoughts feel incomplete or tangential - that's human.",
       "Don't tie everything up neatly. Real thoughts are sometimes messy.",
+      "CRITICAL: Add line breaks frequently. Put each sentence or distinct segment on its own line to make it easy to read.",
     ],
   },
   tone: {
@@ -160,6 +170,37 @@ function prettyJSON(obj: unknown) {
   return JSON.stringify(obj, null, 2);
 }
 
+interface SavedProfile {
+  id: string;
+  name: string;
+  settings: {
+    mode: "rewrite" | "new";
+    keywordsRaw: string;
+    language: string;
+    style: string;
+    customStyle: string;
+    lengthPreset: string;
+    customWords: string;
+  };
+}
+
+interface HistoryItem {
+  id: string;
+  timestamp: number;
+  settings: {
+    mode: "rewrite" | "new";
+    url: string;
+    keywordsRaw: string;
+    language: string;
+    style: string;
+    customStyle: string;
+    lengthPreset: string;
+    customWords: string;
+    sourceText: string;
+  };
+  output: string;
+}
+
 export default function ContentWriterUI() {
   const { t, i18n } = useTranslation();
   const [dark, setDark] = useState(true);
@@ -184,8 +225,24 @@ export default function ContentWriterUI() {
   const [isSaving, setIsSaving] = useState(false);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
-  // Load saved settings from localStorage
+  // Profile management state
+  const [profiles, setProfiles] = useState<SavedProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
+
+  // History state
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // Dialog state for saving template
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+
+  // Track if component is mounted (client-side) to prevent hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Load saved settings from localStorage (client-side only)
   useEffect(() => {
+    setIsMounted(true);
+
     const saved = localStorage.getItem("cwui_theme");
     if (saved === "light") setDark(false);
     if (saved === "dark") setDark(true);
@@ -201,10 +258,26 @@ export default function ContentWriterUI() {
     if (savedApiKey) setApiKey(savedApiKey);
     if (savedModel) setModel(savedModel);
 
-    // Sync i18n language from localStorage
-    const savedLanguage = localStorage.getItem("cwui_language");
-    if (savedLanguage === "en" || savedLanguage === "vi") {
-      i18n.changeLanguage(savedLanguage);
+    // Load profiles
+    const savedProfiles = localStorage.getItem("cwui_profiles");
+    if (savedProfiles) {
+      try {
+        const parsed = JSON.parse(savedProfiles);
+        setProfiles(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setProfiles([]);
+      }
+    }
+
+    // Load history
+    const savedHistory = localStorage.getItem("cwui_history");
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory);
+        setHistory(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setHistory([]);
+      }
     }
   }, []);
 
@@ -396,6 +469,124 @@ export default function ContentWriterUI() {
     }
   }
 
+  // Profile Management Functions
+  function handleSaveProfile() {
+    setTemplateName("");
+    setShowSaveDialog(true);
+  }
+
+  function handleConfirmSave() {
+    if (!templateName.trim()) {
+      showToast(t('pleaseEnterTemplateName') || "Please enter a template name", "error");
+      return;
+    }
+
+    const newProfile: SavedProfile = {
+      id: Date.now().toString(),
+      name: templateName.trim(),
+      settings: {
+        mode,
+        keywordsRaw,
+        language,
+        style,
+        customStyle,
+        lengthPreset,
+        customWords,
+      },
+    };
+
+    const updatedProfiles = [...profiles, newProfile];
+    setProfiles(updatedProfiles);
+    localStorage.setItem("cwui_profiles", JSON.stringify(updatedProfiles));
+    showToast(`Profile "${templateName.trim()}" saved!`, "success");
+    setShowSaveDialog(false);
+    setTemplateName("");
+  }
+
+  function handleCancelSave() {
+    setShowSaveDialog(false);
+    setTemplateName("");
+  }
+
+  function handleLoadProfile(profileId: string) {
+    const profile = profiles.find((p) => p.id === profileId);
+    if (!profile) return;
+
+    setMode(profile.settings.mode);
+    setKeywordsRaw(profile.settings.keywordsRaw);
+    setLanguage(profile.settings.language);
+    setStyle(profile.settings.style);
+    setCustomStyle(profile.settings.customStyle);
+    setLengthPreset(profile.settings.lengthPreset);
+    setCustomWords(profile.settings.customWords);
+    setSelectedProfileId(profileId);
+    showToast(`Profile "${profile.name}" loaded!`, "success");
+  }
+
+  function handleDeleteProfile() {
+    if (!selectedProfileId) return;
+
+    const profile = profiles.find((p) => p.id === selectedProfileId);
+    if (!profile) return;
+
+    const confirmed = window.confirm(`Delete profile "${profile.name}"?`);
+    if (!confirmed) return;
+
+    const updatedProfiles = profiles.filter((p) => p.id !== selectedProfileId);
+    setProfiles(updatedProfiles);
+    setSelectedProfileId("");
+    localStorage.setItem("cwui_profiles", JSON.stringify(updatedProfiles));
+    showToast(`Profile "${profile.name}" deleted!`, "success");
+  }
+
+  // History Management Functions
+  function saveToHistory(generatedOutput: string) {
+    const newHistoryItem: HistoryItem = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      settings: {
+        mode,
+        url,
+        keywordsRaw,
+        language,
+        style,
+        customStyle,
+        lengthPreset,
+        customWords,
+        sourceText,
+      },
+      output: generatedOutput,
+    };
+
+    // Keep only the 10 most recent items (FIFO)
+    const updatedHistory = [newHistoryItem, ...history].slice(0, 10);
+    setHistory(updatedHistory);
+    localStorage.setItem("cwui_history", JSON.stringify(updatedHistory));
+  }
+
+  function loadFromHistory(item: HistoryItem) {
+    setMode(item.settings.mode);
+    setUrl(item.settings.url);
+    setKeywordsRaw(item.settings.keywordsRaw);
+    setLanguage(item.settings.language);
+    setStyle(item.settings.style);
+    setCustomStyle(item.settings.customStyle);
+    setLengthPreset(item.settings.lengthPreset);
+    setCustomWords(item.settings.customWords);
+    setSourceText(item.settings.sourceText);
+    setOutput(item.output);
+    showToast(t('historyItemLoaded') || "History item loaded!", "success");
+  }
+
+  function clearAllHistory() {
+    const confirmed = window.confirm("Are you sure you want to clear all history?");
+    if (!confirmed) return;
+
+    setHistory([]);
+    localStorage.removeItem("cwui_history");
+    showToast(t('historyCleared') || "History cleared!", "success");
+  }
+
   async function generateContent() {
     if (!apiKey) {
       showToast(t('pleaseEnterApiKey'), "error");
@@ -417,6 +608,7 @@ export default function ContentWriterUI() {
 
       if (result.success && result.content) {
         setOutput(result.content);
+        saveToHistory(result.content); // Save to history
         showToast(t('contentGenerated'), "success");
       } else {
         setOutput(`Error: ${result.error || "Unknown error"}`);
@@ -581,6 +773,7 @@ export default function ContentWriterUI() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+
               <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="rewrite">{t('rewriteBasedOnContent')}</TabsTrigger>
@@ -742,8 +935,127 @@ export default function ContentWriterUI() {
                 />
                 <p className="text-xs text-muted-foreground">
                   {t('customStyleDescription')}{" "}
-                  <span className="font-mono">{t('customStyle')}</span>.
                 </p>
+              </div>
+
+              <Separator />
+
+              {/* Profile Management / Templates */}
+              <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">{t('template')}</Label>
+                  <Badge variant="secondary" className="rounded-xl">
+                    {profiles.length} {t('save')}
+                  </Badge>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {t('templateNote')}
+                </p>
+
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                  <Select
+                    value={selectedProfileId}
+                    onValueChange={(id) => {
+                      if (id && id !== "none") handleLoadProfile(id);
+                      else setSelectedProfileId("");
+                    }}
+                  >
+                    <SelectTrigger className="rounded-2xl">
+                      <SelectValue placeholder="Select a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {profiles.map((profile) => (
+                        <SelectItem key={profile.id} value={profile.id}>
+                          {profile.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Button
+                    variant="outline"
+                    className="rounded-2xl"
+                    onClick={handleSaveProfile}
+                    size="default"
+                  >
+                    {t('save')}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="rounded-2xl"
+                    onClick={handleDeleteProfile}
+                    disabled={!selectedProfileId}
+                    size="default"
+                  >
+                    {t('delete')}
+                  </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* History Section */}
+              <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">{t('history')}</Label>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="rounded-xl">
+                      {history.length} {t('historyItemsCount')}
+                    </Badge>
+                    {history.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={clearAllHistory}
+                        className="rounded-xl h-7 px-2 text-xs bg-red-600/10 hover:bg-red-600/20 border-red-600/20"
+                      >
+                        {t('clearAll')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {t('historyNote')}
+                </p>
+
+                {history.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic py-4 text-center">
+                    {t('noHistory')}
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    {history.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => loadFromHistory(item)}
+                        className="w-full text-left p-3 rounded-xl bg-background hover:bg-accent transition-colors border border-border"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {item.settings.url || 'No URL'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {item.output.substring(0, 100)}...
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(item.timestamp).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
@@ -785,7 +1097,7 @@ export default function ContentWriterUI() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="rounded-2xl"
+                    className="rounded-2xl cursor-pointer bg-primary/10 hover:bg-primary/20"
                     onClick={copyOutput}
                     disabled={!output}
                     title={t('copy')}
@@ -795,7 +1107,7 @@ export default function ContentWriterUI() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="rounded-2xl"
+                    className="rounded-2xl cursor-pointer bg-red-600/10 hover:bg-red-600/20"
                     onClick={clearOutput}
                     disabled={!output}
                     title={t('clear')}
@@ -814,12 +1126,12 @@ export default function ContentWriterUI() {
                 className="min-h-[520px] rounded-2xl font-mono text-xs leading-relaxed md:text-sm"
               />
 
-              <div className="rounded-2xl border bg-muted/30 p-4">
+              {/* <div className="rounded-2xl border bg-muted/30 p-4">
                 <p className="text-sm font-medium">{t('whatThisAppGenerates')}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {t('whatThisAppDescription')}
                 </p>
-              </div>
+              </div> */}
             </CardContent>
           </Card>
         </div>
@@ -827,20 +1139,20 @@ export default function ContentWriterUI() {
         {toast && (
           <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
             <div
-              className={`rounded-2xl border px-4 py-3 shadow-lg flex items-center gap-2 ${toast.type === "success"
-                ? "bg-primary/10 border-primary text-primary"
-                : toast.type === "error"
-                  ? "bg-destructive/10 border-destructive text-destructive"
-                  : "bg-background border"
+              className={`rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 ${toast.type === "success"
+                  ? "bg-green-600 text-white"
+                  : toast.type === "error"
+                    ? "bg-red-600 text-white"
+                    : "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
                 }`}
             >
               {toast.type === "success" && (
-                <span className="text-lg">✓</span>
+                <span className="text-base">✓</span>
               )}
               {toast.type === "error" && (
-                <span className="text-lg">✗</span>
+                <span className="text-base">✗</span>
               )}
-              <p className="text-sm font-medium">{toast.message}</p>
+              <p className="text-xs font-medium">{toast.message}</p>
             </div>
           </div>
         )}
@@ -857,6 +1169,51 @@ export default function ContentWriterUI() {
             <ExternalLink className="h-3 w-3" />
           </a>
         </footer>
+
+        {/* Save Template Dialog */}
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <DialogContent className="sm:max-w-[425px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>{t('saveTemplate')}</DialogTitle>
+              {/* <DialogDescription>
+                {t('templateNote')}
+              </DialogDescription> */}
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground" htmlFor="template-name">{t('templateName')}</Label>
+                <Input
+                  id="template-name"
+                  placeholder={t('templateNamePlaceholder')}
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleConfirmSave();
+                    if (e.key === "Escape") handleCancelSave();
+                  }}
+                  className="rounded-2xl text-sm text-muted-foreground"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleCancelSave}
+                className="rounded-2xl text-sm text-muted-foreground"
+              >
+                {t('cancel')}
+              </Button>
+              <Button
+                onClick={generateContent}
+                className="rounded-2xl"
+                disabled={!templateName.trim()}
+              >
+                {t('save')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

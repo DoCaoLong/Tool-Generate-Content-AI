@@ -1,8 +1,12 @@
 "use client";
 
 import ContentWriterUI from "@/components/ContentWriterUI";
-import "@/lib/i18n";
+import I18nProvider from "@/components/I18nProvider";
 
 export default function Page() {
-  return <ContentWriterUI />;
+  return (
+    <I18nProvider>
+      <ContentWriterUI />
+    </I18nProvider>
+  );
 }

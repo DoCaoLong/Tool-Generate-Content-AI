@@ -6,7 +6,7 @@ const resources = {
         translation: {
             // Header
             appTitle: "Content Builder",
-            appDescription: "Paste a URL, choose options, generate a clean prompt. Dark mode and responsive UI included.",
+            appDescription: "Paste a URL, choose options, generate a clean prompt.",
             darkMode: "Dark mode",
 
             // Provider & Keys
@@ -15,6 +15,8 @@ const resources = {
             apiKey: "API Key",
             model: "Model",
             save: "Save",
+            delete: "Delete",
+            cancel: "Cancel",
             validating: "Validating...",
             getOpenAIKey: "Get OpenAI key",
             getGeminiKey: "Get Gemini key",
@@ -106,13 +108,30 @@ const resources = {
             // Models
             openai: "OpenAI",
             gemini: "Gemini",
+
+            // Templates
+            template: "Template",
+            saveTemplate: "Save Template",
+            templateNamePlaceholder: "e.g. My Writing Style",
+            templateName: "Template Name",
+            templateNote: "Save your current settings as a template to quickly reuse later.",
+
+            // History
+            history: "History",
+            historyNote: "Automatically saves your last 10 generations. Click any item to restore settings and output.",
+            clearAll: "Clear All",
+            noHistory: "No history yet. Generate content to see history here.",
+            generatedAt: "Generated at",
+            historyItemsCount: "items",
+            historyItemLoaded: "History item loaded!",
+            historyCleared: "History cleared!",
         },
     },
     vi: {
         translation: {
             // Header
             appTitle: "Content Builder",
-            appDescription: "Dán URL, chọn tùy chọn, tạo prompt sạch. Hỗ trợ chế độ tối và giao diện responsive.",
+            appDescription: "Dán URL, chọn tùy chọn, tạo prompt sạch.",
             darkMode: "Chế độ tối",
 
             // Provider & Keys
@@ -121,6 +140,8 @@ const resources = {
             apiKey: "API Key",
             model: "Model",
             save: "Lưu",
+            delete: "Xóa",
+            cancel: "Hủy",
             validating: "Đang xác thực...",
             getOpenAIKey: "Lấy OpenAI key",
             getGeminiKey: "Lấy Gemini key",
@@ -155,7 +176,7 @@ const resources = {
             customWordDescription: "Chỉ bật khi Độ dài được đặt thành Tùy chỉnh.",
             customStyleNotes: "Ghi chú phong cách tùy chỉnh",
             customStylePlaceholder: "Tùy chọn, vd. giữ bình tĩnh, tránh cường điệu, dùng câu ngắn...",
-            customStyleDescription: "Những ghi chú này sẽ được đưa vào prompt dưới",
+            customStyleDescription: "Những ghi chú này sẽ được đưa vào cuối prompt",
             customStyle: "custom_style",
 
             // Buttons
@@ -212,28 +233,37 @@ const resources = {
             // Models
             openai: "OpenAI",
             gemini: "Gemini",
+
+            // Templates
+            template: "Mẫu",
+            saveTemplate: "Lưu Mẫu",
+            templateNamePlaceholder: "vd. Phong cách viết của tôi",
+            templateName: "Tên mẫu",
+            templateNote: "Lưu cài đặt hiện tại của bạn dưới dạng mẫu để tái sử dụng nhanh sau này.",
+
+            // History
+            history: "Lịch sử",
+            historyNote: "Tự động lưu 10 lần tạo gần nhất. Nhấp vào bất kỳ mục nào để khôi phục cài đặt và kết quả.",
+            clearAll: "Xóa tất cả",
+            noHistory: "Chưa có lịch sử. Tạo nội dung để xem lịch sử ở đây.",
+            generatedAt: "Tạo lúc",
+            historyItemsCount: "mục",
+            historyItemLoaded: "Đã tải mục lịch sử!",
+            historyCleared: "Đã xóa lịch sử!",
         },
     },
 };
 
-// Initialize i18n without reading from localStorage initially
+// Initialize i18n with default language
 i18n
     .use(initReactI18next)
     .init({
         resources,
-        lng: 'en', // Default to English on server
+        lng: 'en', // Default to English
         fallbackLng: 'en',
         interpolation: {
             escapeValue: false,
         },
     });
-
-// Only read from localStorage on client side after mount
-if (typeof window !== 'undefined') {
-    const savedLanguage = localStorage.getItem('cwui_language');
-    if (savedLanguage === 'en' || savedLanguage === 'vi') {
-        i18n.changeLanguage(savedLanguage);
-    }
-}
 
 export default i18n;

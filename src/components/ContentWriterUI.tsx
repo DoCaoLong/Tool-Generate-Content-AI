@@ -1058,19 +1058,11 @@ export default function ContentWriterUI() {
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  onClick={generateContent}
-                  className="rounded-2xl"
-                  disabled={!urlOk || !apiKey || isGenerating}
-                >
-                  {isGenerating ? t('generating') : t('generateContent')}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="rounded-2xl"
-                  onClick={() => {
+              <div className="flex flex-col gap-3 sm:flex-row justify-end">
+                  <Button
+                    variant="outline"
+                    className="rounded-2xl"
+                    onClick={() => {
                     setUrl("");
                     setKeywordsRaw("");
                     setCustomStyle("");
@@ -1084,6 +1076,14 @@ export default function ContentWriterUI() {
                   }}
                 >
                   {t('reset')}
+                </Button>
+
+                <Button
+                  onClick={generateContent}
+                  className="rounded-2xl"
+                  disabled={!urlOk || !apiKey || isGenerating}
+                >
+                  {isGenerating ? t('generating') : t('generateContent')}
                 </Button>
               </div>
             </CardContent>

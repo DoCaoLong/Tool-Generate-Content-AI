@@ -35,66 +35,105 @@ import { generateWithGemini, generateWithOpenAI, validateGeminiKey, validateOpen
 import { useTranslation } from "react-i18next";
 
 const DEFAULT_PROMPT = {
-  rewrite_goal: "Write like a real human, not an AI. The text should feel authentic, spontaneous, and slightly imperfect.",
+  rewrite_goal: "Write like a real human having a genuine conversation. The content should feel warm, relatable, and engaging from the very first word.",
   core_rules: {
+    opening_style: [
+      "ALWAYS start with a friendly greeting or conversational hook.",
+      "Create an inviting first impression that makes readers feel like they're chatting with a friend.",
+      "Use rhetorical questions to engage readers immediately.",
+    ],
+    title_creation: [
+      "CRITICAL: If creating a title, make it captivating and curiosity-driving.",
+      "Make titles concise but intriguing - promise value without being clickbait.",
+      "Avoid formal, boring titles. Use emotional hooks or unexpected angles.",
+    ],
     sentence_structure: [
-      "Mix short and long sentences unpredictably. Real people don't write in perfect patterns.",
-      "Start some sentences with 'And', 'But', 'So', or 'Because' - it's natural.",
-      "Use fragments occasionally. Like this. It's how people actually write.",
-      "Add natural hesitations sparingly: 'maybe', 'kinda', 'honestly', 'I think', 'probably', 'sort of'.",
-      "Don't overuse hesitations - one or two per paragraph max, and only where they fit naturally.",
+      "Write in short, punchy sentences that get straight to the point.",
+      "Mix short and long sentences naturally. Real conversations aren't uniform.",
+      "Use everyday expressions and idioms appropriate for the target language.",
+      "Don't be afraid of sentence fragments. They add energy.",
     ],
     forbidden_patterns: [
-      "NEVER use em dashes (—) or double hyphens (--). Use commas, periods, or ellipses instead.",
-      "NEVER use formal connectors: 'Moreover', 'Furthermore', 'In addition', 'However', 'Nevertheless', 'Thus', 'Therefore'.",
-      "NEVER use parallel structure or balanced sentences (e.g., 'Not only X, but also Y').",
-      "NEVER use corporate buzzwords: 'leverage', 'synergy', 'ecosystem', 'innovative', 'cutting-edge', 'game-changer', 'revolutionary'.",
-      "NEVER end with a call-to-action or marketing phrase.",
-      "NEVER use perfect grammar if casual grammar sounds more natural.",
-      "NEVER write in a way that sounds like you're selling something.",
+      "NEVER use formal academic language or stuffy corporate speak.",
+      "NEVER use em dashes (—) or overly complex punctuation.",
+      "NEVER use formal transitions: 'Moreover', 'Furthermore', 'Nevertheless', 'Consequently'.",
+      "NEVER write long-winded introductions. Get to the point fast.",
+      "NEVER end with generic conclusions or forced call-to-actions.",
     ],
     style_adjustments: [
-      "Use contractions heavily: you're, it's, there's, don't, can't, won't, I'm, we're, they're.",
-      "Use casual language: 'kinda', 'gonna', 'wanna', 'yeah', 'nah', 'tbh', 'idk'.",
-      "Break grammar rules when it sounds more natural: 'Me and my friend' instead of 'My friend and I'.",
-      "Use informal transitions: 'anyway', 'so yeah', 'I mean', 'like', 'you know'.",
-      "Add personal touches: 'I noticed', 'I've been thinking', 'from what I've seen', 'in my experience'.",
-      "Make it slightly messy - real people don't write perfectly polished content.",
-      "Use specific, concrete details instead of vague generalizations.",
-      "Write like you're texting a friend, not writing an essay.",
-      "Include casual, daily-life exclamations naturally (e.g., 'Wow', 'Oh right', 'Seriously?', 'Trust me').",
+      "Write conversationally - like you're explaining to a friend over coffee.",
+      "Be direct and straightforward - say what you mean clearly.",
+      "Use real-life examples and relatable scenarios.",
+      "Keep paragraphs short (2-4 sentences max) for easy reading.",
+      "Use active voice - makes content more dynamic and engaging.",
     ],
     rhythm_and_flow: [
-      "Vary your rhythm. Some sentences flow smoothly. Others stop short.",
-      "Use ellipses (...) for trailing thoughts or pauses.",
-      "Add emphasis with italics or caps occasionally (but don't overdo it).",
-      "Let some thoughts feel incomplete or tangential - that's human.",
-      "Don't tie everything up neatly. Real thoughts are sometimes messy.",
-      "CRITICAL: Add line breaks frequently. Put each sentence or distinct segment on its own line to make it easy to read.",
+      "Create a natural conversation rhythm with varied sentence lengths.",
+      "Use rhetorical questions to keep readers engaged.",
+      "Add transitions that feel natural to the target language.",
+      "Break up text with line breaks for better readability.",
+      "End with a warm, friendly closing - not a sales pitch.",
+    ],
+    personal_insight: [
+      "CRITICAL for rewrite mode: Add your unique personal perspective and insights about the project/topic.",
+      "Share what makes this project interesting or valuable from your viewpoint.",
+      "Include observations about the project's potential, challenges, or unique aspects.",
+      "Don't just report facts - share your angle, interpretation, or analysis.",
+      "Make it feel like you're sharing insider knowledge or a fresh perspective.",
+      "Balance between informative and opinionated - show you've thought deeply about it.",
     ],
   },
   tone: {
     style: [
-      "Conversational and casual, like you're talking to a friend.",
-      "Genuine curiosity, not forced enthusiasm.",
-      "A bit skeptical or questioning, not blindly positive.",
-      "Personal and opinionated, not neutral and balanced.",
-      "Relatable and down-to-earth, not trying to impress.",
+      "Warm, friendly, and approachable - like talking to a trusted friend.",
+      "Honest and straightforward - no beating around the bush.",
+      "Relatable and down-to-earth - use everyday language.",
+      "Enthusiastic but genuine - not fake or overly hyped.",
+      "Helpful and supportive - focused on reader value.",
     ],
     avoid: [
-      "Sounding like a teacher or expert explaining things.",
-      "Being overly enthusiastic or hyped up.",
-      "Using marketing language or sales tactics.",
-      "Perfect, polished, professional writing.",
-      "Trying too hard to sound smart or authoritative.",
+      "Sounding like a textbook or academic paper.",
+      "Being too formal or distant.",
+      "Using sales-y or marketing language.",
+      "Sounding robotic or template-like.",
+      "Being preachy or lecturing readers.",
     ],
   },
   final_check: [
-    "Read it out loud. Does it sound like something a real person would say?",
-    "If it sounds too polished, make it messier.",
-    "If every sentence is perfectly structured, break some rules.",
-    "If it feels like an article, make it feel like a conversation.",
-    "Remove any sentence that sounds like it came from a corporate blog.",
+    "Does it start with a warm greeting or engaging hook?",
+    "Is the title (if any) captivating and curiosity-driving?",
+    "Does it feel like a conversation, not a lecture?",
+    "Are you getting to the point quickly without fluff?",
+    "Remove any sentence that sounds corporate, academic, or salesy.",
+  ],
+};
+
+// Vietnamese-specific rules (only applied when language is Vietnamese)
+const VIETNAMESE_RULES = {
+  opening_examples: [
+    "Use greetings like: 'Chào bạn!', 'Mình nghĩ là...', 'Có bao giờ bạn...', 'Hôm nay mình muốn chia sẻ...'",
+  ],
+  title_formats: [
+    "Use Vietnamese-style attractive formats: '5 điều...', 'Bạn có biết...', 'Bí quyết...', 'Cách để...'",
+  ],
+  sentence_starters: [
+    "Start sentences naturally: 'Mà thật ra...', 'Nói thẳng là...', 'Thực tế thì...', 'Theo mình thấy...'",
+  ],
+  casual_markers: [
+    "Use Vietnamese casual markers: 'nhé', 'nha', 'đó', 'ấy mà', 'á', 'ạ' (when appropriate).",
+  ],
+  personal_phrases: [
+    "Use phrases like: 'Theo mình thấy...', 'Cái hay ở đây là...', 'Điều mình thấy thú vị nhất...', 'Mình nghĩ rằng...'",
+  ],
+  conversational_style: [
+    "Use 'mình' (I/me) to create intimacy",
+    "Use 'bạn' (you) to address readers directly",
+    "Add 'nhé', 'nha' at sentence ends for warmth",
+    "Use 'ấy mà', 'đó', 'kìa' for emphasis",
+    "Include question forms: 'phải không?', 'đúng không?'",
+  ],
+  buzzwords_to_avoid: [
+    "Avoid buzzwords: 'tối ưu hóa', 'nâng cao hiệu suất', 'giải pháp toàn diện' (unless genuinely needed).",
   ],
 };
 
@@ -363,11 +402,15 @@ export default function ContentWriterUI() {
           ],
         }
         : {
-          task: "Rewrite the provided text based on the linked page's content and tone.",
+          task: "Rewrite the provided text with a personal perspective and unique insights about the project.",
           constraints: [
             "Keep the original meaning of the provided text.",
             "Use the linked page only to enrich accuracy and context.",
             "Avoid sounding like a template.",
+            "CRITICAL: Add your personal insights and viewpoint about the project/topic.",
+            "Share what makes this project interesting, valuable, or noteworthy from your perspective.",
+            "Include observations about potential, innovation, challenges, or unique aspects you notice.",
+            "Make it feel like a thoughtful analysis, not just a rewrite.",
           ],
         };
 
@@ -380,7 +423,21 @@ export default function ContentWriterUI() {
       }
       : {};
 
-    return {
+    // Language-specific requirements
+    const languageMap: Record<string, string> = {
+      en: "English",
+      vi: "Vietnamese (Tiếng Việt)",
+      zh: "Chinese (中文)",
+      ja: "Japanese (日本語)",
+      ko: "Korean (한국어)",
+      es: "Spanish (Español)",
+      fr: "French (Français)",
+    };
+
+    const languageName = languageMap[language] || language;
+
+    // Base prompt object
+    const basePrompt: any = {
       ...DEFAULT_PROMPT,
       ...meta,
       instructions: {
@@ -388,16 +445,19 @@ export default function ContentWriterUI() {
         style: [styleInstruction, lengthInstruction].filter(Boolean),
         ...keywordRule,
         output_format: "single post",
-        language_requirement:
-          language === "en"
-            ? "Write the output in English."
-            : language === "vi"
-              ? "Write the output in Vietnamese."
-              : "Write the output in the selected language.",
+        language_requirement: `CRITICAL: You MUST write the ENTIRE output in ${languageName}. Every single word, sentence, and paragraph must be in ${languageName}. Do NOT mix languages. Do NOT use any other language except ${languageName}.`,
         custom_style: customStyle?.trim() ? customStyle.trim() : undefined,
       },
       text: mode === "rewrite" ? sourceText : undefined,
     };
+
+    // Add Vietnamese-specific rules only when language is Vietnamese
+    if (language === "vi") {
+      basePrompt.vietnamese_specific_rules = VIETNAMESE_RULES;
+      basePrompt.instructions.vietnamese_note = "Apply all Vietnamese-specific rules from 'vietnamese_specific_rules' section to make the content feel natural and engaging for Vietnamese readers.";
+    }
+
+    return basePrompt;
   }, [
     url,
     mode,
@@ -1059,10 +1119,10 @@ export default function ContentWriterUI() {
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row justify-end">
-                  <Button
-                    variant="outline"
-                    className="rounded-2xl"
-                    onClick={() => {
+                <Button
+                  variant="outline"
+                  className="rounded-2xl"
+                  onClick={() => {
                     setUrl("");
                     setKeywordsRaw("");
                     setCustomStyle("");
@@ -1140,10 +1200,10 @@ export default function ContentWriterUI() {
           <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
             <div
               className={`rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 ${toast.type === "success"
-                  ? "bg-green-600 text-white"
-                  : toast.type === "error"
-                    ? "bg-red-600 text-white"
-                    : "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
+                ? "bg-green-600 text-white"
+                : toast.type === "error"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
                 }`}
             >
               {toast.type === "success" && (
@@ -1205,7 +1265,7 @@ export default function ContentWriterUI() {
                 {t('cancel')}
               </Button>
               <Button
-                onClick={generateContent}
+                onClick={handleConfirmSave}
                 className="rounded-2xl"
                 disabled={!templateName.trim()}
               >

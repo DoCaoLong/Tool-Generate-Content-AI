@@ -125,6 +125,18 @@ const resources = {
             historyItemsCount: "items",
             historyItemLoaded: "History item loaded!",
             historyCleared: "History cleared!",
+
+            // KOL Selector
+            kolWritingStyle: "KOL Writing Style",
+            kolClear: "Clear",
+            kolStyleInjected: "Writing style of",
+            kolStyleInjectedSuffix: "will be injected into your prompt.",
+            kolViewStyle: "View style",
+            kolNoStyle: "No style summary available.",
+            kolClose: "Close",
+            kolUseStyle: "Use {{name}}'s style",
+            kolDeselect: "Deselect",
+            kolDialogDesc: "Writing style summary for {{name}}",
         },
     },
     vi: {
@@ -250,6 +262,18 @@ const resources = {
             historyItemsCount: "mục",
             historyItemLoaded: "Đã tải mục lịch sử!",
             historyCleared: "Đã xóa lịch sử!",
+
+            // KOL Selector
+            kolWritingStyle: "Phong cách viết KOL",
+            kolClear: "Bỏ chọn",
+            kolStyleInjected: "Phong cách viết của",
+            kolStyleInjectedSuffix: "sẽ được tích hợp vào prompt.",
+            kolViewStyle: "Xem phong cách",
+            kolNoStyle: "Chưa có mô tả phong cách.",
+            kolClose: "Đóng",
+            kolUseStyle: "Dùng phong cách {{name}}",
+            kolDeselect: "Bỏ chọn",
+            kolDialogDesc: "Tóm tắt phong cách viết của {{name}}",
         },
     },
 };

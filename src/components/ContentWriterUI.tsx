@@ -33,6 +33,8 @@ import {
 import { Copy, Eraser, Eye, EyeOff, ExternalLink, Link2, Moon, Sun, Wand2, Languages } from "lucide-react";
 import { generateWithGemini, generateWithOpenAI, validateGeminiKey, validateOpenAIKey } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
+import KOLSelector, { KOLAuthor } from "@/components/KOLSelector";
+import authorData from "../../data/author.json";
 
 const DEFAULT_PROMPT = {
   rewrite_goal: "Write like a real human having a genuine conversation. The content should feel warm, relatable, and engaging from the very first word.",
@@ -264,6 +266,10 @@ export default function ContentWriterUI() {
   const [isSaving, setIsSaving] = useState(false);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
+  // KOL style state
+  const [selectedKOLId, setSelectedKOLId] = useState<string | null>(null);
+  const authors = authorData as KOLAuthor[];
+
   // Profile management state
   const [profiles, setProfiles] = useState<SavedProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
@@ -436,13 +442,20 @@ export default function ContentWriterUI() {
 
     const languageName = languageMap[language] || language;
 
+    // KOL style injection
+    const selectedKOL = selectedKOLId
+      ? authors.find((a) => a.id === selectedKOLId)
+      : null;
+
     // Base prompt object
     const basePrompt: any = {
       ...DEFAULT_PROMPT,
       ...meta,
       instructions: {
         ...task,
-        style: [styleInstruction, lengthInstruction].filter(Boolean),
+        style: selectedKOL
+          ? [lengthInstruction].filter(Boolean)          // KOL overrides tone style
+          : [styleInstruction, lengthInstruction].filter(Boolean),
         ...keywordRule,
         output_format: "single post",
         language_requirement: `CRITICAL: You MUST write the ENTIRE output in ${languageName}. Every single word, sentence, and paragraph must be in ${languageName}. Do NOT mix languages. Do NOT use any other language except ${languageName}.`,
@@ -450,6 +463,15 @@ export default function ContentWriterUI() {
       },
       text: mode === "rewrite" ? sourceText : undefined,
     };
+
+    // Inject KOL writing style if selected
+    if (selectedKOL) {
+      basePrompt.kol_writing_style = {
+        kol_name: selectedKOL.name,
+        instruction: `CRITICAL: Mimic the writing style of ${selectedKOL.name} as described below. Adopt their voice, tone, sentence structure, vocabulary, and formatting habits. The output should feel like it was written by ${selectedKOL.name}.`,
+        style_analysis: selectedKOL.content,
+      };
+    }
 
     // Add Vietnamese-specific rules only when language is Vietnamese
     if (language === "vi") {
@@ -470,6 +492,8 @@ export default function ContentWriterUI() {
     lengthInstruction,
     styleInstruction,
     sourceText,
+    selectedKOLId,
+    authors,
   ]);
 
   function showToast(msg: string, type: "success" | "error" | "info" = "info") {
@@ -824,6 +848,15 @@ export default function ContentWriterUI() {
           </CardContent>
         </Card>
 
+        {/* KOL Style Selector */}
+        <div className="mb-6">
+          <KOLSelector
+            authors={authors}
+            selectedId={selectedKOLId}
+            onSelect={(author) => setSelectedKOLId(author ? author.id : null)}
+          />
+        </div>
+
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="rounded-2xl">
             <CardHeader>
@@ -932,9 +965,22 @@ export default function ContentWriterUI() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t('writingStyle')}</Label>
-                  <Select value={style} onValueChange={setStyle}>
-                    <SelectTrigger className="rounded-2xl">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className={selectedKOLId ? "text-muted-foreground" : ""}>
+                      {t('writingStyle')}
+                    </Label>
+                    {selectedKOLId && (
+                      <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        {t('kolWritingStyle')}
+                      </span>
+                    )}
+                  </div>
+                  <Select
+                    value={style}
+                    onValueChange={setStyle}
+                    disabled={!!selectedKOLId}
+                  >
+                    <SelectTrigger className={`rounded-2xl ${selectedKOLId ? "opacity-50 cursor-not-allowed" : ""}`}>
                       <SelectValue placeholder={t('selectStyle')} />
                     </SelectTrigger>
                     <SelectContent>

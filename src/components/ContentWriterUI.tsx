@@ -37,17 +37,22 @@ import KOLSelector, { KOLAuthor } from "@/components/KOLSelector";
 import authorData from "../../data/author.json";
 
 const DEFAULT_PROMPT = {
-  rewrite_goal: "Write like a real human having a genuine conversation. The content should feel warm, relatable, and engaging from the very first word.",
+  rewrite_goal: "Write like a real human having a genuine conversation. The content MUST completely bypass AI content detectors by exhibiting high burstiness (varied sentence lengths) and high perplexity (unpredictable word choices).",
   core_rules: {
+    ai_detector_bypass: [
+      "CRITICAL: Maximize 'burstiness'. Vary sentence length drastically. Mix extremely short, punchy sentences (1-4 words) with longer, complex ones. Real humans write with rhythmic variability.",
+      "CRITICAL: Maximize 'perplexity'. Use uncommon but natural vocabulary. Avoid highly predictable word combinations and clichés.",
+      "NEVER use generic AI buzzwords: 'delve', 'tapestry', 'testament', 'beacon', 'foster', 'realm', 'paramount', 'elevate', 'orchestrate', 'crucial', 'seamless', 'landscape', 'dynamic'.",
+      "Introduce conversational imperfections: start sentences with conjunctions ('And', 'But', 'Because', 'So'), use contractions heavily, and occasionally use sentence fragments.",
+      "Avoid perfectly symmetrical paragraph structures. Make paragraph lengths uneven and avoid standard essay formats.",
+    ],
     opening_style: [
-      "ALWAYS start with a friendly greeting or conversational hook.",
-      "Create an inviting first impression that makes readers feel like they're chatting with a friend.",
-      "Use rhetorical questions to engage readers immediately.",
+      "ALWAYS start with an abrupt, engaging hook or a conversational thought. Skip the formal introductions.",
+      "Create an inviting first impression that makes readers feel like they're jumping into the middle of a chat with a friend.",
     ],
     title_creation: [
-      "CRITICAL: If creating a title, make it captivating and curiosity-driving.",
-      "Make titles concise but intriguing - promise value without being clickbait.",
-      "Avoid formal, boring titles. Use emotional hooks or unexpected angles.",
+      "CRITICAL: If creating a title, make it captivating and curiosity-driving, but NOT clickbait.",
+      "Make titles concise. Avoid formal, boring titles. Use emotional hooks or unexpected angles.",
     ],
     sentence_structure: [
       "Write in short, punchy sentences that get straight to the point.",
@@ -57,85 +62,77 @@ const DEFAULT_PROMPT = {
     ],
     forbidden_patterns: [
       "NEVER use formal academic language or stuffy corporate speak.",
-      "NEVER use em dashes (—) or overly complex punctuation.",
-      "NEVER use formal transitions: 'Moreover', 'Furthermore', 'Nevertheless', 'Consequently'.",
+      "NEVER use formal transitions: 'Moreover', 'Furthermore', 'Nevertheless', 'Consequently', 'In conclusion', 'Overall'.",
       "NEVER write long-winded introductions. Get to the point fast.",
-      "NEVER end with generic conclusions or forced call-to-actions.",
+      "NEVER end with a generic summary. End with a strong closing thought or open question.",
     ],
     style_adjustments: [
       "Write conversationally - like you're explaining to a friend over coffee.",
-      "Be direct and straightforward - say what you mean clearly.",
+      "Be direct and straightforward - say what you mean clearly, with a strong, opinionated voice.",
       "Use real-life examples and relatable scenarios.",
-      "Keep paragraphs short (2-4 sentences max) for easy reading.",
-      "Use active voice - makes content more dynamic and engaging.",
-    ],
-    rhythm_and_flow: [
-      "Create a natural conversation rhythm with varied sentence lengths.",
-      "Use rhetorical questions to keep readers engaged.",
-      "Add transitions that feel natural to the target language.",
-      "Break up text with line breaks for better readability.",
-      "End with a warm, friendly closing - not a sales pitch.",
+      "Use active voice aggressively - makes content more dynamic and engaging.",
     ],
     personal_insight: [
       "CRITICAL for rewrite mode: Add your unique personal perspective and insights about the project/topic.",
-      "Share what makes this project interesting or valuable from your viewpoint.",
-      "Include observations about the project's potential, challenges, or unique aspects.",
-      "Don't just report facts - share your angle, interpretation, or analysis.",
-      "Make it feel like you're sharing insider knowledge or a fresh perspective.",
-      "Balance between informative and opinionated - show you've thought deeply about it.",
+      "Share what makes this project interesting or valuable from an opinionated, subjective viewpoint.",
+      "Include raw observations about the project's potential, challenges, or unique aspects.",
+      "Don't just report facts - share your angle, interpretation, or analysis like a real person would.",
     ],
   },
   tone: {
     style: [
-      "Warm, friendly, and approachable - like talking to a trusted friend.",
+      "Warm, friendly, approachable, and slightly opinionated - like talking to a trusted, knowledgeable friend.",
       "Honest and straightforward - no beating around the bush.",
       "Relatable and down-to-earth - use everyday language.",
       "Enthusiastic but genuine - not fake or overly hyped.",
-      "Helpful and supportive - focused on reader value.",
     ],
     avoid: [
-      "Sounding like a textbook or academic paper.",
-      "Being too formal or distant.",
+      "Sounding like a textbook, AI assistant, or academic paper.",
+      "Being too formal, distant, or objective.",
       "Using sales-y or marketing language.",
-      "Sounding robotic or template-like.",
-      "Being preachy or lecturing readers.",
+      "Sounding robotic, structured, or template-like.",
     ],
   },
   final_check: [
-    "Does it start with a warm greeting or engaging hook?",
-    "Is the title (if any) captivating and curiosity-driving?",
-    "Does it feel like a conversation, not a lecture?",
-    "Are you getting to the point quickly without fluff?",
-    "Remove any sentence that sounds corporate, academic, or salesy.",
+    "Does it read exactly like a human wrote it in a hurry?",
+    "Are sentence lengths highly varied (burstiness)?",
+    "Did you avoid all AI buzzwords and predictable phrases?",
+    "Does it feel like a conversation, not a lecture or an essay?",
+    "Remove any sentence that sounds corporate, academic, or AI-generated.",
   ],
 };
 
 // Vietnamese-specific rules (only applied when language is Vietnamese)
 const VIETNAMESE_RULES = {
+  anti_ai_detection: [
+    "Viết văn phong tự nhiên, ngắt câu đa dạng. Đừng viết các câu dài bằng nhau.",
+    "Tránh tuyệt đối văn phong dịch thuật từ tiếng Anh (ví dụ: 'nó là quan trọng để...', 'đóng một vai trò...').",
+    "Dùng các từ lóng nhẹ nhàng, khẩu ngữ thường ngày thay vì từ Hán Việt trang trọng.",
+  ],
   opening_examples: [
-    "Use greetings like: 'Chào bạn!', 'Mình nghĩ là...', 'Có bao giờ bạn...', 'Hôm nay mình muốn chia sẻ...'",
+    "Use greetings like: 'Chào bạn!', 'Chuyện là thế này...', 'Có bao giờ bạn...', 'Mình vừa nhận ra một điều...'",
   ],
   title_formats: [
-    "Use Vietnamese-style attractive formats: '5 điều...', 'Bạn có biết...', 'Bí quyết...', 'Cách để...'",
+    "Use Vietnamese-style attractive formats: 'Sự thật về...', 'Góc nhìn cá nhân: ...', 'Chuyện bây giờ mới kể về...'",
   ],
   sentence_starters: [
-    "Start sentences naturally: 'Mà thật ra...', 'Nói thẳng là...', 'Thực tế thì...', 'Theo mình thấy...'",
+    "Start sentences naturally: 'Mà thật ra...', 'Nói thẳng là...', 'Thực tế thì...', 'Thế nhưng...', 'Ngặt nỗi...'",
   ],
   casual_markers: [
-    "Use Vietnamese casual markers: 'nhé', 'nha', 'đó', 'ấy mà', 'á', 'ạ' (when appropriate).",
+    "Use Vietnamese casual markers naturally: 'nhé', 'nha', 'đó', 'ấy mà', 'á', 'ạ', 'thôi', 'cơ', 'mất'.",
   ],
   personal_phrases: [
-    "Use phrases like: 'Theo mình thấy...', 'Cái hay ở đây là...', 'Điều mình thấy thú vị nhất...', 'Mình nghĩ rằng...'",
+    "Use phrases like: 'Cá nhân mình thấy...', 'Cái hay ở đây là...', 'Điểm ăn tiền nhất là...', 'Mình chốt lại là...'",
   ],
   conversational_style: [
-    "Use 'mình' (I/me) to create intimacy",
-    "Use 'bạn' (you) to address readers directly",
-    "Add 'nhé', 'nha' at sentence ends for warmth",
-    "Use 'ấy mà', 'đó', 'kìa' for emphasis",
-    "Include question forms: 'phải không?', 'đúng không?'",
+    "Use 'mình' (I/me) or 'tôi' contextually to create intimacy.",
+    "Use 'bạn' or 'mọi người' to address readers directly.",
+    "Mix question forms: 'phải không?', 'đúng không?', 'chứ lị?'.",
+    "Drop subjects occasionally like Vietnamese speakers do in real life (e.g., 'Thấy bảo là...' instead of 'Mình thấy bảo là...').",
   ],
   buzzwords_to_avoid: [
-    "Avoid buzzwords: 'tối ưu hóa', 'nâng cao hiệu suất', 'giải pháp toàn diện' (unless genuinely needed).",
+    "Avoid typical AI translations: 'tối ưu hóa', 'nâng cao hiệu suất', 'giải pháp toàn diện', 'bức tranh toàn cảnh', 'kỷ nguyên số', 'hành trình', 'chìa khóa'.",
+    "Avoid formulaic transitions: 'Bên cạnh đó', 'Hơn thế nữa', 'Tóm lại', 'Nhìn chung'.",
   ],
 };
 

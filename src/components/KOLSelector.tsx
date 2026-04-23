@@ -133,9 +133,8 @@ export default function KOLSelector({ authors, selectedId, onSelect }: KOLSelect
         <div className="flex items-center gap-2">
           {selectedAuthor && (
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive rounded-xl"
+              variant="outline"
+              className="h-7 px-2 py-0 text-xs border-0 bg-transparent shadow-none text-muted-foreground hover:text-destructive hover:bg-muted/30 rounded-xl"
               onClick={() => onSelect(null)}
             >
               <X className="h-3 w-3 mr-1" />
@@ -331,8 +330,8 @@ export default function KOLSelector({ authors, selectedId, onSelect }: KOLSelect
               </div>
               <div className="shrink-0 flex gap-2 justify-end pt-3 border-t mt-2">
                 <Button
-                  variant="destructive"
-                  className="rounded-2xl bg-red-600 hover:bg-red-700 text-white"
+                  variant="outline"
+                  className="rounded-2xl border-0 bg-red-600 hover:bg-red-700 text-white"
                   onClick={() => setPreviewAuthor(null)}
                 >
                   {t('kolClose')}

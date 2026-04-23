@@ -3,9 +3,9 @@ module.exports = {
     {
       name: "create-content",
       script: "node_modules/next/dist/bin/next",
-      args: "start -p 3004",                 
-      instances: "max",                      
-      exec_mode: "cluster",
+      args: "start -p 3004",
+      instances: 1,
+      exec_mode: "fork",
       autorestart: true,
       watch: false,
       max_memory_restart: "512M",

@@ -29,6 +29,16 @@ function buildOpenAICompatibleTokenConfig(
     };
 }
 
+function buildOpenAICompatibleSamplingConfig(providerName: string) {
+    if (providerName === "OpenAI") {
+        return {};
+    }
+
+    return {
+        temperature: 0.7,
+    };
+}
+
 async function generateWithOpenAICompatibleApi(
     options: GenerateOptions & {
         providerName: string;
@@ -64,7 +74,7 @@ async function generateWithOpenAICompatibleApi(
                         content: JSON.stringify(prompt, null, 2),
                     },
                 ],
-                temperature: 0.7,
+                ...buildOpenAICompatibleSamplingConfig(providerName),
                 ...buildOpenAICompatibleTokenConfig(providerName, 2048),
             }),
         });

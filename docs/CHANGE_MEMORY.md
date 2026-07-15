@@ -22,3 +22,4 @@
 - Sửa `src/lib/api-client.ts` để OpenAI request/validate dùng `max_completion_tokens` thay cho `max_tokens`, giúp các model GPT-5.6 không báo lỗi unsupported parameter.
 - Thêm lại `deploy.sh` để deploy trên server Linux: verify nhánh `master` và worktree sạch, `git pull --ff-only origin master`, `npm ci`, `npm run build`, trước đó start/reload PM2 qua `ecosystem.config.cjs`.
 - Chuẩn hóa lại các file trong `docs/` về UTF-8 sạch để loại bỏ mojibake trong tài liệu.
+- Sửa `src/lib/api-client.ts` để request OpenAI không còn gửi `temperature: 0.7`, tránh lỗi unsupported value với các model GPT-5 mới chỉ hỗ trợ giá trị mặc định.

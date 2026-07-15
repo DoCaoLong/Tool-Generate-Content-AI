@@ -1,0 +1,928 @@
+
+> content-writer-ui@1.0.1 dev
+> next dev -p 3000
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.55:3000
+
+ ✓ Starting...
+ ✓ Ready in 1882ms
+ ○ Compiling / ...
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled / in 6s (871 modules)
+ GET / 200 in 6696ms
+ ⚠ Cross origin request detected from 192.168.1.55 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /icon.png ...
+ ✓ Compiled /icon.png in 658ms (500 modules)
+ GET /icon.png 200 in 831ms
+ ✓ Compiled in 626ms (871 modules)
+ GET / 200 in 162ms
+ ⨯ Error: Could not find the module "D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\next-devtools\userspace\app\segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>) {
+  digest: '2386786795'
+}
+ ⨯ Error: Could not find the module "D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\next-devtools\userspace\app\segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>)
+    at stringify (<anonymous>) {
+  digest: '3538964815'
+}
+ ⨯ Error: Could not find the module "D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\next-devtools\userspace\app\segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>)
+    at stringify (<anonymous>) {
+  digest: '3538964815'
+}
+ ⨯ Error: Could not find the module "D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\next-devtools\userspace\app\segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>)
+    at stringify (<anonymous>) {
+  digest: '3538964815'
+}
+ ⨯ Error: Could not find the module "D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\next-devtools\userspace\app\segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>) {
+  digest: '2386786795'
+}
+ ⨯ Error: Could not find the module "D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\next-devtools\userspace\app\segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>) {
+  digest: '2386786795'
+}
+ ⨯ [TypeError: __webpack_modules__[moduleId] is not a function] {
+  digest: '3443263911'
+}
+ ⨯ Error: Could not find the module "D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\next-devtools\userspace\app\segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
+    at stringify (<anonymous>) {
+  digest: '2386786795'
+}
+[TypeError: __webpack_modules__[moduleId] is not a function]
+ ⨯ [TypeError: __webpack_modules__[moduleId] is not a function]
+ ⨯ [TypeError: __webpack_modules__[moduleId] is not a function] {
+  page: '/'
+}
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1970ms (1197 modules)
+ GET / 200 in 963ms
+ GET / 200 in 34ms
+ GET / 500 in 4745ms
+ ✓ Compiled in 460ms (1211 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 387ms
+ GET / 200 in 134ms
+ ✓ Compiled /icon.png in 282ms (688 modules)
+ GET /icon.png 200 in 429ms
+ ✓ Compiled in 542ms (1236 modules)
+ GET / 200 in 209ms
+ GET /icon.png 200 in 103ms
+ ✓ Compiled in 738ms (1219 modules)
+ GET / 200 in 131ms
+ ✓ Compiled in 1384ms (1219 modules)
+ ✓ Compiled in 1044ms (1219 modules)
+ ✓ Compiled in 634ms (1219 modules)
+ GET / 200 in 206ms
+ ✓ Compiled in 895ms (1219 modules)
+ ⨯ Error: ENOENT: no such file or directory, open 'D:\_LDC\3_Tools\content-writer-ui\.next\server\vendor-chunks\next.js'
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:478:47)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:481:3) {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\_LDC\\3_Tools\\content-writer-ui\\.next\\server\\vendor-chunks\\next.js',
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+Error: ENOENT: no such file or directory, open 'D:\_LDC\3_Tools\content-writer-ui\.next\server\vendor-chunks\next.js'
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:478:47)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:481:3) {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\_LDC\\3_Tools\\content-writer-ui\\.next\\server\\vendor-chunks\\next.js',
+  page: '/'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open 'D:\_LDC\3_Tools\content-writer-ui\.next\server\pages-manifest.json'] {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\_LDC\\3_Tools\\content-writer-ui\\.next\\server\\pages-manifest.json'
+}
+[Error: ENOENT: no such file or directory, open 'D:\_LDC\3_Tools\content-writer-ui\.next\routes-manifest.json'] {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\_LDC\\3_Tools\\content-writer-ui\\.next\\routes-manifest.json'
+}
+ GET / 500 in 4318ms
+ GET / 500 in 73ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET / 500 in 158ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET / 500 in 86ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET / 500 in 82ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET / 500 in 77ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET / 500 in 88ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET / 500 in 81ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET / 500 in 84ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[Error: ENOENT: no such file or directory, open 'D:\_LDC\3_Tools\content-writer-ui\.next\routes-manifest.json'] {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\_LDC\\3_Tools\\content-writer-ui\\.next\\routes-manifest.json'
+}
+ GET / 500 in 166ms
+ GET / 500 in 63ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[Error: ENOENT: no such file or directory, open 'D:\_LDC\3_Tools\content-writer-ui\.next\routes-manifest.json'] {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\_LDC\\3_Tools\\content-writer-ui\\.next\\routes-manifest.json'
+}
+ GET / 500 in 219ms
+ GET / 500 in 120ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[Error: ENOENT: no such file or directory, open 'D:\_LDC\3_Tools\content-writer-ui\.next\routes-manifest.json'] {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\_LDC\\3_Tools\\content-writer-ui\\.next\\routes-manifest.json'
+}
+ GET / 500 in 176ms
+ GET / 500 in 66ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ ⨯ [TypeError: Cannot read properties of undefined (reading '/_app')]
+Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ ⨯ [TypeError: Cannot read properties of undefined (reading '/_app')]
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ GET / 500 in 235ms
+ GET / 500 in 83ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ ⨯ [TypeError: Cannot read properties of undefined (reading '/_app')]
+Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ ⨯ [TypeError: Cannot read properties of undefined (reading '/_app')]
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ GET / 500 in 154ms
+ GET / 500 in 51ms
+ ⨯ Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ ⨯ [TypeError: Cannot read properties of undefined (reading '/_app')]
+Error: Cannot find module './586.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8322)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js:21:8371) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ⨯ Error: Cannot find module './611.js'
+Require stack:
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\webpack-runtime.js
+- D:\_LDC\3_Tools\content-writer-ui\.next\server\app\page.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\require.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\load-components.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\utils.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\options.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\swc\index.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\parse-module.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\build\analysis\get-page-static-info.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\router-server.js
+- D:\_LDC\3_Tools\content-writer-ui\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:321)
+    at Object.<anonymous> (D:\_LDC\3_Tools\content-writer-ui\.next\server\pages\_document.js:1:366) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ ⨯ [TypeError: Cannot read properties of undefined (reading '/_app')]
+[TypeError: Cannot read properties of undefined (reading '/_app')]
+ GET / 500 in 135ms
+ GET / 500 in 47ms
+[?25h

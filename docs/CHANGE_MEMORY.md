@@ -19,3 +19,6 @@
 - Thêm `deploy.sh` để pull `origin/master`, cài dependency bằng `npm ci`, và build; sau đó gỡ phần PM2/log vì user chỉ cần pull + build.
 - Gỡ `deploy.sh` khỏi repo vì user không chạy được trên server.
 - Thêm `npm run pm2:start` và `npm run pm2:restart` để chạy trực tiếp `ecosystem.config.cjs`.
+- Sửa `src/lib/api-client.ts` để OpenAI request/validate dùng `max_completion_tokens` thay cho `max_tokens`, giúp các model GPT-5.6 không báo lỗi unsupported parameter.
+- Thêm lại `deploy.sh` để deploy trên server Linux: verify nhánh `master` và worktree sạch, `git pull --ff-only origin master`, `npm ci`, `npm run build`, trước đó start/reload PM2 qua `ecosystem.config.cjs`.
+- Chuẩn hóa lại các file trong `docs/` về UTF-8 sạch để loại bỏ mojibake trong tài liệu.

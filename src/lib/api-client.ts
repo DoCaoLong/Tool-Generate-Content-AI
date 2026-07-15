@@ -14,6 +14,21 @@ export interface GenerateResponse {
     error?: string;
 }
 
+function buildOpenAICompatibleTokenConfig(
+    providerName: string,
+    maxOutputTokens: number
+) {
+    if (providerName === "OpenAI") {
+        return {
+            max_completion_tokens: maxOutputTokens,
+        };
+    }
+
+    return {
+        max_tokens: maxOutputTokens,
+    };
+}
+
 async function generateWithOpenAICompatibleApi(
     options: GenerateOptions & {
         providerName: string;
@@ -50,7 +65,7 @@ async function generateWithOpenAICompatibleApi(
                     },
                 ],
                 temperature: 0.7,
-                max_tokens: 2048,
+                ...buildOpenAICompatibleTokenConfig(providerName, 2048),
             }),
         });
 
@@ -210,7 +225,7 @@ async function validateOpenAICompatibleKey(
                         content: "Test",
                     },
                 ],
-                max_tokens: 5,
+                ...buildOpenAICompatibleTokenConfig(providerName, 5),
             }),
         });
 

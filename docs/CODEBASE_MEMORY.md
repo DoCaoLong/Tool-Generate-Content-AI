@@ -13,6 +13,7 @@
 - Lint: `npm run lint`
 - PM2 ecosystem start: `npm run pm2:start`
 - PM2 ecosystem restart: `npm run pm2:restart`
+- Deploy helper: `bash deploy.sh`
 - Test: `Needs verification` (không có script test trong `package.json`)
 
 ## Entrypoints And Runtime Flow
@@ -47,6 +48,7 @@
 - Provider hiện có trong UI: OpenAI, Gemini, DeepSeek.
 - OpenAI model list hiện giữ song song model mới và model cũ; Gemini model list cũng giữ song song model mới và model cũ để tương thích workflow hiện có.
 - Production start script hiện chạy `next start -p 3004`.
+- Repo có `deploy.sh` để pull `origin/master`, chạy `npm ci`, build, và start/reload PM2 qua `ecosystem.config.cjs`; script tự từ chối nếu không ở nhánh `master` hoặc worktree chưa sạch.
 - Prompt generation hiện là logic client-side, tập trung trong một component lớn.
 - Theme dark mode dùng `class` strategy của Tailwind.
 - Alias import đang dùng `@/components` và `@/lib`.

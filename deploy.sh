@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-APP_NAME="create-content"
 BRANCH="master"
 REMOTE="origin"
 
@@ -18,11 +17,6 @@ fi
 
 if ! command -v npm >/dev/null 2>&1; then
   echo "npm is required but not installed."
-  exit 1
-fi
-
-if ! command -v pm2 >/dev/null 2>&1; then
-  echo "pm2 is required but not installed."
   exit 1
 fi
 
@@ -45,13 +39,3 @@ npm ci
 
 echo "==> Build app"
 npm run build
-
-echo "==> Restart PM2 app"
-pm2 startOrRestart ecosystem.config.cjs --only "$APP_NAME"
-pm2 save
-
-echo "==> PM2 status"
-pm2 status "$APP_NAME"
-
-echo "==> PM2 logs"
-pm2 logs "$APP_NAME" --lines 100

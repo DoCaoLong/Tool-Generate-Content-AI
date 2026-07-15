@@ -17,3 +17,5 @@
 - Cập nhật danh sách model OpenAI sang dòng GPT-5.6 và cập nhật Gemini sang các model Gemini 2.5 / 3.1 mới hơn trong UI.
 - Khôi phục các model OpenAI/Gemini cũ trong dropdown để giữ backward compatibility thay vì chỉ giữ model mới.
 - Thêm `deploy.sh` để pull `origin/master`, cài dependency bằng `npm ci`, và build; sau đó gỡ phần PM2/log vì user chỉ cần pull + build.
+- Gỡ `deploy.sh` khỏi repo vì user không chạy được trên server.
+- Thêm `npm run pm2:start` và `npm run pm2:restart` để chạy trực tiếp `ecosystem.config.cjs`.

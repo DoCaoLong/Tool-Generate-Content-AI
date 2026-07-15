@@ -11,6 +11,8 @@
 - Build: `npm run build`
 - Start: `npm run start`
 - Lint: `npm run lint`
+- PM2 ecosystem start: `npm run pm2:start`
+- PM2 ecosystem restart: `npm run pm2:restart`
 - Test: `Needs verification` (không có script test trong `package.json`)
 
 ## Entrypoints And Runtime Flow
@@ -44,6 +46,7 @@
 - API key được nhập trong UI và lưu ở `localStorage`.
 - Provider hiện có trong UI: OpenAI, Gemini, DeepSeek.
 - OpenAI model list hiện giữ song song model mới và model cũ; Gemini model list cũng giữ song song model mới và model cũ để tương thích workflow hiện có.
+- Production start script hiện chạy `next start -p 3004`.
 - Prompt generation hiện là logic client-side, tập trung trong một component lớn.
 - Theme dark mode dùng `class` strategy của Tailwind.
 - Alias import đang dùng `@/components` và `@/lib`.

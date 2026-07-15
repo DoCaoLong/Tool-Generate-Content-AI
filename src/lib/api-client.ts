@@ -1,5 +1,5 @@
 /**
- * API client utilities for Gemini and OpenAI content generation
+ * API client utilities for Gemini, OpenAI, and DeepSeek content generation
  */
 
 export interface GenerateOptions {
@@ -12,6 +12,76 @@ export interface GenerateResponse {
     success: boolean;
     content?: string;
     error?: string;
+}
+
+async function generateWithOpenAICompatibleApi(
+    options: GenerateOptions & {
+        providerName: string;
+        endpoint: string;
+    }
+): Promise<GenerateResponse> {
+    const { apiKey, model, prompt, providerName, endpoint } = options;
+
+    if (!apiKey) {
+        return {
+            success: false,
+            error: `API key is required for ${providerName}`,
+        };
+    }
+
+    try {
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model,
+                messages: [
+                    {
+                        role: "system",
+                        content:
+                            "You are a helpful content writer. Follow the instructions in the user message exactly.",
+                    },
+                    {
+                        role: "user",
+                        content: JSON.stringify(prompt, null, 2),
+                    },
+                ],
+                temperature: 0.7,
+                max_tokens: 2048,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            return {
+                success: false,
+                error: errorData.error?.message || `API error: ${response.status}`,
+            };
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+
+        if (!content) {
+            return {
+                success: false,
+                error: `No content generated from ${providerName} API`,
+            };
+        }
+
+        return {
+            success: true,
+            content,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error occurred",
+        };
+    }
 }
 
 /**
@@ -91,17 +161,42 @@ export async function generateWithGemini(
 export async function generateWithOpenAI(
     options: GenerateOptions
 ): Promise<GenerateResponse> {
-    const { apiKey, model, prompt } = options;
+    return generateWithOpenAICompatibleApi({
+        ...options,
+        providerName: "OpenAI",
+        endpoint: "https://api.openai.com/v1/chat/completions",
+    });
+}
+
+/**
+ * Generate content using DeepSeek API
+ */
+export async function generateWithDeepSeek(
+    options: GenerateOptions
+): Promise<GenerateResponse> {
+    return generateWithOpenAICompatibleApi({
+        ...options,
+        providerName: "DeepSeek",
+        endpoint: "https://api.deepseek.com/chat/completions",
+    });
+}
+
+async function validateOpenAICompatibleKey(
+    options: {
+        apiKey: string;
+        model: string;
+        providerName: string;
+        endpoint: string;
+    }
+): Promise<{ valid: boolean; error?: string }> {
+    const { apiKey, model, providerName, endpoint } = options;
 
     if (!apiKey) {
-        return {
-            success: false,
-            error: "API key is required for OpenAI",
-        };
+        return { valid: false, error: "API key is required" };
     }
 
     try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const response = await fetch(endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -111,46 +206,42 @@ export async function generateWithOpenAI(
                 model,
                 messages: [
                     {
-                        role: "system",
-                        content:
-                            "You are a helpful content writer. Follow the instructions in the user message exactly.",
-                    },
-                    {
                         role: "user",
-                        content: JSON.stringify(prompt, null, 2),
+                        content: "Test",
                     },
                 ],
-                temperature: 0.7,
-                max_tokens: 2048,
+                max_tokens: 5,
             }),
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.error?.message || "";
+
+            if (response.status === 401) {
+                return { valid: false, error: "Invalid API key" };
+            }
+            if (response.status === 403) {
+                return { valid: false, error: "API key expired or access denied" };
+            }
+            if (errorMessage.includes("quota") || errorMessage.includes("insufficient_quota")) {
+                return { valid: false, error: "API quota exceeded or insufficient credits" };
+            }
+            if (errorMessage.includes("model") && response.status === 404) {
+                return { valid: false, error: "Model not available for your account" };
+            }
+
             return {
-                success: false,
-                error: errorData.error?.message || `API error: ${response.status}`,
+                valid: false,
+                error: errorMessage || `${providerName} error: ${response.status}`,
             };
         }
 
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content;
-
-        if (!content) {
-            return {
-                success: false,
-                error: "No content generated from OpenAI API",
-            };
-        }
-
-        return {
-            success: true,
-            content,
-        };
+        return { valid: true };
     } catch (error) {
         return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error occurred",
+            valid: false,
+            error: error instanceof Error ? error.message : "Network error",
         };
     }
 }
@@ -224,54 +315,25 @@ export async function validateOpenAIKey(
     apiKey: string,
     model: string
 ): Promise<{ valid: boolean; error?: string }> {
-    if (!apiKey) {
-        return { valid: false, error: "API key is required" };
-    }
+    return validateOpenAICompatibleKey({
+        apiKey,
+        model,
+        providerName: "OpenAI",
+        endpoint: "https://api.openai.com/v1/chat/completions",
+    });
+}
 
-    try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model,
-                messages: [
-                    {
-                        role: "user",
-                        content: "Test",
-                    },
-                ],
-                max_tokens: 5,
-            }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const errorMessage = errorData.error?.message || "";
-
-            if (response.status === 401) {
-                return { valid: false, error: "Invalid API key" };
-            }
-            if (response.status === 403) {
-                return { valid: false, error: "API key expired or access denied" };
-            }
-            if (errorMessage.includes("quota") || errorMessage.includes("insufficient_quota")) {
-                return { valid: false, error: "API quota exceeded or insufficient credits" };
-            }
-            if (errorMessage.includes("model") && response.status === 404) {
-                return { valid: false, error: "Model not available for your account" };
-            }
-
-            return { valid: false, error: errorMessage || `Error: ${response.status}` };
-        }
-
-        return { valid: true };
-    } catch (error) {
-        return {
-            valid: false,
-            error: error instanceof Error ? error.message : "Network error",
-        };
-    }
+/**
+ * Validate DeepSeek API key by making a simple test request
+ */
+export async function validateDeepSeekKey(
+    apiKey: string,
+    model: string
+): Promise<{ valid: boolean; error?: string }> {
+    return validateOpenAICompatibleKey({
+        apiKey,
+        model,
+        providerName: "DeepSeek",
+        endpoint: "https://api.deepseek.com/chat/completions",
+    });
 }

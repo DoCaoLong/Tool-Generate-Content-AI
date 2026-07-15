@@ -31,7 +31,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Copy, Eraser, Eye, EyeOff, ExternalLink, Link2, Moon, Sun, Wand2, Languages } from "lucide-react";
-import { generateWithGemini, generateWithOpenAI, validateGeminiKey, validateOpenAIKey } from "@/lib/api-client";
+import {
+  generateWithDeepSeek,
+  generateWithGemini,
+  generateWithOpenAI,
+  validateDeepSeekKey,
+  validateGeminiKey,
+  validateOpenAIKey,
+} from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
 import KOLSelector, { KOLAuthor } from "@/components/KOLSelector";
 import authorData from "../../data/author.json";
@@ -59,12 +66,14 @@ const DEFAULT_PROMPT = {
       "Mix short and long sentences naturally. Real conversations aren't uniform.",
       "Use everyday expressions and idioms appropriate for the target language.",
       "Don't be afraid of sentence fragments. They add energy.",
+      "Break the writing into short paragraphs. Insert a line break after 1-3 sentences instead of dumping everything into one large block.",
     ],
     forbidden_patterns: [
       "NEVER use formal academic language or stuffy corporate speak.",
       "NEVER use formal transitions: 'Moreover', 'Furthermore', 'Nevertheless', 'Consequently', 'In conclusion', 'Overall'.",
       "NEVER write long-winded introductions. Get to the point fast.",
       "NEVER end with a generic summary. End with a strong closing thought or open question.",
+      "NEVER use double hyphens '--' inside sentences.",
     ],
     style_adjustments: [
       "Write conversationally - like you're explaining to a friend over coffee.",
@@ -99,6 +108,7 @@ const DEFAULT_PROMPT = {
     "Did you avoid all AI buzzwords and predictable phrases?",
     "Does it feel like a conversation, not a lecture or an essay?",
     "Remove any sentence that sounds corporate, academic, or AI-generated.",
+    "Remove any double hyphen '--' and split any paragraph that feels too dense.",
   ],
 };
 
@@ -165,25 +175,43 @@ const LENGTH_PRESETS = [
 const PROVIDER_OPTIONS = [
   { value: "openai", label: "OpenAI" },
   { value: "gemini", label: "Gemini" },
+  { value: "deepseek", label: "DeepSeek" },
 ];
 
 const MODEL_OPTIONS = {
   openai: [
+    { value: "gpt-5.6", label: "GPT-5.6 (alias -> Sol)" },
+    { value: "gpt-5.6-terra", label: "GPT-5.6 Terra (balanced)" },
+    { value: "gpt-5.6-luna", label: "GPT-5.6 Luna (cheap/fast)" },
+    { value: "gpt-5.6-sol", label: "GPT-5.6 Sol (flagship)" },
+    { value: "gpt-5", label: "GPT-5 (legacy family)" },
+    { value: "gpt-5-mini", label: "GPT-5 mini (legacy family)" },
     { value: "gpt-4o", label: "GPT-4o" },
-    { value: "gpt-4o-mini", label: "gpt-4o-mini (cheap/fast)" },
+    { value: "gpt-4o-mini", label: "GPT-4o mini" },
     { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
     { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
   ],
   gemini: [
-    { value: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (Experimental)" },
+    { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
+    { value: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite" },
+    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite" },
+    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+    { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro Preview" },
+    { value: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash Experimental" },
     { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
     { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+  ],
+  deepseek: [
+    { value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+    { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
   ],
 };
 
 const API_KEY_LINKS = {
   openai: "https://platform.openai.com/api-keys",
   gemini: "https://aistudio.google.com/app/apikey",
+  deepseek: "https://platform.deepseek.com/api_keys",
 };
 
 function safeUrl(u: string) {
@@ -255,9 +283,9 @@ export default function ContentWriterUI() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   // Provider configuration state
-  const [provider, setProvider] = useState<"openai" | "gemini">("openai");
+  const [provider, setProvider] = useState<"openai" | "gemini" | "deepseek">("openai");
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gpt-4o-mini");
+  const [model, setModel] = useState("gpt-5.6-terra");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -294,7 +322,7 @@ export default function ContentWriterUI() {
     const savedApiKey = localStorage.getItem("cwui_apikey");
     const savedModel = localStorage.getItem("cwui_model");
 
-    if (savedProvider === "openai" || savedProvider === "gemini") {
+    if (savedProvider === "openai" || savedProvider === "gemini" || savedProvider === "deepseek") {
       setProvider(savedProvider);
     }
     if (savedApiKey) setApiKey(savedApiKey);
@@ -331,8 +359,9 @@ export default function ContentWriterUI() {
   // Update model when provider changes
   useEffect(() => {
     const defaultModels = {
-      openai: "gpt-4o-mini",
-      gemini: "gemini-2.0-flash-exp",
+      openai: "gpt-5.6-terra",
+      gemini: "gemini-3.5-flash",
+      deepseek: "deepseek-v4-flash",
     };
     setModel(defaultModels[provider]);
   }, [provider]);
@@ -456,6 +485,7 @@ export default function ContentWriterUI() {
         ...keywordRule,
         output_format: "single post",
         language_requirement: `CRITICAL: You MUST write the ENTIRE output in ${languageName}. Every single word, sentence, and paragraph must be in ${languageName}. Do NOT mix languages. Do NOT use any other language except ${languageName}.`,
+        formatting_requirement: "CRITICAL: Use short paragraphs with visible line breaks. Do not output one dense wall of text. Never use double hyphens '--' in the final writing.",
         custom_style: customStyle?.trim() ? customStyle.trim() : undefined,
       },
       text: mode === "rewrite" ? sourceText : undefined,
@@ -532,7 +562,9 @@ export default function ContentWriterUI() {
     try {
       const result = provider === "gemini"
         ? await validateGeminiKey(apiKey, model)
-        : await validateOpenAIKey(apiKey, model);
+        : provider === "deepseek"
+          ? await validateDeepSeekKey(apiKey, model)
+          : await validateOpenAIKey(apiKey, model);
 
       if (result.valid) {
         localStorage.setItem("cwui_provider", provider);
@@ -685,7 +717,9 @@ export default function ContentWriterUI() {
     try {
       const result = provider === "gemini"
         ? await generateWithGemini({ apiKey, model, prompt: builtPromptObject })
-        : await generateWithOpenAI({ apiKey, model, prompt: builtPromptObject });
+        : provider === "deepseek"
+          ? await generateWithDeepSeek({ apiKey, model, prompt: builtPromptObject })
+          : await generateWithOpenAI({ apiKey, model, prompt: builtPromptObject });
 
       if (result.success && result.content) {
         setOutput(result.content);
@@ -766,7 +800,7 @@ export default function ContentWriterUI() {
                     rel="noopener noreferrer"
                     className="text-sm text-primary hover:underline flex items-center gap-1"
                   >
-                    Get {provider === "openai" ? "OpenAI" : "Gemini"} key
+                    Get {provider === "openai" ? "OpenAI" : provider === "gemini" ? "Gemini" : "DeepSeek"} key
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
@@ -1098,69 +1132,6 @@ export default function ContentWriterUI() {
                 </div>
               </div>
 
-              <Separator />
-
-              {/* History Section */}
-              <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold">{t('history')}</Label>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="rounded-xl">
-                      {history.length} {t('historyItemsCount')}
-                    </Badge>
-                    {history.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="default"
-                        onClick={clearAllHistory}
-                        className="rounded-xl h-7 px-2 text-xs bg-red-600/10 hover:bg-red-600/20 border-red-600/20"
-                      >
-                        {t('clearAll')}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <p className="text-xs text-muted-foreground">
-                  {t('historyNote')}
-                </p>
-
-                {history.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic py-4 text-center">
-                    {t('noHistory')}
-                  </p>
-                ) : (
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                    {history.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => loadFromHistory(item)}
-                        className="w-full text-left p-3 rounded-xl bg-background hover:bg-accent transition-colors border border-border"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {item.settings.url || 'No URL'}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {item.output.substring(0, 100)}...
-                            </p>
-                          </div>
-                          <p className="text-xs text-muted-foreground whitespace-nowrap">
-                            {new Date(item.timestamp).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               <div className="flex flex-col gap-3 sm:flex-row justify-end">
                 <Button
                   variant="outline"
@@ -1228,6 +1199,66 @@ export default function ContentWriterUI() {
                 placeholder={t('generatedPromptPlaceholder')}
                 className="min-h-[520px] rounded-2xl font-mono text-xs leading-relaxed md:text-sm"
               />
+
+              <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">{t('history')}</Label>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="rounded-xl">
+                      {history.length} {t('historyItemsCount')}
+                    </Badge>
+                    {history.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onClick={clearAllHistory}
+                        className="rounded-xl h-7 px-2 text-xs bg-red-600/10 hover:bg-red-600/20 border-red-600/20"
+                      >
+                        {t('clearAll')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {t('historyNote')}
+                </p>
+
+                {history.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic py-4 text-center">
+                    {t('noHistory')}
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    {history.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => loadFromHistory(item)}
+                        className="w-full text-left p-3 rounded-xl bg-background hover:bg-accent transition-colors border border-border"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {item.settings.url || 'No URL'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {item.output.substring(0, 100)}...
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(item.timestamp).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* <div className="rounded-2xl border bg-muted/30 p-4">
                 <p className="text-sm font-medium">{t('whatThisAppGenerates')}</p>

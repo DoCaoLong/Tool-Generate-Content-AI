@@ -16,3 +16,4 @@
 - Thêm provider `DeepSeek` với model `deepseek-v4-flash` và `deepseek-v4-pro`, cùng luồng validate/generate API tương ứng.
 - Cập nhật danh sách model OpenAI sang dòng GPT-5.6 và cập nhật Gemini sang các model Gemini 2.5 / 3.1 mới hơn trong UI.
 - Khôi phục các model OpenAI/Gemini cũ trong dropdown để giữ backward compatibility thay vì chỉ giữ model mới.
+- Thêm `deploy.sh` để pull `origin/master`, cài dependency bằng `npm ci`, build, restart PM2 app `create-content`, và mở PM2 logs.

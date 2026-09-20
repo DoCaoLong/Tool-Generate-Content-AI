@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
 import { z } from "zod";
+import TurnstileWidget from "@/components/TurnstileWidget";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,8 @@ export default function AuthScreen() {
   const [accessOpen, setAccessOpen] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const [verifiedCode, setVerifiedCode] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
   const queryClient = useQueryClient();
   const form = useForm<AuthValues>({
     resolver: zodResolver(schema),
@@ -35,7 +38,7 @@ export default function AuthScreen() {
     mutationFn: (values: AuthValues) =>
       apiRequest<{ user: UserProfile }>(`/api/auth/${mode}`, {
         method: "POST",
-        body: JSON.stringify(mode === "register" ? { ...values, accessCode: verifiedCode } : values),
+        body: JSON.stringify(mode === "register" ? { ...values, accessCode: verifiedCode, turnstileToken } : { ...values, turnstileToken }),
       }),
     onSuccess: (data) => queryClient.setQueryData(["me"], data),
   });
@@ -55,6 +58,8 @@ export default function AuthScreen() {
     setMode("login");
     setVerifiedCode("");
     setAccessCode("");
+    setTurnstileToken("");
+    setTurnstileReset((value) => value + 1);
     mutation.reset();
     verifyAccess.reset();
     form.clearErrors();
@@ -90,7 +95,7 @@ export default function AuthScreen() {
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">{mode === "login" ? "Đăng nhập vào tài khoản" : "Tạo tài khoản của bạn"}</h2>
           <p className="mt-3 text-sm leading-6 text-slate-500">{mode === "login" ? "Tiếp tục quản lý dự án và lịch sử nội dung." : "Mọi dự án và lịch sử sẽ được đồng bộ an toàn."}</p>
 
-          <form className="mt-8 space-y-4" onSubmit={form.handleSubmit((values) => { if (mode === "register" && !verifiedCode) { setAccessOpen(true); return; } mutation.mutate(values); })}>
+          <form className="mt-8 space-y-4" onSubmit={form.handleSubmit((values) => { if (mode === "register" && !verifiedCode) { setAccessOpen(true); return; } mutation.mutate(values, { onSettled: () => { setTurnstileToken(""); setTurnstileReset((value) => value + 1); } }); })}>
             {mode === "register" && (
               <label className="block text-sm font-medium">Tên hiển thị
                 <Input className="mt-2 h-12 rounded-xl bg-white" placeholder="Nguyễn An" {...form.register("name", { required: mode === "register" })} />
@@ -102,6 +107,7 @@ export default function AuthScreen() {
             <label className="block text-sm font-medium">Mật khẩu
               <Input className="mt-2 h-12 rounded-xl bg-white" type="password" placeholder="Tối thiểu 8 ký tự" {...form.register("password")} />
             </label>
+            <TurnstileWidget onToken={setTurnstileToken} resetKey={turnstileReset} />
             {(form.formState.errors.email || form.formState.errors.password || mutation.error) && (
               <p className="text-sm text-red-600">{mutation.error?.message || form.formState.errors.email?.message || form.formState.errors.password?.message}</p>
             )}

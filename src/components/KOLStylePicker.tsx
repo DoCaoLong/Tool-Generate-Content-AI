@@ -2,7 +2,9 @@
 
 import { Palette } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "@/lib/app-store";
+import { apiRequest } from "@/lib/http";
 import { getKOLStyle } from "@/lib/kol-styles";
 import type { DiscoveredStyle, SavedStyle } from "@/lib/types";
 
@@ -10,7 +12,8 @@ export default function KOLStylePicker({ selectedId, customStyle, selectedSavedS
   const router = useRouter();
   const pathname = usePathname();
   const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
-  const selectedKOL = getKOLStyle(selectedId);
+  const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: Array<{ id: string; name: string }> }>("/api/prompt-styles") });
+  const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedId) || getKOLStyle(selectedId);
   const activeName = selectedSavedStyle?.name || selectedKOL?.name || (customStyle ? `@${customStyle.username}` : null);
   const isStylesRoute = pathname === "/styles";
   const label = activeName || "Phong cách";

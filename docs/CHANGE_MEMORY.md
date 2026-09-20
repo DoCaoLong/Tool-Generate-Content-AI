@@ -12,6 +12,7 @@
 - Aside desktop có thể thu gọn còn hàng icon; trạng thái được persist.
 - Đăng ký tài khoản phải nhập access code (`REGISTER_ACCESS_CODE`) qua portal trước khi hiện form tạo tài khoản.
 - Thêm `PORT` trong env (mặc định 3004) và `deploy.sh` để build/chạy production trên server bằng PM2.
+- Login/register/admin dùng Cloudflare Turnstile. Trang `/admin` (user/pass trong env) quản lý user, API key hệ thống và style prompt.
 
 - Tab Khám phá chỉ bắt buộc một trong hai: username tác giả hoặc tên dự án. Tìm theo @handle dự án dùng `POST /v3/mentions` sắp theo bài nhiều bình luận nhất.
 - Gọi Sorsa bằng HTTPS IPv4, timeout 45s; nếu `/mentions` lỗi thì fallback `search-tweets`. Form bỏ chữ “một trong hai”, placeholder dự án là `@PlayOnMint`.

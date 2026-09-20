@@ -31,9 +31,11 @@ export default function StyleLibraryPage() {
   const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
   const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
   const stylesQuery = useQuery({ queryKey: ["styles"], queryFn: () => apiRequest<{ styles: SavedStyle[] }>("/api/styles") });
+  const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: KOLStyle[] }>("/api/prompt-styles") });
   const styles = useMemo(() => stylesQuery.data?.styles || [], [stylesQuery.data?.styles]);
+  const kolList = promptQuery.data?.styles || kolStyles;
   const filteredStyles = useMemo(() => styles.filter((style) => `${style.name} ${style.description} ${style.instruction}`.toLowerCase().includes(search.toLowerCase())), [styles, search]);
-  const filteredKOLs = useMemo(() => kolStyles.filter((style) => `${style.name} ${style.content}`.toLowerCase().includes(search.toLowerCase())), [search]);
+  const filteredKOLs = useMemo(() => kolList.filter((style) => `${style.name} ${style.content}`.toLowerCase().includes(search.toLowerCase())), [kolList, search]);
   const form = useForm<ManualStyleValues>({ defaultValues: { name: "", description: "", instruction: "", sampleText: "" } });
 
   const createStyle = useMutation({

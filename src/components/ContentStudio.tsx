@@ -269,7 +269,8 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
   const selectedKolId = useAppStore((state) => state.selectedKolId);
   const discoveredStyle = useAppStore((state) => state.discoveredStyle);
   const setProviderConfig = useAppStore((state) => state.setProviderConfig);
-  const selectedKOL = getKOLStyle(selectedKolId);
+  const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: Array<{ id: string; name: string; style?: string; content: string }> }>("/api/prompt-styles") });
+  const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedKolId) || getKOLStyle(selectedKolId);
   const [optionsSaveState, setOptionsSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const form = useForm<ComposerValues>({
     resolver: zodResolver(formSchema),

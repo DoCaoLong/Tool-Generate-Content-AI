@@ -4,6 +4,9 @@
 
 - Thay icon Atom bằng logo chính thức của Nucleus (`/nucleus-logo.png`) ở tab Nucleus trong sidebar và header/trạng thái trống trang Nucleus.
 - Sửa lỗi avatar dự án bị banner đè ở trang chi tiết Nucleus: gán `relative z-10` cùng `shrink-0` và `bg-white` cho khối avatar thumbnail để nổi trên banner.
+- Cải thiện UI header chi tiết dự án Nucleus: định vị avatar nổi bật trên mép banner, đưa tiêu đề và mô tả xuống hoàn toàn dưới nền thẻ trắng để khắc phục triệt để lỗi chữ đè lên ảnh banner; tăng kích thước và viền ring cho avatar; bổ sung chấm chỉ báo pulse cho badge trạng thái; tăng độ tương phản và khoảng cách dòng cho mô tả, hỗ trợ bố cục responsive trên desktop và mobile.
+- Bỏ section giới thiệu card trắng ("Dự án đang chạy trên Nucleus") ở danh sách dự án Nucleus để giao diện gọn gàng, hiển thị ngay tiêu đề "Chiến dịch InfoFi" và lưới danh sách dự án.
+- Đổi giao diện nút chuyển chế độ Viết mới / Viết lại từ tone đen nặng sang tone sáng: vỏ bọc nền xám nhạt có viền mềm mại, nút đang chọn đổi sang màu trắng nổi bật với bóng đổ nhẹ và chữ xám đậm tương phản tự nhiên với header.
 - Bỏ viền active ở tab Phong cách; thư viện chỉ còn icon check khi chọn. Cài đặt gọn hơn, thêm nút Kiểm tra API, bỏ mô tả lưu key trên trình duyệt.
 - Thêm portal xem chi tiết phong cách và `ConfirmDialog` thay `window.confirm` khi xoá phong cách/dự án.
 - Aside desktop có thể thu gọn còn hàng icon; trạng thái được persist.

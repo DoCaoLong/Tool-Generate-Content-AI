@@ -74,3 +74,10 @@
 - Priority: low
 - Scope: cho phép click vào thumbnail hoặc banner trong trang chi tiết dự án Nucleus để xem ảnh kích thước gốc trong popup/lightbox kèm nút tải ảnh.
 
+### Backlog-015: Sao chép liên kết chia sẻ dự án Nucleus
+
+- Status: proposed
+- Priority: low
+- Scope: thêm nút copy link nhanh trên header chi tiết dự án Nucleus kèm thông báo toast để tiện chia sẻ cho cộng đồng hoặc lưu lại xem sau.
+
+

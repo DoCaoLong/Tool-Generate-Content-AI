@@ -48,9 +48,9 @@ function statusLabel(status: string) {
 }
 
 function statusClass(status: string) {
-  if (status === "OPEN") return "bg-emerald-50 text-emerald-700";
-  if (status === "CLOSED") return "bg-slate-100 text-slate-600";
-  return "bg-amber-50 text-amber-700";
+  if (status === "OPEN") return "border-emerald-200/80 bg-emerald-50 text-emerald-700";
+  if (status === "CLOSED") return "border-slate-200 bg-slate-100 text-slate-600";
+  return "border-amber-200/80 bg-amber-50 text-amber-700";
 }
 
 function fieldLabel(key: string) {
@@ -112,25 +112,17 @@ function NucleusList() {
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-          <div className="flex items-start gap-4">
-            <img src="/nucleus-logo.png" alt="Nucleus" className="h-12 w-12 shrink-0 rounded-2xl object-cover shadow-sm" />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Nucleus · InfoFi</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight">Dự án đang chạy trên Nucleus</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Danh sách chiến dịch InfoFi từ Nucleus. Chọn một dự án để xem thưởng, điều kiện và hướng dẫn đóng góp.</p>
-            </div>
-          </div>
-        </section>
-
         {query.isPending && <div className="flex items-center justify-center gap-2 py-20 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải dự án Nucleus...</div>}
         {query.error && !projects.length && <p className="mt-6 text-sm text-red-600">{query.error.message}</p>}
-        {query.isFetching && !query.isPending && <p className="mt-4 text-center text-xs text-slate-400">Đang cập nhật danh sách...</p>}
+        {query.isFetching && !query.isPending && <p className="mb-4 text-center text-xs text-slate-400">Đang cập nhật danh sách...</p>}
         {!query.isPending && !query.error && projects.length === 0 && <div className="py-20 text-center"><img src="/nucleus-logo.png" alt="" className="mx-auto h-10 w-10 rounded-xl opacity-30 grayscale" /><h3 className="mt-4 font-semibold">Chưa có dự án nào</h3><p className="mt-1 text-sm text-slate-500">Nucleus hiện không trả về chiến dịch công khai.</p></div>}
 
         {projects.length > 0 && (
-          <section className="mt-7">
-            <div className="mb-4 flex items-center justify-between"><h3 className="font-semibold">Chiến dịch InfoFi</h3><span className="text-xs text-slate-400">{projects.length}/{total} dự án</span></div>
+          <section>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900">Chiến dịch InfoFi</h2>
+              <span className="text-xs font-medium text-slate-500">{projects.length}/{total} dự án</span>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               {projects.map((project) => {
                 const reward = rewardPreview(project.additionalFields);
@@ -226,19 +218,33 @@ function NucleusDetail({ slug }: { slug: string }) {
         {query.error && <p className="text-sm text-red-600">{query.error.message}</p>}
         {project && (
           <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="relative h-48 bg-slate-100 sm:h-56">
+            <div className="relative h-48 bg-slate-100 sm:h-60">
               <NucleusImg src={project.bannerImageUrl} alt="" className="h-full w-full object-cover" />
             </div>
-            <div className="px-5 pb-8 sm:px-7">
-              <div className="relative z-10 -mt-8 flex items-end gap-4">
-                <NucleusImg src={project.thumbnailUrl} alt="" className="h-16 w-16 shrink-0 rounded-2xl border-4 border-white bg-white object-cover shadow-sm" />
-                <div className="min-w-0 flex-1 pb-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-2xl font-semibold tracking-tight">{project.name}</h2>
-                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusClass(project.status)}`}>{statusLabel(project.status)}</span>
-                    {project.isPrivate && <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600"><Lock className="h-3 w-3" />Riêng tư</span>}
+            <div className="px-5 pb-8 sm:px-8">
+              <div className="flex flex-col gap-4 pt-3 sm:flex-row sm:items-start sm:gap-6 sm:pt-4">
+                <div className="relative z-10 -mt-10 shrink-0 sm:-mt-14">
+                  <NucleusImg
+                    src={project.thumbnailUrl}
+                    alt={project.name}
+                    className="h-20 w-20 rounded-2xl border-4 border-white bg-white object-cover shadow-md ring-1 ring-slate-900/5 sm:h-24 sm:w-24 sm:rounded-3xl"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{project.name}</h2>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusClass(project.status)}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${project.status === "OPEN" ? "bg-emerald-500 animate-pulse" : project.status === "CLOSED" ? "bg-slate-400" : "bg-amber-500"}`} />
+                      {statusLabel(project.status)}
+                    </span>
+                    {project.isPrivate && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                        <Lock className="h-3 w-3" />
+                        Riêng tư
+                      </span>
+                    )}
                   </div>
-                  {project.description && <p className="mt-2 text-sm leading-6 text-slate-500">{project.description}</p>}
+                  {project.description && <p className="mt-2.5 text-sm leading-relaxed text-slate-600 sm:text-base">{project.description}</p>}
                 </div>
               </div>
 

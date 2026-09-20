@@ -1,10 +1,17 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import Script from "next/script";
+import { Inter } from "next/font/google";
+import AppProviders from "@/components/AppProviders";
+
+const inter = Inter({
+  subsets: ["latin", "vietnamese"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
-  title: "Content Builder",
-  description: "Modern UX/UI content prompt builder with dark mode",
+  title: "Content Studio",
+  description: "Workspace tạo và quản lý nội dung theo từng dự án.",
   icons: {
     icon: '/icon.png',
   },
@@ -16,23 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body>
-        <Script id="theme-init" strategy="beforeInteractive">
-          {`
-            try {
-              var savedTheme = localStorage.getItem("cwui_theme");
-              var root = document.documentElement;
-              if (savedTheme === "light") {
-                root.classList.remove("dark");
-              } else {
-                root.classList.add("dark");
-              }
-            } catch (e) {}
-          `}
-        </Script>
-        {children}
-      </body>
+    <html lang="vi">
+      <body className={inter.variable}><AppProviders>{children}</AppProviders></body>
     </html>
   );
 }

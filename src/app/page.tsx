@@ -1,12 +1,5 @@
-"use client";
-
-import ContentWriterUI from "@/components/ContentWriterUI";
-import I18nProvider from "@/components/I18nProvider";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <I18nProvider>
-      <ContentWriterUI />
-    </I18nProvider>
-  );
+  redirect("/projects");
 }

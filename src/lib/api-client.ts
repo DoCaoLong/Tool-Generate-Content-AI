@@ -1,11 +1,11 @@
 /**
- * API client utilities for Gemini, OpenAI, and DeepSeek content generation
+ * API client utilities for supported content-generation providers.
  */
 
 export interface GenerateOptions {
     apiKey: string;
     model: string;
-    prompt: any;
+    prompt: unknown;
 }
 
 export interface GenerateResponse {
@@ -43,9 +43,10 @@ async function generateWithOpenAICompatibleApi(
     options: GenerateOptions & {
         providerName: string;
         endpoint: string;
+        extraHeaders?: Record<string, string>;
     }
 ): Promise<GenerateResponse> {
-    const { apiKey, model, prompt, providerName, endpoint } = options;
+    const { apiKey, model, prompt, providerName, endpoint, extraHeaders } = options;
 
     if (!apiKey) {
         return {
@@ -60,6 +61,7 @@ async function generateWithOpenAICompatibleApi(
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${apiKey}`,
+                ...extraHeaders,
             },
             body: JSON.stringify({
                 model,
@@ -204,6 +206,57 @@ export async function generateWithDeepSeek(
         providerName: "DeepSeek",
         endpoint: "https://api.deepseek.com/chat/completions",
     });
+}
+
+/** Generate content using xAI's OpenAI-compatible API. */
+export async function generateWithXAI(options: GenerateOptions): Promise<GenerateResponse> {
+    return generateWithOpenAICompatibleApi({
+        ...options,
+        providerName: "xAI",
+        endpoint: "https://api.x.ai/v1/chat/completions",
+    });
+}
+
+/** Generate content through OpenRouter's unified API. */
+export async function generateWithOpenRouter(options: GenerateOptions): Promise<GenerateResponse> {
+    return generateWithOpenAICompatibleApi({
+        ...options,
+        providerName: "OpenRouter",
+        endpoint: "https://openrouter.ai/api/v1/chat/completions",
+        extraHeaders: {
+            "X-OpenRouter-Title": "Content Studio",
+        },
+    });
+}
+
+/** Generate content using Anthropic's Messages API. */
+export async function generateWithAnthropic(options: GenerateOptions): Promise<GenerateResponse> {
+    const { apiKey, model, prompt } = options;
+    if (!apiKey) return { success: false, error: "API key is required for Anthropic" };
+
+    try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+                "anthropic-dangerous-direct-browser-access": "true",
+            },
+            body: JSON.stringify({
+                model,
+                max_tokens: 2048,
+                system: "You are a helpful content writer. Follow the instructions in the user message exactly.",
+                messages: [{ role: "user", content: JSON.stringify(prompt, null, 2) }],
+            }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return { success: false, error: data.error?.message || `API error: ${response.status}` };
+        const content = data.content?.filter((item: { type?: string }) => item.type === "text").map((item: { text?: string }) => item.text || "").join("\n").trim();
+        return content ? { success: true, content } : { success: false, error: "No content generated from Anthropic API" };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : "Unknown error occurred" };
+    }
 }
 
 async function validateOpenAICompatibleKey(

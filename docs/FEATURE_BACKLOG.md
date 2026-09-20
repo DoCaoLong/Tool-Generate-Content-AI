@@ -61,3 +61,10 @@
 - Status: proposed
 - Priority: low
 - Scope: cho phép người dùng tự đặt tên và mô tả một giọng điệu, lưu vào tài khoản rồi dùng như lựa chọn có sẵn trong composer.
+
+### Backlog-013: Điền sẵn chủ đề từ chiến dịch Nucleus
+
+- Status: proposed
+- Priority: low
+- Scope: khi dùng brief Nucleus, tự điền ô chủ đề composer bằng tên chiến dịch và loại thưởng để người dùng chỉ cần chỉnh rồi gửi.
+

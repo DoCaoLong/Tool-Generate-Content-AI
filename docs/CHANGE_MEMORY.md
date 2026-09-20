@@ -1,5 +1,27 @@
 # CHANGE_MEMORY
 
+## 2026-09-20
+
+- Bỏ viền active ở tab Phong cách; thư viện chỉ còn icon check khi chọn. Cài đặt gọn hơn, thêm nút Kiểm tra API, bỏ mô tả lưu key trên trình duyệt.
+- Thêm portal xem chi tiết phong cách và `ConfirmDialog` thay `window.confirm` khi xoá phong cách/dự án.
+- Aside desktop có thể thu gọn còn hàng icon; trạng thái được persist.
+- Đăng ký tài khoản phải nhập access code (`REGISTER_ACCESS_CODE`) qua portal trước khi hiện form tạo tài khoản.
+- Thêm `PORT` trong env (mặc định 3004) và `deploy.sh` để build/chạy production trên server bằng PM2.
+
+- Tab Khám phá chỉ bắt buộc một trong hai: username tác giả hoặc tên dự án. Tìm theo @handle dự án dùng `POST /v3/mentions` sắp theo bài nhiều bình luận nhất.
+- Gọi Sorsa bằng HTTPS IPv4, timeout 45s; nếu `/mentions` lỗi thì fallback `search-tweets`. Form bỏ chữ “một trong hai”, placeholder dự án là `@PlayOnMint`.
+
+- Sửa ảnh Nucleus: `next.config.mjs` nhận host S3 `prod-nucleus-project-thumbnail.s3.us-east-2.amazonaws.com` và wildcard `*.s3.us-east-2.amazonaws.com`; UI dùng `<img>` trực tiếp để không phụ thuộc image optimizer.
+- Khi banner/thumbnail/ảnh chi tiết Nucleus lỗi (S3 chặn), hiển thị ảnh mặc định `/nucleus-fallback.svg`.
+- Cache Nucleus bằng TanStack Query: stale 5 phút, giữ 30 phút, prefetch list khi hover sidebar và prefetch chi tiết khi hover card.
+- Chi tiết Nucleus dùng `slug`, nếu slug trống thì dùng `id` (API Nucleus nhận cả hai).
+- `project_details` trên trang chi tiết Nucleus hiển thị đủ mọi mục dạng accordion thu gọn, có mở/thu tất cả; HTML giữ ảnh `https` và bảng.
+- Thêm nút `Dùng làm brief` trên trang chi tiết Nucleus: chọn tạo dự án mới hoặc dự án có sẵn, ghi brief vào tài liệu tham khảo, rule bắt buộc lấy `project_details[0]`, từ khóa gắn username X.
+- Thêm tab `Nucleus` trong sidebar để xem các chiến dịch InfoFi đang có trên Nucleus.
+- Thêm route `/nucleus` và `/nucleus/[slug]`; danh sách dùng `GET https://api.nucleus.codes/v1/projects/` còn chi tiết nối slug vào cùng API.
+- Proxy Nucleus qua `/api/nucleus/projects` với phân trang skip/limit, sanitize HTML, và bỏ payload `users_signed_up_details`.
+- Dự án không có slug vẫn hiện trên danh sách nhưng không mở được trang chi tiết.
+
 ## 2026-09-19
 
 - Thêm backend Next.js Route Handlers dùng MongoDB cho users, projects và generation history.

@@ -2,6 +2,8 @@
  * API client utilities for supported content-generation providers.
  */
 
+import type { Provider } from "@/lib/types";
+
 export interface GenerateOptions {
     apiKey: string;
     model: string;
@@ -265,9 +267,10 @@ async function validateOpenAICompatibleKey(
         model: string;
         providerName: string;
         endpoint: string;
+        extraHeaders?: Record<string, string>;
     }
 ): Promise<{ valid: boolean; error?: string }> {
-    const { apiKey, model, providerName, endpoint } = options;
+    const { apiKey, model, providerName, endpoint, extraHeaders } = options;
 
     if (!apiKey) {
         return { valid: false, error: "API key is required" };
@@ -279,6 +282,7 @@ async function validateOpenAICompatibleKey(
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${apiKey}`,
+                ...extraHeaders,
             },
             body: JSON.stringify({
                 model,
@@ -414,4 +418,36 @@ export async function validateDeepSeekKey(
         providerName: "DeepSeek",
         endpoint: "https://api.deepseek.com/chat/completions",
     });
+}
+
+export async function checkProviderApi(provider: Provider, apiKey: string, model: string): Promise<{ valid: boolean; error?: string }> {
+    if (!apiKey.trim()) return { valid: false, error: "Hãy nhập API key." };
+    if (provider === "gemini") return validateGeminiKey(apiKey, model);
+    if (provider === "openai") return validateOpenAIKey(apiKey, model);
+    if (provider === "deepseek") return validateDeepSeekKey(apiKey, model);
+    if (provider === "xai") {
+        return validateOpenAICompatibleKey({ apiKey, model, providerName: "xAI", endpoint: "https://api.x.ai/v1/chat/completions" });
+    }
+    if (provider === "openrouter") {
+        return validateOpenAICompatibleKey({ apiKey, model, providerName: "OpenRouter", endpoint: "https://openrouter.ai/api/v1/chat/completions", extraHeaders: { "X-OpenRouter-Title": "Content Studio" } });
+    }
+    try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+                "anthropic-dangerous-direct-browser-access": "true",
+            },
+            body: JSON.stringify({ model, max_tokens: 8, messages: [{ role: "user", content: "Test" }] }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401) return { valid: false, error: "API key không hợp lệ." };
+        if (response.status === 403) return { valid: false, error: "API key hết hạn hoặc không có quyền." };
+        if (!response.ok) return { valid: false, error: data.error?.message || `API error: ${response.status}` };
+        return { valid: true };
+    } catch (error) {
+        return { valid: false, error: error instanceof Error ? error.message : "Không thể kết nối tới API." };
+    }
 }

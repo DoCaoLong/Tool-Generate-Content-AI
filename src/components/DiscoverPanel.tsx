@@ -14,12 +14,16 @@ import { apiRequest } from "@/lib/http";
 import type { DiscoveredTweet, SavedStyle } from "@/lib/types";
 
 const schema = z.object({
-  username: z.string().trim().min(1, "Hãy nhập username.").transform((value) => value.replace(/^@/, "")).refine((value) => /^[A-Za-z0-9_]{1,15}$/.test(value), "Username X chưa hợp lệ."),
+  username: z.string().trim().transform((value) => value.replace(/^@/, "")).refine((value) => !value || /^[A-Za-z0-9_]{1,15}$/.test(value), "Username X chưa hợp lệ."),
   projectName: z.string().trim().max(100, "Tên dự án tối đa 100 ký tự."),
+}).superRefine((data, context) => {
+  if (!data.username && !data.projectName) {
+    context.addIssue({ code: "custom", path: ["username"], message: "Hãy nhập username hoặc tên dự án." });
+  }
 });
 
 type DiscoverValues = z.infer<typeof schema>;
-type DiscoverResponse = { tweets: DiscoveredTweet[]; nextCursor: string | null; query: string };
+type DiscoverResponse = { tweets: DiscoveredTweet[]; nextCursor: string | null; query: string; source: "author" | "mentions" | "topic"; handle: string };
 
 function shortNumber(value: number) {
   return new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
@@ -34,7 +38,7 @@ export default function DiscoverPanel() {
   const [tweets, setTweets] = useState<DiscoveredTweet[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [lastSearch, setLastSearch] = useState<DiscoverValues | null>(null);
+  const [lastSearch, setLastSearch] = useState<(DiscoverValues & { source?: DiscoverResponse["source"]; handle?: string }) | null>(null);
   const form = useForm<DiscoverValues>({ resolver: zodResolver(schema), defaultValues: { username: "", projectName: "" } });
 
   const search = useMutation({
@@ -43,7 +47,7 @@ export default function DiscoverPanel() {
       setTweets((current) => variables.cursor ? [...current, ...data.tweets.filter((tweet) => !current.some((item) => item.id === tweet.id))] : data.tweets);
       setNextCursor(data.nextCursor);
       if (!variables.cursor) setSelectedIds([]);
-      setLastSearch(variables.values);
+      setLastSearch({ ...variables.values, source: data.source, handle: data.handle });
     },
   });
 
@@ -62,13 +66,19 @@ export default function DiscoverPanel() {
     if (!lastSearch) return;
     const samples = tweets.filter((tweet) => selectedIds.includes(tweet.id)).slice(0, 8).map((tweet) => ({ id: tweet.id, text: tweet.text.slice(0, 4000) }));
     if (!samples.length) return;
-    const scopeName = lastSearch.projectName || "Bài viết gần đây";
-    const scopeInstruction = lastSearch.projectName ? `trong các bài nói về ${lastSearch.projectName}` : "trong các bài gần đây";
+    const handle = lastSearch.username || lastSearch.handle || samples[0]?.text.match(/@([A-Za-z0-9_]{1,15})/)?.[1] || tweets.find((tweet) => selectedIds.includes(tweet.id))?.username;
+    if (!handle) return;
+    const scopeName = lastSearch.projectName || (lastSearch.source === "mentions" ? "Mentions nhiều bình luận" : "Bài viết gần đây");
+    const scopeInstruction = lastSearch.projectName
+      ? `trong các bài nói về ${lastSearch.projectName}`
+      : lastSearch.source === "mentions"
+        ? "trong các bài mention có nhiều bình luận nhất"
+        : "trong các bài gần đây";
     saveStyle.mutate({
-      name: `@${lastSearch.username} · ${scopeName}`,
+      name: `@${handle} · ${scopeName}`,
       description: `${samples.length} bài mẫu công khai được tìm qua Sorsa.`,
-      instruction: `Học cách viết của @${lastSearch.username} ${scopeInstruction}: giọng điệu, nhịp câu, cách mở bài, cấu trúc, từ vựng và cách kết thúc. Không sao chép nguyên văn và không giả danh tác giả.`,
-      username: lastSearch.username,
+      instruction: `Học cách viết của @${handle} ${scopeInstruction}: giọng điệu, nhịp câu, cách mở bài, cấu trúc, từ vựng và cách kết thúc. Không sao chép nguyên văn và không giả danh tác giả.`,
+      username: handle,
       projectName: lastSearch.projectName || null,
       samples,
     });
@@ -80,21 +90,21 @@ export default function DiscoverPanel() {
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="flex items-start gap-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-700"><UserRoundSearch className="h-6 w-6" /></span>
-            <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Sorsa · X discovery</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Tìm bài mẫu theo tác giả</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Quét bài viết công khai của một tài khoản X. Có thể lọc theo tên dự án, hoặc để trống để lấy các bài gần nhất.</p></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Sorsa · X discovery</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Tìm bài mẫu theo tác giả hoặc dự án</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Nhập username tác giả và/hoặc @mention của dự án. Tìm theo dự án ưu tiên bài mention có nhiều bình luận nhất.</p></div>
           </div>
 
           <form className="mt-7 grid gap-4 sm:grid-cols-[0.8fr_1.2fr_auto]" onSubmit={form.handleSubmit((values) => search.mutate({ values }))}>
             <label className="text-sm font-medium text-slate-700">Username tác giả<div className="relative mt-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input className="h-11 rounded-xl pl-7" placeholder="elonmusk" {...form.register("username")} /></div></label>
-            <label className="text-sm font-medium text-slate-700">Tên dự án <span className="font-normal text-slate-400">(không bắt buộc)</span><Input className="mt-2 h-11 rounded-xl" placeholder="Để trống để lấy bài gần nhất" {...form.register("projectName")} /></label>
-            <Button className="mt-auto h-11 rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800" disabled={search.isPending}><Search className="mr-2 h-4 w-4" />{search.isPending && !nextCursor ? "Đang quét..." : "Quét bài viết"}</Button>
+            <label className="text-sm font-medium text-slate-700">@mention dự án<Input className="mt-2 h-11 rounded-xl" placeholder="@PlayOnMint" {...form.register("projectName")} /></label>
+            <Button className="mt-auto h-11 rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800" disabled={search.isPending}><Search className="mr-2 h-4 w-4" />{search.isPending && !nextCursor ? "Đang tìm..." : "Tìm bài viết"}</Button>
           </form>
           {(form.formState.errors.username || form.formState.errors.projectName || search.error) && <p className="mt-3 text-sm text-red-600">{search.error?.message || form.formState.errors.username?.message || form.formState.errors.projectName?.message}</p>}
         </section>
 
-        {lastSearch && !search.isPending && tweets.length === 0 && <div className="py-20 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa tìm thấy bài phù hợp</h3><p className="mt-1 text-sm text-slate-500">Thử bỏ trống tên dự án để lấy toàn bộ bài viết gần nhất.</p></div>}
+        {lastSearch && !search.isPending && tweets.length === 0 && <div className="py-20 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa tìm thấy bài phù hợp</h3><p className="mt-1 text-sm text-slate-500">Thử username tác giả hoặc @mention dự án.</p></div>}
 
         {tweets.length > 0 && <section className="mt-7">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">Bài viết từ @{lastSearch?.username}</h3><p className="mt-1 text-xs text-slate-500">Đã tìm thấy {tweets.length} bài · Chọn tối đa 8 bài mẫu tốt nhất</p></div><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!selectedIds.length || saveStyle.isPending} onClick={applySamples}><Sparkles className="mr-2 h-4 w-4" />{saveStyle.isPending ? "Đang lưu..." : `Lưu & dùng ${Math.min(selectedIds.length, 8)} bài`}</Button></div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">{lastSearch?.source === "mentions" ? `Mentions nhiều bình luận nhất về @${lastSearch.handle || lastSearch.projectName}` : lastSearch?.username ? `Bài viết từ @${lastSearch.username}` : `Bài viết về ${lastSearch?.projectName}`}</h3><p className="mt-1 text-xs text-slate-500">Đã tìm thấy {tweets.length} bài · Chọn tối đa 8 bài mẫu tốt nhất</p></div><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!selectedIds.length || saveStyle.isPending} onClick={applySamples}><Sparkles className="mr-2 h-4 w-4" />{saveStyle.isPending ? "Đang lưu..." : `Lưu & dùng ${Math.min(selectedIds.length, 8)} bài`}</Button></div>
           {saveStyle.error && <p className="mb-4 text-sm text-red-600">{saveStyle.error.message}</p>}
           <div className="grid gap-3 md:grid-cols-2">
             {tweets.map((tweet) => {

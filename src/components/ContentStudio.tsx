@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, Compass, Copy, FileText, Folder, Menu, PanelRightClose, PanelRightOpen, Pencil, Plus, Send, Sparkles, Trash2, UserRound, X } from "lucide-react";
+import { Atom, ChevronLeft, Compass, Copy, FileText, Folder, Menu, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Plus, Send, Sparkles, Trash2, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import AuthScreen from "@/components/AuthScreen";
 import DiscoverPanel from "@/components/DiscoverPanel";
+import NucleusPanel from "@/components/NucleusPanel";
 import HelpPage from "@/components/HelpPage";
 import KOLStylePicker from "@/components/KOLStylePicker";
 import ProfileMenu from "@/components/ProfileMenu";
@@ -17,6 +18,7 @@ import ProfilePage from "@/components/ProfilePage";
 import SettingsPage from "@/components/SettingsPage";
 import StyleLibraryPage from "@/components/StyleLibraryPage";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -27,6 +29,7 @@ import { apiRequest, ApiError } from "@/lib/http";
 import { buildContentPrompt } from "@/lib/prompt-builder";
 import { getKOLStyle } from "@/lib/kol-styles";
 import { providerLabels, providerModels, providers } from "@/lib/providers";
+import { prefetchNucleusList } from "@/lib/nucleus-query";
 import type { Generation, Project, ProjectContentOptions, Provider, SavedStyle, UserProfile } from "@/lib/types";
 
 const formSchema = z.object({
@@ -104,6 +107,8 @@ function Workspace({ user }: { user: UserProfile }) {
   const setSelectedProjectId = useAppStore((state) => state.setSelectedProjectId);
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
+  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
+  const setSidebarCollapsed = useAppStore((state) => state.setSidebarCollapsed);
   const optionsOpen = useAppStore((state) => state.optionsOpen);
   const setOptionsOpen = useAppStore((state) => state.setOptionsOpen);
   const composerMode = useAppStore((state) => state.composerMode);
@@ -114,6 +119,7 @@ function Workspace({ user }: { user: UserProfile }) {
   const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiRequest<{ projects: Project[] }>("/api/projects") });
   const stylesQuery = useQuery({ queryKey: ["styles"], queryFn: () => apiRequest<{ styles: SavedStyle[] }>("/api/styles") });
   const projects = useMemo(() => projectsQuery.data?.projects || [], [projectsQuery.data?.projects]);
@@ -126,6 +132,7 @@ function Workspace({ user }: { user: UserProfile }) {
   const selectedSavedStyle = savedStyles.find((style) => style.id === selectedSavedStyleId) || null;
   const isProjectRoute = pathname.startsWith("/projects");
   const isDiscoverRoute = pathname === "/discover";
+  const isNucleusRoute = pathname === "/nucleus" || pathname.startsWith("/nucleus/");
   const isStylesRoute = pathname === "/styles";
   const isSettingsRoute = pathname === "/settings";
   const isProfileRoute = pathname === "/profile";
@@ -157,55 +164,68 @@ function Workspace({ user }: { user: UserProfile }) {
 
   const removeProject = useMutation({
     mutationFn: (id: string) => apiRequest<{ ok: true }>(`/api/projects/${id}`, { method: "DELETE" }),
-    onSuccess: (_, id) => { if (selectedProjectId === id) { setSelectedProjectId(null); router.push("/projects"); } queryClient.invalidateQueries({ queryKey: ["projects"] }); },
+    onSuccess: (_, id) => { if (selectedProjectId === id) { setSelectedProjectId(null); router.push("/projects"); } setProjectToDelete(null); queryClient.invalidateQueries({ queryKey: ["projects"] }); },
   });
 
   return (
     <div className="h-screen overflow-hidden bg-[#f7f7f4] text-slate-900">
       {sidebarOpen && <button aria-label="Đóng danh sách dự án" className="fixed inset-0 z-30 bg-black/35 md:hidden" onClick={() => setSidebarOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col bg-[#171717] text-white transition-transform md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2.5 font-semibold"><Image src="/icon.png" alt="Content Studio" width={32} height={32} priority className="h-8 w-8 rounded-lg object-cover" />Content Studio</div>
-          <button className="rounded-lg p-2 text-slate-400 hover:bg-white/10 md:hidden" onClick={() => setSidebarOpen(false)}><ChevronLeft className="h-5 w-5" /></button>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex flex-col overflow-visible bg-[#171717] text-white transition-[width,transform] duration-200 md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${sidebarCollapsed ? "w-[280px] md:w-[72px]" : "w-[280px]"}`}>
+        <div className={`flex h-16 items-center ${sidebarCollapsed ? "justify-center px-2 md:px-0" : "justify-between px-4"}`}>
+          <div className="flex items-center gap-2.5 font-semibold"><Image src="/icon.png" alt="Content Studio" width={32} height={32} priority className="h-8 w-8 rounded-lg object-cover" /><span className={sidebarCollapsed ? "md:hidden" : undefined}>Content Studio</span></div>
+          <button className={`rounded-lg p-2 text-slate-400 hover:bg-white/10 md:hidden ${sidebarCollapsed ? "hidden" : ""}`} onClick={() => setSidebarOpen(false)}><ChevronLeft className="h-5 w-5" /></button>
         </div>
-        <div className="px-3 pb-4"><Button className="h-11 w-full justify-start gap-3 rounded-xl border border-white/10 bg-white/5 px-3 text-white hover:bg-white/10" onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" />Dự án mới</Button></div>
-        <KOLStylePicker selectedId={selectedKolId} customStyle={discoveredStyle} selectedSavedStyle={selectedSavedStyle} />
-        <div className="px-3 pb-4">
-          <button className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors ${isDiscoverRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onClick={() => { router.push("/discover"); setSidebarOpen(false); }}><Compass className="h-4 w-4 shrink-0 text-violet-400" /><span className="flex-1">Khám phá</span><span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold text-violet-300">Sorsa</span></button>
+        <div className={`pb-4 ${sidebarCollapsed ? "px-3 md:px-2" : "px-3"}`}>
+          <div className="space-y-1">
+            <button type="button" aria-label="Dự án mới" title={sidebarCollapsed ? "Dự án mới" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} text-slate-300 hover:bg-white/5 hover:text-white`} onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 shrink-0" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Dự án mới</span></button>
+            <KOLStylePicker selectedId={selectedKolId} customStyle={discoveredStyle} selectedSavedStyle={selectedSavedStyle} collapsed={sidebarCollapsed} />
+            <button title={sidebarCollapsed ? "Khám phá" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} ${isDiscoverRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onClick={() => { router.push("/discover"); setSidebarOpen(false); }}><Compass className="h-4 w-4 shrink-0 text-violet-400" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Khám phá</span>{!sidebarCollapsed && <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold text-violet-300">Sorsa</span>}</button>
+            <button title={sidebarCollapsed ? "Nucleus" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} ${isNucleusRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onMouseEnter={() => prefetchNucleusList(queryClient)} onFocus={() => prefetchNucleusList(queryClient)} onClick={() => { router.push("/nucleus"); setSidebarOpen(false); }}><Atom className="h-4 w-4 shrink-0 text-cyan-400" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Nucleus</span>{!sidebarCollapsed && <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">InfoFi</span>}</button>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-3">
-          <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Dự án của bạn</p>
+        <div className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "px-3 md:px-2" : "px-3"}`}>
+          <p className={`px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 ${sidebarCollapsed ? "md:hidden" : ""}`}>Dự án của bạn</p>
           <div className="space-y-1">
             {projects.map((project) => (
               <div key={project.id} className={`group flex h-11 items-center rounded-xl ${selectedProjectId === project.id ? "bg-white/10" : "hover:bg-white/5"}`}>
-                <button className="flex h-full min-w-0 flex-1 items-center gap-3 px-3 text-left" onClick={() => { setSelectedProjectId(project.id); router.push(`/projects/${project.id}/${composerMode}`); setSidebarOpen(false); }}>
+                <button title={sidebarCollapsed ? project.name : undefined} className={`flex h-full min-w-0 flex-1 items-center text-left ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"}`} onClick={() => { setSelectedProjectId(project.id); router.push(`/projects/${project.id}/${composerMode}`); setSidebarOpen(false); }}>
                   <Folder className="h-4 w-4 shrink-0 text-slate-400" />
-                  <span className="block truncate text-sm">{project.name}</span>
+                  <span className={`block truncate text-sm ${sidebarCollapsed ? "md:hidden" : ""}`}>{project.name}</span>
                 </button>
-                <div className="mr-2 flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                <div className={`mr-2 flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 ${sidebarCollapsed ? "md:hidden" : ""}`}>
                   <button aria-label={`Đổi tên ${project.name}`} className="rounded-md p-1.5 text-slate-500 hover:bg-white/10 hover:text-white" onClick={() => setEditingProject(project)}><Pencil className="h-3.5 w-3.5" /></button>
-                  <button aria-label={`Xoá ${project.name}`} className="rounded-md p-1.5 text-slate-500 hover:bg-white/10 hover:text-red-300" onClick={() => { if (window.confirm(`Xoá dự án “${project.name}” và toàn bộ lịch sử?`)) removeProject.mutate(project.id); }}><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button aria-label={`Xoá ${project.name}`} className="rounded-md p-1.5 text-slate-500 hover:bg-white/10 hover:text-red-300" onClick={() => setProjectToDelete(project)}><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
             ))}
           </div>
         </div>
-        <ProfileMenu user={user} onLogout={() => logout.mutate()} />
+        <ProfileMenu user={user} onLogout={() => logout.mutate()} collapsed={sidebarCollapsed} />
       </aside>
 
-      <div className={`flex h-full flex-col md:ml-[280px] ${isProjectRoute && optionsOpen ? "xl:mr-[340px]" : ""}`}>
+      <div className={`flex h-full flex-col transition-[margin] duration-200 ${sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[280px]"} ${isProjectRoute && optionsOpen ? "xl:mr-[340px]" : ""}`}>
         <header className="relative flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-[#f7f7f4]/90 px-4 backdrop-blur md:px-6">
-          <div className="flex min-w-0 items-center gap-3"><button className="rounded-lg p-2 hover:bg-slate-200 md:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button><div className="hidden min-w-0 sm:block"><h1 className="max-w-52 truncate text-sm font-semibold">{isProjectRoute ? activeProject?.name || "Dự án" : isDiscoverRoute ? "Khám phá phong cách" : isStylesRoute ? "Thư viện phong cách" : isSettingsRoute ? "Cài đặt" : isProfileRoute ? "Hồ sơ" : "Trợ giúp"}</h1>{isProjectRoute && activeProject?.description && <p className="hidden max-w-44 truncate text-xs text-slate-500 lg:block">{activeProject.description}</p>}</div></div>
+          <div className="flex min-w-0 items-center gap-3"><button className="rounded-lg p-2 hover:bg-slate-200 md:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button><button className="hidden rounded-lg p-2 hover:bg-slate-200 md:grid" aria-label={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"} title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"} onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>{sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}</button><div className="hidden min-w-0 sm:block"><h1 className="max-w-52 truncate text-sm font-semibold">{isProjectRoute ? activeProject?.name || "Dự án" : isDiscoverRoute ? "Khám phá phong cách" : isNucleusRoute ? "Nucleus" : isStylesRoute ? "Thư viện phong cách" : isSettingsRoute ? "Cài đặt" : isProfileRoute ? "Hồ sơ" : "Trợ giúp"}</h1>{isProjectRoute && activeProject?.description && <p className="hidden max-w-44 truncate text-xs text-slate-500 lg:block">{activeProject.description}</p>}</div></div>
           {isProjectRoute && <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#111] p-1 shadow-sm" role="tablist" aria-label="Chế độ tạo nội dung">
             <button type="button" role="tab" aria-selected={composerMode === "new"} className={`min-w-[94px] rounded-full px-4 py-2 text-xs font-semibold transition-colors ${composerMode === "new" ? "bg-[#242424] text-white shadow-inner" : "text-slate-400 hover:text-white"}`} onClick={() => { setComposerMode("new"); if (activeProject) router.push(`/projects/${activeProject.id}/new`); }}>Viết mới</button>
             <button type="button" role="tab" aria-selected={composerMode === "rewrite"} className={`min-w-[94px] rounded-full px-4 py-2 text-xs font-semibold transition-colors ${composerMode === "rewrite" ? "bg-[#242424] text-white shadow-inner" : "text-slate-400 hover:text-white"}`} onClick={() => { setComposerMode("rewrite"); if (activeProject) router.push(`/projects/${activeProject.id}/rewrite`); }}>Viết lại</button>
           </div>}
           {isProjectRoute ? <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900" aria-label="Bật tắt bảng tuỳ chọn" onClick={() => setOptionsOpen(!optionsOpen)}>{optionsOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}</button> : <span />}
         </header>
-        {isDiscoverRoute ? <DiscoverPanel /> : isStylesRoute ? <StyleLibraryPage /> : isSettingsRoute ? <SettingsPage /> : isProfileRoute ? <ProfilePage user={user} /> : isHelpRoute ? <HelpPage /> : activeProject ? <ComposerWorkspace key={activeProject.id} project={activeProject} optionsOpen={optionsOpen} savedStyle={selectedSavedStyle} /> : <EmptyProjects onCreate={() => setCreateOpen(true)} />}
+        {isDiscoverRoute ? <DiscoverPanel /> : isNucleusRoute ? <NucleusPanel /> : isStylesRoute ? <StyleLibraryPage /> : isSettingsRoute ? <SettingsPage /> : isProfileRoute ? <ProfilePage user={user} /> : isHelpRoute ? <HelpPage /> : activeProject ? <ComposerWorkspace key={activeProject.id} project={activeProject} optionsOpen={optionsOpen} savedStyle={selectedSavedStyle} /> : <EmptyProjects onCreate={() => setCreateOpen(true)} />}
       </div>
       <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
       <RenameProjectDialog project={editingProject} onClose={() => setEditingProject(null)} />
+      <ConfirmDialog
+        open={Boolean(projectToDelete)}
+        title="Xoá dự án"
+        description={`Xoá dự án “${projectToDelete?.name}” và toàn bộ lịch sử? Hành động này không hoàn tác.`}
+        confirmLabel="Xoá"
+        destructive
+        loading={removeProject.isPending}
+        onConfirm={() => { if (projectToDelete) removeProject.mutate(projectToDelete.id); }}
+        onOpenChange={(open) => { if (!open && !removeProject.isPending) setProjectToDelete(null); }}
+      />
     </div>
   );
 }

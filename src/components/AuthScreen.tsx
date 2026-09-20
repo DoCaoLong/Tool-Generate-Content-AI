@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import Image from "next/image";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/http";
 import type { UserProfile } from "@/lib/types";
@@ -22,6 +23,9 @@ type AuthValues = z.infer<typeof schema>;
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [accessOpen, setAccessOpen] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [verifiedCode, setVerifiedCode] = useState("");
   const queryClient = useQueryClient();
   const form = useForm<AuthValues>({
     resolver: zodResolver(schema),
@@ -31,10 +35,30 @@ export default function AuthScreen() {
     mutationFn: (values: AuthValues) =>
       apiRequest<{ user: UserProfile }>(`/api/auth/${mode}`, {
         method: "POST",
-        body: JSON.stringify(values),
+        body: JSON.stringify(mode === "register" ? { ...values, accessCode: verifiedCode } : values),
       }),
     onSuccess: (data) => queryClient.setQueryData(["me"], data),
   });
+  const verifyAccess = useMutation({
+    mutationFn: (code: string) => apiRequest<{ ok: true }>("/api/auth/access-code", { method: "POST", body: JSON.stringify({ accessCode: code }) }),
+    onSuccess: (_, code) => {
+      setVerifiedCode(code);
+      setAccessOpen(false);
+      setAccessCode("");
+      setMode("register");
+      mutation.reset();
+      form.clearErrors();
+    },
+  });
+
+  const backToLogin = () => {
+    setMode("login");
+    setVerifiedCode("");
+    setAccessCode("");
+    mutation.reset();
+    verifyAccess.reset();
+    form.clearErrors();
+  };
 
   return (
     <main className="min-h-screen bg-[#f7f7f4] text-slate-950 lg:grid lg:grid-cols-[1.15fr_0.85fr]">
@@ -66,7 +90,7 @@ export default function AuthScreen() {
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">{mode === "login" ? "Đăng nhập vào tài khoản" : "Tạo tài khoản của bạn"}</h2>
           <p className="mt-3 text-sm leading-6 text-slate-500">{mode === "login" ? "Tiếp tục quản lý dự án và lịch sử nội dung." : "Mọi dự án và lịch sử sẽ được đồng bộ an toàn."}</p>
 
-          <form className="mt-8 space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+          <form className="mt-8 space-y-4" onSubmit={form.handleSubmit((values) => { if (mode === "register" && !verifiedCode) { setAccessOpen(true); return; } mutation.mutate(values); })}>
             {mode === "register" && (
               <label className="block text-sm font-medium">Tên hiển thị
                 <Input className="mt-2 h-12 rounded-xl bg-white" placeholder="Nguyễn An" {...form.register("name", { required: mode === "register" })} />
@@ -87,11 +111,29 @@ export default function AuthScreen() {
             </Button>
           </form>
 
-          <button className="mt-6 text-sm text-slate-500 hover:text-slate-950" onClick={() => { setMode(mode === "login" ? "register" : "login"); mutation.reset(); form.clearErrors(); }}>
+          <button type="button" className="mt-6 block w-full text-center text-sm text-slate-500 hover:text-slate-950" onClick={() => { if (mode === "login") { verifyAccess.reset(); setAccessCode(""); setAccessOpen(true); } else backToLogin(); }}>
             {mode === "login" ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}
           </button>
         </div>
       </section>
+      <Dialog open={accessOpen} onOpenChange={(open) => { if (!verifyAccess.isPending) { setAccessOpen(open); if (!open) { setAccessCode(""); verifyAccess.reset(); } } }}>
+        <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Access code</DialogTitle>
+            <DialogDescription>Nhập mã truy cập để tiếp tục tạo tài khoản.</DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); verifyAccess.mutate(accessCode.trim()); }}>
+            <label className="block text-sm font-medium">Mã truy cập
+              <Input className="mt-2 h-12 rounded-xl" autoFocus type="password" placeholder="Nhập access code" value={accessCode} onChange={(event) => setAccessCode(event.target.value)} />
+            </label>
+            {verifyAccess.error && <p className="text-sm text-red-600">{verifyAccess.error.message}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" className="rounded-xl" disabled={verifyAccess.isPending} onClick={() => setAccessOpen(false)}>Huỷ</Button>
+              <Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={verifyAccess.isPending || !accessCode.trim()}>{verifyAccess.isPending ? "Đang kiểm tra..." : "Tiếp tục"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

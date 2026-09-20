@@ -1,6 +1,65 @@
 export type Provider = "openai" | "gemini" | "deepseek" | "anthropic" | "xai" | "openrouter";
 export type ContentMode = "new" | "rewrite";
 
+export interface NucleusProject {
+  id: string;
+  slug: string | null;
+  name: string;
+  sponsoredBy: string;
+  status: string;
+  bannerImageUrl: string | null;
+  thumbnailUrl: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  additionalFields: Record<string, string>;
+  isPrivate: boolean;
+}
+
+export interface NucleusProjectDetail {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  xUsername: string | null;
+  thumbnailUrl: string | null;
+  bannerImageUrl: string | null;
+  sponsoredBy: string;
+  status: string;
+  startTime: string | null;
+  endTime: string | null;
+  isPrivate: boolean;
+  additionalFields: Record<string, string>;
+  metrics: {
+    usersSignedUpCount: number;
+    tokensAvailable: number;
+    directSpotsAvailable: number;
+    raffleSpotsAvailable: number;
+    totalSpotsAvailable: number;
+  };
+  socials: Array<{ platform: string; url: string }>;
+  details: Array<{ title: string; html: string }>;
+  quests: {
+    followX: boolean;
+    joinDiscord: boolean;
+    joinTelegram: boolean;
+    requiredWallets: string[];
+    eligibilityQuests: Array<{
+      id: string;
+      type: string;
+      description: string;
+      buttonText: string | null;
+      buttonUrl: string | null;
+    }>;
+  } | null;
+  onchainWeight: number | null;
+  offchainWeight: number | null;
+  mindshare: boolean;
+  reputationScore: boolean;
+  referralScore: boolean;
+  categories: string[];
+  nftBonuses: Array<{ chain: string; collectionName: string; multiplyValue: number | null }>;
+}
+
 export interface DiscoveredTweet {
   id: string;
   text: string;

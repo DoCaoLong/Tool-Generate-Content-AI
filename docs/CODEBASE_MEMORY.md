@@ -15,14 +15,15 @@
 - Install: `npm install`
 - Dev: `npm run dev`
 - Build: `npm run build`
-- Start: `npm run start`
+- Start: `npm run start` (cổng lấy từ `PORT`, mặc định 3004)
 - Lint: `npm run lint`
+- Deploy server: `./deploy.sh` (npm ci, `next build`, PM2 `create-content`, cổng từ env `PORT`)
 - Test: `Needs verification` (không có script test trong `package.json`).
 
 ## Runtime Flow
 
 - Root layout khởi tạo `AppProviders`; `src/app/page.tsx` redirect sang `/projects`.
-- Các page route `/projects`, `/projects/[projectId]/new`, `/projects/[projectId]/rewrite`, `/discover`, `/styles`, `/settings`, `/profile`, `/help` dùng chung authenticated `ContentStudio` shell.
+- Các page route `/projects`, `/projects/[projectId]/new`, `/projects/[projectId]/rewrite`, `/discover`, `/nucleus`, `/nucleus/[slug]`, `/styles`, `/settings`, `/profile`, `/help` dùng chung authenticated `ContentStudio` shell.
 - `ContentStudio` gọi `/api/auth/me`; người chưa đăng nhập thấy form login/register, người đã đăng nhập vào workspace.
 - Workspace tải dự án bằng `/api/projects`; project id và mode lấy từ URL, Zustand chỉ giữ preference hỗ trợ.
 - Khi tạo content, client gọi provider AI bằng API key trên thiết bị, sau đó lưu mode, input, tuỳ chọn và output đã thành công vào lịch sử MongoDB của dự án đang chọn.
@@ -31,7 +32,8 @@
 
 - `src/lib/mongodb.ts`: connection singleton và tạo index cho users, projects, generations.
 - `src/lib/auth.ts`: JWT session 7 ngày trong cookie `httpOnly`, `sameSite=lax`, bật `secure` ở production.
-- `src/app/api/auth/*`: register, login, logout, current user.
+- `src/app/api/auth/*`: register, login, logout, current user, verify access code.
+- Đăng ký yêu cầu `REGISTER_ACCESS_CODE` (env); UI mở portal nhập code trước form tạo tài khoản, API register kiểm tra lại code.
 - `src/app/api/projects/*`: tạo, đọc, sửa, xoá dự án và đọc/lưu lịch sử.
 - Mọi truy vấn project/generation đều lọc theo `userId` lấy từ session phía server.
 - Password được hash bằng bcryptjs cost 12.
@@ -51,6 +53,7 @@
 - `src/components/ProfileMenu.tsx`: menu tài khoản dạng popover với cá nhân hoá, hồ sơ, cài đặt, trợ giúp và đăng xuất.
 - `src/components/ProfilePage.tsx`, `src/components/HelpPage.tsx`: các page tài khoản hỗ trợ route riêng.
 - `src/components/DiscoverPanel.tsx`: tab Khám phá, form tìm bài X, chọn bài mẫu và áp dụng style động.
+- `src/components/NucleusPanel.tsx`: tab Nucleus, danh sách chiến dịch InfoFi và trang chi tiết theo slug.
 - `src/lib/kol-styles.ts`: adapter có kiểu dữ liệu cho `data/author.json`.
 - `src/lib/app-store.ts`: project đang chọn, trạng thái sidebar/options và provider config.
 - `src/lib/http.ts`: client JSON API và chuẩn hoá lỗi.
@@ -62,7 +65,8 @@
 
 - MongoDB là nguồn dữ liệu chính cho tài khoản, dự án và lịch sử; không dùng localStorage cho dữ liệu nghiệp vụ.
 - API key của provider không gửi vào backend ứng dụng và chỉ được lưu trên thiết bị bằng Zustand persist.
-- TanStack Query quản lý cache và invalidation cho auth, projects và generations.
+- TanStack Query quản lý cache và invalidation cho auth, projects, generations và Nucleus; mặc định stale 60 giây, gc 10 phút, không refetch khi focus cửa sổ.
+- Nucleus list/detail cache stale 5 phút, gc 30 phút (`src/lib/nucleus-query.ts`); prefetch list từ sidebar và prefetch detail khi hover card.
 - Zustand chỉ quản lý UI state và preference cục bộ, không thay thế server cache.
 - React Hook Form quản lý auth, project form và content composer.
 - Thanh trên của workspace có segmented tabs `Viết mới` và `Viết lại`; mode được giữ bằng Zustand và đồng bộ vào React Hook Form.
@@ -70,7 +74,9 @@
 - `Viết lại` bắt buộc có nội dung nguồn và dùng task/rule prompt riêng; `Viết mới` tạo nội dung mới từ brief.
 - KOL được chọn bằng mục `Phong cách KOL` ngay dưới nút tạo dự án, được giữ cục bộ bằng Zustand và inject vào prompt.
 - Generation lưu snapshot gồm id, tên và instruction của KOL để lịch sử không phụ thuộc lựa chọn hiện tại.
-- `src/app/api/discover/route.ts` gọi Sorsa `POST /v3/search-tweets` từ server với `ApiKey`, query `from:username`, tên dự án, loại reply/retweet và hỗ trợ `next_cursor`.
+- `src/app/api/discover/route.ts` gọi Sorsa từ server: `POST /v3/search-tweets` khi có username tác giả; `POST /v3/mentions` (`order: popular`) khi chỉ nhập @handle/tên dự án. Chỉ cần một trong hai trường.
+- `src/app/api/nucleus/projects` proxy Nucleus `GET /v1/projects` với `skip`, `limit` và fields danh sách; `src/app/api/nucleus/projects/[slug]` lấy chi tiết bằng slug, fallback `id` khi slug null.
+- Proxy Nucleus yêu cầu đăng nhập, không cần API key, loại danh sách user đã tham gia, và sanitize HTML chi tiết trước khi trả về client.
 - Bộ lọc tên dự án của Khám phá là tuỳ chọn; khi để trống, API chỉ dùng `from:username`, sắp xếp `latest` và trả các bài gần nhất của tác giả.
 - `src/app/api/styles/*`: đọc, tạo và xoá thư viện phong cách thuộc riêng từng user.
 - Sorsa key chỉ đọc từ `SORSA_API_KEY` phía server; không gửi xuống trình duyệt.
@@ -90,6 +96,11 @@
 - Xoá project đồng thời xoá các generation thuộc project đó.
 - API lịch sử trả tối đa 200 bản ghi mới nhất theo thứ tự thời gian tăng dần để hiển thị như hội thoại.
 - Next.js và eslint-config-next được nâng lên 16.3.5 để loại bỏ cảnh báo bảo mật production đã biết ở phiên bản cũ.
+- `next.config.mjs` cho phép ảnh Nucleus từ `prod-nucleus-project-thumbnail.s3.us-east-2.amazonaws.com` và `*.s3.us-east-2.amazonaws.com`.
+- Tab Nucleus render banner/thumbnail bằng `<img>` trực tiếp (có `referrerPolicy=no-referrer`) vì S3 thường chặn Next image optimizer.
+- Ảnh Nucleus lỗi hoặc thiếu thì dùng `/nucleus-fallback.svg`; ảnh trong HTML chi tiết cũng được gắn fallback khi `error`.
+- Trang chi tiết Nucleus cho phép tạo dự án mới hoặc chọn dự án có sẵn, rồi ghi brief vào `documents`, `rules` từ `project_details[0]`, và `keywords` từ username X qua `PATCH /api/projects/[projectId]/options`.
+- `project_details` được gom thành accordion thu gọn; sanitize HTML vẫn giữ `https` images, link, list và table, loại `data:` image và script.
 
 ## Known Observations
 

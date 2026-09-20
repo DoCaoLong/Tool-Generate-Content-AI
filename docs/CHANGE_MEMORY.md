@@ -2,6 +2,8 @@
 
 ## 2026-09-20
 
+- Thay icon Atom bằng logo chính thức của Nucleus (`/nucleus-logo.png`) ở tab Nucleus trong sidebar và header/trạng thái trống trang Nucleus.
+- Sửa lỗi avatar dự án bị banner đè ở trang chi tiết Nucleus: gán `relative z-10` cùng `shrink-0` và `bg-white` cho khối avatar thumbnail để nổi trên banner.
 - Bỏ viền active ở tab Phong cách; thư viện chỉ còn icon check khi chọn. Cài đặt gọn hơn, thêm nút Kiểm tra API, bỏ mô tả lưu key trên trình duyệt.
 - Thêm portal xem chi tiết phong cách và `ConfirmDialog` thay `window.confirm` khi xoá phong cách/dự án.
 - Aside desktop có thể thu gọn còn hàng icon; trạng thái được persist.

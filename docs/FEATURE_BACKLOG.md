@@ -68,3 +68,9 @@
 - Priority: low
 - Scope: khi dùng brief Nucleus, tự điền ô chủ đề composer bằng tên chiến dịch và loại thưởng để người dùng chỉ cần chỉnh rồi gửi.
 
+### Backlog-014: Lightbox xem ảnh avatar và banner dự án Nucleus
+
+- Status: proposed
+- Priority: low
+- Scope: cho phép click vào thumbnail hoặc banner trong trang chi tiết dự án Nucleus để xem ảnh kích thước gốc trong popup/lightbox kèm nút tải ảnh.
+

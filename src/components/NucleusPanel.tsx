@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- Nucleus S3 URLs load more reliably as native img than via the Next optimizer. */
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Atom, CalendarRange, ChevronDown, ExternalLink, FileText, Globe, LoaderCircle, Lock, MessageCircle, Plus, Users } from "lucide-react";
+import { ArrowLeft, CalendarRange, ChevronDown, ExternalLink, FileText, Globe, LoaderCircle, Lock, MessageCircle, Plus, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -114,7 +114,7 @@ function NucleusList() {
       <div className="mx-auto max-w-5xl">
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="flex items-start gap-4">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-cyan-100 text-cyan-700"><Atom className="h-6 w-6" /></span>
+            <img src="/nucleus-logo.png" alt="Nucleus" className="h-12 w-12 shrink-0 rounded-2xl object-cover shadow-sm" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">Nucleus · InfoFi</p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight">Dự án đang chạy trên Nucleus</h2>
@@ -126,7 +126,7 @@ function NucleusList() {
         {query.isPending && <div className="flex items-center justify-center gap-2 py-20 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải dự án Nucleus...</div>}
         {query.error && !projects.length && <p className="mt-6 text-sm text-red-600">{query.error.message}</p>}
         {query.isFetching && !query.isPending && <p className="mt-4 text-center text-xs text-slate-400">Đang cập nhật danh sách...</p>}
-        {!query.isPending && !query.error && projects.length === 0 && <div className="py-20 text-center"><Atom className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa có dự án nào</h3><p className="mt-1 text-sm text-slate-500">Nucleus hiện không trả về chiến dịch công khai.</p></div>}
+        {!query.isPending && !query.error && projects.length === 0 && <div className="py-20 text-center"><img src="/nucleus-logo.png" alt="" className="mx-auto h-10 w-10 rounded-xl opacity-30 grayscale" /><h3 className="mt-4 font-semibold">Chưa có dự án nào</h3><p className="mt-1 text-sm text-slate-500">Nucleus hiện không trả về chiến dịch công khai.</p></div>}
 
         {projects.length > 0 && (
           <section className="mt-7">
@@ -230,8 +230,8 @@ function NucleusDetail({ slug }: { slug: string }) {
               <NucleusImg src={project.bannerImageUrl} alt="" className="h-full w-full object-cover" />
             </div>
             <div className="px-5 pb-8 sm:px-7">
-              <div className="-mt-8 flex items-end gap-4">
-                <NucleusImg src={project.thumbnailUrl} alt="" className="h-16 w-16 rounded-2xl border-4 border-white object-cover shadow-sm" />
+              <div className="relative z-10 -mt-8 flex items-end gap-4">
+                <NucleusImg src={project.thumbnailUrl} alt="" className="h-16 w-16 shrink-0 rounded-2xl border-4 border-white bg-white object-cover shadow-sm" />
                 <div className="min-w-0 flex-1 pb-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-2xl font-semibold tracking-tight">{project.name}</h2>

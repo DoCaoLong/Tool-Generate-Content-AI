@@ -98,6 +98,8 @@
 - Next.js và eslint-config-next được nâng lên 16.3.5 để loại bỏ cảnh báo bảo mật production đã biết ở phiên bản cũ.
 - `next.config.mjs` cho phép ảnh Nucleus từ `prod-nucleus-project-thumbnail.s3.us-east-2.amazonaws.com` và `*.s3.us-east-2.amazonaws.com`.
 - Tab Nucleus render banner/thumbnail bằng `<img>` trực tiếp (có `referrerPolicy=no-referrer`) vì S3 thường chặn Next image optimizer.
+- Logo chính thức của Nucleus được lưu tại `/nucleus-logo.png`, dùng cho icon tab Nucleus ở sidebar và phần header danh sách chiến dịch.
+- Trang chi tiết Nucleus định vị avatar thumbnail bằng `relative z-10 -mt-8` và `shrink-0 bg-white` để thumbnail không bị banner `position: relative` đè lớp hiển thị.
 - Ảnh Nucleus lỗi hoặc thiếu thì dùng `/nucleus-fallback.svg`; ảnh trong HTML chi tiết cũng được gắn fallback khi `error`.
 - Trang chi tiết Nucleus cho phép tạo dự án mới hoặc chọn dự án có sẵn, rồi ghi brief vào `documents`, `rules` từ `project_details[0]`, và `keywords` từ username X qua `PATCH /api/projects/[projectId]/options`.
 - `project_details` được gom thành accordion thu gọn; sanitize HTML vẫn giữ `https` images, link, list và table, loại `data:` image và script.

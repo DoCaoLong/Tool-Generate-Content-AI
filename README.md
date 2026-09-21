@@ -16,7 +16,7 @@ Open http://localhost:3000
 - `MONGODB_DB`: tên database, mặc định `content_writer`.
 - `AUTH_SECRET`: chuỗi bí mật ngẫu nhiên tối thiểu 32 ký tự dùng để ký session.
 - `SORSA_API_KEY`: API key server-side dùng cho tab Khám phá để tìm bài viết công khai trên X qua Sorsa.
-- `REGISTER_ACCESS_CODE`: mã truy cập bắt buộc khi đăng ký tài khoản. Mặc định `content-studio`.
+- `REGISTER_ACCESS_CODE`: mã truy cập bắt buộc khi tìm bài mẫu ở tab Khám phá. Mặc định `content-studio`.
 - `PORT`: cổng production (`next start` / PM2). Mặc định `3004`. Dev vẫn dùng `next dev -p 3000`.
 - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`: Cloudflare Turnstile cho login, đăng ký và `/admin`. Production bắt buộc. Local có thể để trống.
 - `ADMIN_USERNAME` / `ADMIN_PASSWORD`: tài khoản trang quản trị `/admin`.

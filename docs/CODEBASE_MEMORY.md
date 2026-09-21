@@ -33,7 +33,8 @@
 - `src/lib/mongodb.ts`: connection singleton và tạo index cho users, projects, generations.
 - `src/lib/auth.ts`: JWT session 7 ngày trong cookie `httpOnly`, `sameSite=lax`, bật `secure` ở production.
 - `src/app/api/auth/*`: register, login, logout, current user, verify access code.
-- Đăng ký yêu cầu `REGISTER_ACCESS_CODE` (env); UI mở portal nhập code trước form tạo tài khoản, API register kiểm tra lại code.
+- Tab Khám phá yêu cầu `REGISTER_ACCESS_CODE` (env): portal access code khi bấm Tìm bài viết, API `/api/discover` kiểm tra lại mã.
+- `src/middleware.ts` chặn API: JWT user (`cw_session`) cho route nội bộ, JWT admin (`cw_admin`) cho `/api/admin/*` trừ login. Auth/public/turnstile để public.
 - Login, register và `/admin` xác thực Cloudflare Turnstile (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`).
 - Admin session cookie `cw_admin` 12 giờ; credential `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Dashboard `/admin` quản lý users, API keys (`settings.api_keys`) và `prompt_styles`.
 - `src/app/api/projects/*`: tạo, đọc, sửa, xoá dự án và đọc/lưu lịch sử.

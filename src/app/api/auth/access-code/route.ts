@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getRegisterAccessCode, verifyAccessCode } from "@/lib/access-code";
+import { requireAccessCode } from "@/lib/access-code";
 import { errorResponse } from "@/lib/server-utils";
 
 const schema = z.object({
@@ -7,11 +7,9 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!getRegisterAccessCode()) return errorResponse("REGISTER_ACCESS_CODE chưa được cấu hình trên server.", 503);
-
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return errorResponse("Hãy nhập access code.");
-  if (!verifyAccessCode(parsed.data.accessCode)) return errorResponse("Access code không đúng.", 403);
-
+  const access = requireAccessCode(parsed.data.accessCode);
+  if (!access.ok) return errorResponse(access.message, access.status);
   return Response.json({ ok: true });
 }

@@ -1,6 +1,5 @@
 import { hash } from "bcryptjs";
 import { z } from "zod";
-import { getRegisterAccessCode, verifyAccessCode } from "@/lib/access-code";
 import { createSession } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
 import { errorResponse } from "@/lib/server-utils";
@@ -10,15 +9,12 @@ const schema = z.object({
   name: z.string().trim().min(2).max(60),
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8).max(128),
-  accessCode: z.string().trim().min(1).max(128),
   turnstileToken: z.string().optional().default(""),
 });
 
 export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return errorResponse("Thông tin đăng ký chưa hợp lệ.");
-  if (!getRegisterAccessCode()) return errorResponse("REGISTER_ACCESS_CODE chưa được cấu hình trên server.", 503);
-  if (!verifyAccessCode(parsed.data.accessCode)) return errorResponse("Access code không đúng.", 403);
   if (!(await verifyTurnstileToken(parsed.data.turnstileToken, clientIp(request)))) {
     return errorResponse("Xác thực Turnstile chưa hợp lệ. Hãy thử lại.", 403);
   }

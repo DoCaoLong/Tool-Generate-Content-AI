@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
@@ -39,10 +40,14 @@ export default function DiscoverPanel() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [lastSearch, setLastSearch] = useState<(DiscoverValues & { source?: DiscoverResponse["source"]; handle?: string }) | null>(null);
+  const [accessOpen, setAccessOpen] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [verifiedCode, setVerifiedCode] = useState("");
+  const [pendingSearch, setPendingSearch] = useState<{ values: DiscoverValues; cursor?: string } | null>(null);
   const form = useForm<DiscoverValues>({ resolver: zodResolver(schema), defaultValues: { username: "", projectName: "" } });
 
   const search = useMutation({
-    mutationFn: ({ values, cursor }: { values: DiscoverValues; cursor?: string }) => apiRequest<DiscoverResponse>("/api/discover", { method: "POST", body: JSON.stringify({ ...values, nextCursor: cursor }) }),
+    mutationFn: ({ values, cursor, accessCode: code }: { values: DiscoverValues; cursor?: string; accessCode: string }) => apiRequest<DiscoverResponse>("/api/discover", { method: "POST", body: JSON.stringify({ ...values, nextCursor: cursor, accessCode: code }) }),
     onSuccess: (data, variables) => {
       setTweets((current) => variables.cursor ? [...current, ...data.tweets.filter((tweet) => !current.some((item) => item.id === tweet.id))] : data.tweets);
       setNextCursor(data.nextCursor);
@@ -84,6 +89,27 @@ export default function DiscoverPanel() {
     });
   };
 
+  const runSearch = (payload: { values: DiscoverValues; cursor?: string }) => {
+    if (!verifiedCode) {
+      setPendingSearch(payload);
+      setAccessOpen(true);
+      return;
+    }
+    search.mutate({ ...payload, accessCode: verifiedCode });
+  };
+
+  const verifyAccess = useMutation({
+    mutationFn: (code: string) => apiRequest<{ ok: true }>("/api/auth/access-code", { method: "POST", body: JSON.stringify({ accessCode: code }) }),
+    onSuccess: (_, code) => {
+      setVerifiedCode(code);
+      setAccessOpen(false);
+      setAccessCode("");
+      const pending = pendingSearch;
+      setPendingSearch(null);
+      if (pending) search.mutate({ ...pending, accessCode: code });
+    },
+  });
+
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
@@ -93,7 +119,7 @@ export default function DiscoverPanel() {
             <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Sorsa · X discovery</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Tìm bài mẫu theo tác giả hoặc dự án</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Nhập username tác giả và/hoặc @mention của dự án. Tìm theo dự án ưu tiên bài mention có nhiều bình luận nhất.</p></div>
           </div>
 
-          <form className="mt-7 grid gap-4 sm:grid-cols-[0.8fr_1.2fr_auto]" onSubmit={form.handleSubmit((values) => search.mutate({ values }))}>
+          <form className="mt-7 grid gap-4 sm:grid-cols-[0.8fr_1.2fr_auto]" onSubmit={form.handleSubmit((values) => runSearch({ values }))}>
             <label className="text-sm font-medium text-slate-700">Username tác giả<div className="relative mt-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input className="h-11 rounded-xl pl-7" placeholder="elonmusk" {...form.register("username")} /></div></label>
             <label className="text-sm font-medium text-slate-700">@mention dự án<Input className="mt-2 h-11 rounded-xl" placeholder="@PlayOnMint" {...form.register("projectName")} /></label>
             <Button className="mt-auto h-11 rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800" disabled={search.isPending}><Search className="mr-2 h-4 w-4" />{search.isPending && !nextCursor ? "Đang tìm..." : "Tìm bài viết"}</Button>
@@ -116,9 +142,27 @@ export default function DiscoverPanel() {
               </button>;
             })}
           </div>
-          {nextCursor && <div className="mt-6 text-center"><Button variant="outline" className="rounded-xl" disabled={search.isPending} onClick={() => lastSearch && search.mutate({ values: lastSearch, cursor: nextCursor })}>{search.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}Tải thêm bài viết</Button></div>}
+          {nextCursor && <div className="mt-6 text-center"><Button variant="outline" className="rounded-xl" disabled={search.isPending} onClick={() => lastSearch && runSearch({ values: lastSearch, cursor: nextCursor })}>{search.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}Tải thêm bài viết</Button></div>}
         </section>}
       </div>
+      <Dialog open={accessOpen} onOpenChange={(open) => { if (!verifyAccess.isPending) { setAccessOpen(open); if (!open) { setAccessCode(""); verifyAccess.reset(); } } }}>
+        <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Access code</DialogTitle>
+            <DialogDescription>Nhập mã truy cập để tìm bài mẫu trên X.</DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); verifyAccess.mutate(accessCode.trim()); }}>
+            <label className="block text-sm font-medium">Mã truy cập
+              <Input className="mt-2 h-12 rounded-xl" autoFocus type="password" placeholder="Nhập access code" value={accessCode} onChange={(event) => setAccessCode(event.target.value)} />
+            </label>
+            {verifyAccess.error && <p className="text-sm text-red-600">{verifyAccess.error.message}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" className="rounded-xl" disabled={verifyAccess.isPending} onClick={() => setAccessOpen(false)}>Huỷ</Button>
+              <Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={verifyAccess.isPending || !accessCode.trim()}>{verifyAccess.isPending ? "Đang kiểm tra..." : "Tìm bài viết"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

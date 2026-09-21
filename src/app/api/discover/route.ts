@@ -1,6 +1,7 @@
 import dns from "node:dns";
 import https from "node:https";
 import { z } from "zod";
+import { requireAccessCode } from "@/lib/access-code";
 import { errorResponse, requireUser } from "@/lib/server-utils";
 
 dns.setDefaultResultOrder("ipv4first");
@@ -11,6 +12,7 @@ const requestSchema = z.object({
   username: z.string().trim().transform((value) => value.replace(/^@/, "")).optional().default(""),
   projectName: z.string().trim().max(100).optional().default(""),
   nextCursor: z.string().max(1000).optional(),
+  accessCode: z.string().trim().min(1).max(128),
 }).superRefine((data, context) => {
   if (!data.username && !data.projectName) {
     context.addIssue({ code: "custom", message: "Hãy nhập username hoặc tên dự án." });
@@ -127,6 +129,8 @@ export async function POST(request: Request) {
     const message = parsed.error.issues[0]?.message || "Username hoặc tên dự án chưa hợp lệ.";
     return errorResponse(message);
   }
+  const access = requireAccessCode(parsed.data.accessCode);
+  if (!access.ok) return errorResponse(access.message, access.status);
 
   const apiKey = process.env.SORSA_API_KEY;
   if (!apiKey) return errorResponse("SORSA_API_KEY chưa được cấu hình trên server.", 503);

@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Compass, Copy, FileText, Folder, Menu, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pencil, Plus, Send, Sparkles, Trash2, UserRound, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { usePathname, useRouter } from "next/navigation";
@@ -28,6 +28,7 @@ import { useAppStore } from "@/lib/app-store";
 import { apiRequest, ApiError } from "@/lib/http";
 import { buildContentPrompt } from "@/lib/prompt-builder";
 import { getKOLStyle } from "@/lib/kol-styles";
+import { findStyleForProject } from "@/lib/style-match";
 import { providerLabels, providerModels, providers } from "@/lib/providers";
 import { prefetchNucleusList } from "@/lib/nucleus-query";
 import type { Generation, Project, ProjectContentOptions, Provider, SavedStyle, UserProfile } from "@/lib/types";
@@ -117,6 +118,9 @@ function Workspace({ user }: { user: UserProfile }) {
   const discoveredStyle = useAppStore((state) => state.discoveredStyle);
   const selectedSavedStyleId = useAppStore((state) => state.selectedSavedStyleId);
   const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
+  const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
+  const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
+  const autoStyledProjectId = useRef<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -156,6 +160,17 @@ function Workspace({ user }: { user: UserProfile }) {
   useEffect(() => {
     if (selectedSavedStyleId && stylesQuery.data && !selectedSavedStyle) setSelectedSavedStyleId(null);
   }, [selectedSavedStyle, selectedSavedStyleId, setSelectedSavedStyleId, stylesQuery.data]);
+
+  useEffect(() => {
+    if (!isProjectRoute || !activeProject || !savedStyles.length) return;
+    if (autoStyledProjectId.current === activeProject.id) return;
+    const match = findStyleForProject(savedStyles, activeProject);
+    autoStyledProjectId.current = activeProject.id;
+    if (!match) return;
+    setSelectedSavedStyleId(match.id);
+    setSelectedKolId(null);
+    setDiscoveredStyle(null);
+  }, [activeProject, isProjectRoute, savedStyles, setDiscoveredStyle, setSelectedKolId, setSelectedSavedStyleId]);
 
   const logout = useMutation({
     mutationFn: () => apiRequest<{ ok: true }>("/api/auth/logout", { method: "POST" }),
@@ -268,6 +283,9 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
   const composerMode = useAppStore((state) => state.composerMode);
   const selectedKolId = useAppStore((state) => state.selectedKolId);
   const discoveredStyle = useAppStore((state) => state.discoveredStyle);
+  const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
+  const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
+  const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
   const setProviderConfig = useAppStore((state) => state.setProviderConfig);
   const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: Array<{ id: string; name: string; style?: string; content: string }> }>("/api/prompt-styles") });
   const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedKolId) || getKOLStyle(selectedKolId);
@@ -372,7 +390,7 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
     <div className="shrink-0 px-4 pb-5 sm:px-8"><div className="mx-auto max-w-3xl">
       <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
         {(selectedKOL || discoveredStyle || savedStyle || keywordChips.length > 0) && <div className="mx-2 mb-1 flex flex-wrap items-center gap-1.5">
-          {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {savedStyle?.name || selectedKOL?.name || `@${discoveredStyle?.username}`}</span>}
+          {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {savedStyle?.name || selectedKOL?.name || `@${discoveredStyle?.username}`}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { setSelectedKolId(null); setDiscoveredStyle(null); setSelectedSavedStyleId(null); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
           {keywordChips.slice(0, 6).map((keyword) => <span key={keyword} className="inline-flex max-w-48 items-center truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700" title={keyword}>Từ khóa: {keyword}</span>)}
           {keywordChips.length > 6 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">+{keywordChips.length - 6}</span>}
         </div>}

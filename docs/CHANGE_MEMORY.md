@@ -1,5 +1,9 @@
 # CHANGE_MEMORY
 
+## 2026-09-21
+
+- Bỏ tracking `next-env.d.ts` và thêm file này vào `.gitignore` theo khuyến nghị của Next.js 16.3.5; file tiếp tục được Next.js tự sinh khi dev/build/typegen.
+
 ## 2026-09-20
 
 - Thay icon Atom bằng logo chính thức của Nucleus (`/nucleus-logo.png`) ở tab Nucleus trong sidebar và header/trạng thái trống trang Nucleus.
@@ -13,6 +17,8 @@
 - Đăng ký tài khoản phải nhập access code (`REGISTER_ACCESS_CODE`) qua portal trước khi hiện form tạo tài khoản.
 - Thêm `PORT` trong env (mặc định 3004) và `deploy.sh` để build/chạy production trên server bằng PM2.
 - Login/register/admin dùng Cloudflare Turnstile. Trang `/admin` (user/pass trong env) quản lý user, API key hệ thống và style prompt.
+- Access code chuyển từ đăng ký sang tab Khám phá: bấm Tìm bài viết thì mở portal, API `/api/discover` kiểm tra lại mã.
+- Thêm `src/middleware.ts` xác thực JWT trên API (user/admin) trước khi vào route handler.
 
 - Tab Khám phá chỉ bắt buộc một trong hai: username tác giả hoặc tên dự án. Tìm theo @handle dự án dùng `POST /v3/mentions` sắp theo bài nhiều bình luận nhất.
 - Gọi Sorsa bằng HTTPS IPv4, timeout 45s; nếu `/mentions` lỗi thì fallback `search-tweets`. Form bỏ chữ “một trong hai”, placeholder dự án là `@PlayOnMint`.

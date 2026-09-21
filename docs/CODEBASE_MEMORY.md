@@ -33,7 +33,8 @@
 - `src/lib/mongodb.ts`: connection singleton và tạo index cho users, projects, generations.
 - `src/lib/auth.ts`: JWT session 7 ngày trong cookie `httpOnly`, `sameSite=lax`, bật `secure` ở production.
 - `src/app/api/auth/*`: register, login, logout, current user, verify access code.
-- Đăng ký yêu cầu `REGISTER_ACCESS_CODE` (env); UI mở portal nhập code trước form tạo tài khoản, API register kiểm tra lại code.
+- Tab Khám phá yêu cầu `REGISTER_ACCESS_CODE` (env): portal access code khi bấm Tìm bài viết, API `/api/discover` kiểm tra lại mã.
+- `src/middleware.ts` chặn API: JWT user (`cw_session`) cho route nội bộ, JWT admin (`cw_admin`) cho `/api/admin/*` trừ login. Auth/public/turnstile để public.
 - Login, register và `/admin` xác thực Cloudflare Turnstile (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`).
 - Admin session cookie `cw_admin` 12 giờ; credential `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Dashboard `/admin` quản lý users, API keys (`settings.api_keys`) và `prompt_styles`.
 - `src/app/api/projects/*`: tạo, đọc, sửa, xoá dự án và đọc/lưu lịch sử.
@@ -98,6 +99,7 @@
 - Xoá project đồng thời xoá các generation thuộc project đó.
 - API lịch sử trả tối đa 200 bản ghi mới nhất theo thứ tự thời gian tăng dần để hiển thị như hội thoại.
 - Next.js và eslint-config-next được nâng lên 16.3.5 để loại bỏ cảnh báo bảo mật production đã biết ở phiên bản cũ.
+- `next-env.d.ts` do Next.js tự sinh, vẫn nằm trong `tsconfig.json` để nạp type nhưng bị loại khỏi Git qua `.gitignore` theo khuyến nghị của Next.js.
 - `next.config.mjs` cho phép ảnh Nucleus từ `prod-nucleus-project-thumbnail.s3.us-east-2.amazonaws.com` và `*.s3.us-east-2.amazonaws.com`.
 - Tab Nucleus render banner/thumbnail bằng `<img>` trực tiếp (có `referrerPolicy=no-referrer`) vì S3 thường chặn Next image optimizer.
 - Logo chính thức của Nucleus được lưu tại `/nucleus-logo.png`, dùng cho icon tab Nucleus ở sidebar và phần header danh sách chiến dịch.

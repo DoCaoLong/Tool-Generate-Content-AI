@@ -1,15 +1,11 @@
-export const managedApiKeyIds = ["openai", "gemini", "deepseek", "anthropic", "xai", "openrouter", "sorsa"] as const;
+export const managedApiKeyIds = ["sorsa"] as const;
 export type ManagedApiKeyId = (typeof managedApiKeyIds)[number];
 
 export const managedApiKeyLabels: Record<ManagedApiKeyId, string> = {
-  openai: "OpenAI",
-  gemini: "Gemini",
-  deepseek: "DeepSeek",
-  anthropic: "Anthropic",
-  xai: "xAI",
-  openrouter: "OpenRouter",
   sorsa: "Sorsa",
 };
+
+export const SETTINGS_API_KEYS_ID = "api_keys";
 
 export function maskSecret(value: string) {
   const trimmed = value.trim();

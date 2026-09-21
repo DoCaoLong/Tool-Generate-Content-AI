@@ -6,6 +6,7 @@ export interface KOLStyle {
   style?: string;
   style_vi?: string;
   content: string;
+  profileImgUrl?: string;
 }
 
 export const kolStyles = authorData as KOLStyle[];

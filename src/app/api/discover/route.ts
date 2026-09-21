@@ -3,6 +3,7 @@ import https from "node:https";
 import { z } from "zod";
 import { requireAccessCode } from "@/lib/access-code";
 import { errorResponse, requireUser } from "@/lib/server-utils";
+import { getSorsaApiKey } from "@/lib/sorsa-key";
 
 dns.setDefaultResultOrder("ipv4first");
 
@@ -132,8 +133,8 @@ export async function POST(request: Request) {
   const access = requireAccessCode(parsed.data.accessCode);
   if (!access.ok) return errorResponse(access.message, access.status);
 
-  const apiKey = process.env.SORSA_API_KEY;
-  if (!apiKey) return errorResponse("SORSA_API_KEY chưa được cấu hình trên server.", 503);
+  const apiKey = await getSorsaApiKey();
+  if (!apiKey) return errorResponse("Sorsa API key chưa được cấu hình (env hoặc Admin).", 503);
 
   const username = parsed.data.username;
   const projectName = parsed.data.projectName;

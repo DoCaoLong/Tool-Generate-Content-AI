@@ -4,13 +4,13 @@
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CalendarRange, ChevronDown, ExternalLink, FileText, Globe, LoaderCircle, Lock, MessageCircle, Plus, Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
-import { applyNucleusOptions, nucleusFieldLabels, nucleusXUsername } from "@/lib/nucleus-brief";
+import { applyNucleusOptions, findExistingStudioProject, nucleusFieldLabels, nucleusXUsername } from "@/lib/nucleus-brief";
 import { fetchNucleusDetail, fetchNucleusList, nucleusCacheOptions, nucleusDetailParam, nucleusKeys, nucleusListNextPageParam, prefetchNucleusDetail } from "@/lib/nucleus-query";
 import type { Project } from "@/lib/types";
 
@@ -175,16 +175,22 @@ function NucleusDetail({ slug }: { slug: string }) {
   const project = query.data?.project;
   const [openDetails, setOpenDetails] = useState<number[]>([]);
   const [targetId, setTargetId] = useState("new");
-  const studioProjects = projectsQuery.data?.projects || [];
+  const studioProjects = projectsQuery.data?.projects;
+  const existingProject = useMemo(() => (project && studioProjects ? findExistingStudioProject(studioProjects, project) : null), [project, studioProjects]);
+  const selectedTarget = existingProject && targetId === "new" ? existingProject.id : targetId;
   const xUsername = project ? nucleusXUsername(project) : null;
   const firstDetailTitle = project?.details[0]?.title || "mục chi tiết đầu tiên";
 
   const applyBrief = useMutation({
     mutationFn: async () => {
       if (!project) throw new Error("Chưa tải được chi tiết chiến dịch.");
-      let projectId = targetId;
-      let currentOptions = studioProjects.find((item) => item.id === targetId)?.contentOptions;
-      if (targetId === "new") {
+      const duplicate = studioProjects ? findExistingStudioProject(studioProjects, project) : null;
+      if (selectedTarget === "new" && duplicate) {
+        throw new Error(`Dự án “${duplicate.name}” đã tồn tại. Không thể tạo mới.`);
+      }
+      let projectId = selectedTarget;
+      let currentOptions = studioProjects?.find((item) => item.id === selectedTarget)?.contentOptions;
+      if (selectedTarget === "new") {
         const created = await apiRequest<{ project: Project }>("/api/projects", {
           method: "POST",
           body: JSON.stringify({
@@ -245,111 +251,64 @@ function NucleusDetail({ slug }: { slug: string }) {
                     )}
                   </div>
                   {project.description && <p className="mt-2.5 text-sm leading-relaxed text-slate-600 sm:text-base">{project.description}</p>}
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"><CalendarRange className="h-3 w-3" />{formatRange(project.startTime, project.endTime)}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"><Users className="h-3 w-3" />{project.metrics.usersSignedUpCount.toLocaleString("vi-VN")} tham gia</span>
+                    {Object.entries(project.additionalFields).map(([key, value]) => (
+                      <span key={key} title={fieldLabel(key)} className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">{value}</span>
+                    ))}
+                    {project.mindshare && <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">Mindshare</span>}
+                    {project.reputationScore && <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700">Reputation</span>}
+                    {project.referralScore && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">Referral</span>}
+                    {project.onchainWeight !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">On-chain {project.onchainWeight}%</span>}
+                    {project.offchainWeight !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">Off-chain {project.offchainWeight}%</span>}
+                    {project.quests?.followX && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Follow X</span>}
+                    {project.quests?.joinDiscord && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Join Discord</span>}
+                    {project.quests?.joinTelegram && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Join Telegram</span>}
+                    {project.quests?.requiredWallets.map((wallet) => <span key={wallet} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Ví {wallet.toUpperCase()}</span>)}
+                    {project.categories.map((category) => <span key={category} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] capitalize text-slate-600">{category}</span>)}
+                    {project.nftBonuses.map((bonus) => (
+                      <span key={`${bonus.chain}-${bonus.collectionName}`} className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-800">
+                        {bonus.collectionName || "NFT"}{bonus.chain ? ` · ${bonus.chain}` : ""}{bonus.multiplyValue ? ` · x${bonus.multiplyValue}` : ""}
+                      </span>
+                    ))}
+                    {project.socials.map((social) => (
+                      <a key={`${social.platform}-${social.url}`} href={social.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:border-cyan-300 hover:text-cyan-800">
+                        {social.platform === "discord" || social.platform === "telegram" ? <MessageCircle className="h-3 w-3" /> : social.platform === "official_website" || social.platform === "website" ? <Globe className="h-3 w-3" /> : <ExternalLink className="h-3 w-3" />}
+                        {platformLabels[social.platform] || social.platform}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <label className="min-w-0 flex-1 text-sm font-medium text-slate-700">Dự án viết bài
-                    <NativeSelect wrapperClassName="mt-2 block w-full" className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-cyan-400" value={targetId} onChange={(event) => setTargetId(event.target.value)}>
-                      <option value="new">Tạo dự án mới</option>
-                      {studioProjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    <NativeSelect wrapperClassName="mt-2 block w-full" className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-cyan-400" value={selectedTarget} onChange={(event) => setTargetId(event.target.value)}>
+                      {!existingProject && <option value="new">Tạo dự án mới</option>}
+                      {(studioProjects || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                     </NativeSelect>
                   </label>
                   <Button className="h-11 shrink-0 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800" disabled={applyBrief.isPending} onClick={() => applyBrief.mutate()}>
-                    {applyBrief.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : targetId === "new" ? <Plus className="mr-2 h-4 w-4" /> : <FileText className="mr-2 h-4 w-4" />}
-                    {targetId === "new" ? "Tạo dự án và dùng brief" : "Đưa brief vào dự án"}
+                    {applyBrief.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : selectedTarget === "new" ? <Plus className="mr-2 h-4 w-4" /> : <FileText className="mr-2 h-4 w-4" />}
+                    {selectedTarget === "new" ? "Tạo dự án và dùng brief" : "Đưa brief vào dự án"}
                   </Button>
                 </div>
+                {existingProject && <p className="mt-3 text-sm text-amber-700">Dự án “{existingProject.name}” đã tồn tại. Không thể tạo mới, hãy dùng dự án hiện có.</p>}
                 <p className="mt-3 text-xs leading-5 text-slate-500">Rule bắt buộc lấy “{firstDetailTitle}”. Từ khóa bắt buộc gắn {xUsername ? `@${xUsername}` : "username X"}.</p>
                 {applyBrief.error && <p className="mt-2 text-sm text-red-600">{applyBrief.error.message}</p>}
               </div>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <InfoChip icon={<CalendarRange className="h-4 w-4" />} label="Thời gian" value={formatRange(project.startTime, project.endTime)} />
-                <InfoChip icon={<Users className="h-4 w-4" />} label="Người đã tham gia" value={project.metrics.usersSignedUpCount.toLocaleString("vi-VN")} />
-              </div>
-
-              {Object.keys(project.additionalFields).length > 0 && (
-                <section className="mt-7">
-                  <h3 className="text-sm font-semibold">Thưởng và điều kiện</h3>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    {Object.entries(project.additionalFields).map(([key, value]) => (
-                      <div key={key} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{fieldLabel(key)}</p>
-                        <p className="mt-1 text-sm font-medium text-slate-800">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {(project.mindshare || project.reputationScore || project.referralScore || project.onchainWeight !== null || project.offchainWeight !== null) && (
-                <section className="mt-7">
-                  <h3 className="text-sm font-semibold">Cách tính điểm</h3>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {project.mindshare && <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">Mindshare</span>}
-                    {project.reputationScore && <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">Reputation</span>}
-                    {project.referralScore && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Referral</span>}
-                    {project.onchainWeight !== null && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">On-chain {project.onchainWeight}%</span>}
-                    {project.offchainWeight !== null && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">Off-chain {project.offchainWeight}%</span>}
-                  </div>
-                </section>
-              )}
-
-              {project.socials.length > 0 && (
-                <section className="mt-7">
-                  <h3 className="text-sm font-semibold">Liên kết</h3>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {project.socials.map((social) => (
-                      <a key={`${social.platform}-${social.url}`} href={social.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-cyan-300 hover:text-cyan-800">
-                        {social.platform === "discord" || social.platform === "telegram" ? <MessageCircle className="h-3.5 w-3.5" /> : social.platform === "official_website" || social.platform === "website" ? <Globe className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                        {platformLabels[social.platform] || social.platform}
-                      </a>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {project.quests && (project.quests.followX || project.quests.joinDiscord || project.quests.joinTelegram || project.quests.requiredWallets.length > 0 || project.quests.eligibilityQuests.length > 0) && (
-                <section className="mt-7">
+              {project.quests && project.quests.eligibilityQuests.length > 0 && (
+                <section className="mt-6">
                   <h3 className="text-sm font-semibold">Quest tham gia</h3>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {project.quests.followX && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">Follow X</span>}
-                    {project.quests.joinDiscord && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">Join Discord</span>}
-                    {project.quests.joinTelegram && <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">Join Telegram</span>}
-                    {project.quests.requiredWallets.map((wallet) => <span key={wallet} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">Ví {wallet.toUpperCase()}</span>)}
-                  </div>
-                  {project.quests.eligibilityQuests.length > 0 && (
-                    <div className="mt-3 space-y-3">
-                      {project.quests.eligibilityQuests.map((quest) => (
-                        <div key={quest.id} className="rounded-2xl border border-slate-200 px-4 py-3">
-                          <p className="text-sm leading-6 text-slate-700">{quest.description}</p>
-                          {quest.buttonUrl && <a href={quest.buttonUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-cyan-700 hover:underline">{quest.buttonText || "Mở liên kết"}<ExternalLink className="h-3 w-3" /></a>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              )}
-
-              {project.categories.length > 0 && (
-                <section className="mt-7">
-                  <h3 className="text-sm font-semibold">Danh mục</h3>
-                  <div className="mt-3 flex flex-wrap gap-2">{project.categories.map((category) => <span key={category} className="rounded-full bg-slate-100 px-3 py-1 text-xs capitalize text-slate-600">{category}</span>)}</div>
-                </section>
-              )}
-
-              {project.nftBonuses.length > 0 && (
-                <section className="mt-7">
-                  <h3 className="text-sm font-semibold">NFT bonus</h3>
                   <div className="mt-3 space-y-2">
-                    {project.nftBonuses.map((bonus) => (
-                      <p key={`${bonus.chain}-${bonus.collectionName}`} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
-                        <span className="font-medium">{bonus.collectionName || "NFT"}</span>
-                        {bonus.chain && <span className="text-slate-400"> · {bonus.chain}</span>}
-                        {bonus.multiplyValue ? <span className="text-cyan-700"> · x{bonus.multiplyValue}</span> : null}
-                      </p>
+                    {project.quests.eligibilityQuests.map((quest) => (
+                      <div key={quest.id} className="rounded-2xl border border-slate-200 px-4 py-3">
+                        <p className="text-sm leading-6 text-slate-700">{quest.description}</p>
+                        {quest.buttonUrl && <a href={quest.buttonUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-cyan-700 hover:underline">{quest.buttonText || "Mở liên kết"}<ExternalLink className="h-3 w-3" /></a>}
+                      </div>
                     ))}
                   </div>
                 </section>
@@ -389,14 +348,3 @@ function NucleusDetail({ slug }: { slug: string }) {
   );
 }
 
-function InfoChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="mt-0.5 text-slate-400">{icon}</span>
-      <div>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
-        <p className="mt-1 text-sm font-medium text-slate-800">{value}</p>
-      </div>
-    </div>
-  );
-}

@@ -1,5 +1,5 @@
 import { defaultProjectContentOptions } from "@/lib/project-options";
-import type { NucleusProjectDetail, ProjectContentOptions } from "@/lib/types";
+import type { NucleusProjectDetail, Project, ProjectContentOptions } from "@/lib/types";
 
 export const nucleusFieldLabels: Record<string, string> = {
   campaign_type: "Loại chiến dịch",
@@ -122,6 +122,12 @@ export function attachNucleusKeyword(existing: string, username: string | null) 
   const already = parts.some((item) => item.replace(/^@/, "").toLowerCase() === username.replace(/^@/, "").toLowerCase());
   const next = already ? existing.trim() : parts.length ? `${existing.trim().replace(/[,\s]+$/, "")}, ${handle}` : handle;
   return next.slice(0, KEYWORDS_LIMIT);
+}
+
+export function findExistingStudioProject(projects: Project[], nucleus: { name: string; slug: string }) {
+  const name = nucleus.name.trim().toLowerCase();
+  const marker = `--- Nucleus: ${nucleus.slug} ---`;
+  return projects.find((item) => item.name.trim().toLowerCase() === name || item.contentOptions.documents.includes(marker)) || null;
 }
 
 export function applyNucleusOptions(project: NucleusProjectDetail, current?: Partial<ProjectContentOptions> | null): ProjectContentOptions {

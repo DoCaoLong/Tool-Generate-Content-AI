@@ -37,8 +37,13 @@ export async function POST(request: Request) {
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return errorResponse("Thông tin dự án chưa hợp lệ.");
 
+  const db = await getDb();
+  const escaped = parsed.data.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const existing = await db.collection("projects").findOne({ userId: auth.user.id, name: { $regex: `^${escaped}$`, $options: "i" } });
+  if (existing) return errorResponse(`Dự án “${existing.name}” đã tồn tại.`, 409);
+
   const now = new Date();
-  const result = await (await getDb()).collection("projects").insertOne({
+  const result = await db.collection("projects").insertOne({
     userId: auth.user.id,
     name: parsed.data.name,
     description: parsed.data.description,

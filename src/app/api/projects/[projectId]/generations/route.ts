@@ -14,13 +14,13 @@ const inputSchema = z.object({
   discoveredStyle: z.object({
     username: z.string().max(30),
     projectName: z.string().max(120),
-    samples: z.array(z.object({ id: z.string().max(100), text: z.string().max(5000) })).min(1).max(12),
+    samples: z.array(z.object({ id: z.string().max(100), text: z.string().max(5000) })).min(1).max(20),
   }).nullable().default(null),
   libraryStyle: z.object({
     id: z.string().max(100),
     name: z.string().max(100),
     instruction: z.string().max(5000),
-    samples: z.array(z.object({ id: z.string().max(100), text: z.string().max(5000) })).max(8),
+    samples: z.array(z.object({ id: z.string().max(100), text: z.string().max(5000) })).max(20),
   }).nullable().default(null),
   topic: z.string().trim().min(1).max(500),
   sourceText: z.string().max(30000).default(""),

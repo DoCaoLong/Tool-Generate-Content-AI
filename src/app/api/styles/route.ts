@@ -10,7 +10,7 @@ const createSchema = z.object({
   instruction: z.string().trim().min(10).max(5000),
   username: z.string().trim().max(30).nullable().default(null),
   projectName: z.string().trim().max(120).nullable().default(null),
-  samples: z.array(sampleSchema).max(8).default([]),
+  samples: z.array(sampleSchema).max(20).default([]),
 });
 
 function serialize(style: Record<string, unknown> & { _id: { toHexString(): string }; createdAt: Date; updatedAt: Date }) {

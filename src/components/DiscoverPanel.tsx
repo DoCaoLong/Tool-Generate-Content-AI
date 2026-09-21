@@ -25,6 +25,7 @@ const schema = z.object({
 
 type DiscoverValues = z.infer<typeof schema>;
 type DiscoverResponse = { tweets: DiscoveredTweet[]; nextCursor: string | null; query: string; source: "author" | "mentions" | "topic"; handle: string };
+const MAX_SAMPLES = 20;
 
 function shortNumber(value: number) {
   return new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
@@ -69,7 +70,7 @@ export default function DiscoverPanel() {
 
   const applySamples = () => {
     if (!lastSearch) return;
-    const samples = tweets.filter((tweet) => selectedIds.includes(tweet.id)).slice(0, 8).map((tweet) => ({ id: tweet.id, text: tweet.text.slice(0, 4000) }));
+    const samples = tweets.filter((tweet) => selectedIds.includes(tweet.id)).slice(0, MAX_SAMPLES).map((tweet) => ({ id: tweet.id, text: tweet.text.slice(0, 4000) }));
     if (!samples.length) return;
     const handle = lastSearch.username || lastSearch.handle || samples[0]?.text.match(/@([A-Za-z0-9_]{1,15})/)?.[1] || tweets.find((tweet) => selectedIds.includes(tweet.id))?.username;
     if (!handle) return;
@@ -130,12 +131,12 @@ export default function DiscoverPanel() {
         {lastSearch && !search.isPending && tweets.length === 0 && <div className="py-20 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa tìm thấy bài phù hợp</h3><p className="mt-1 text-sm text-slate-500">Thử username tác giả hoặc @mention dự án.</p></div>}
 
         {tweets.length > 0 && <section className="mt-7">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">{lastSearch?.source === "mentions" ? `Mentions nhiều bình luận nhất về @${lastSearch.handle || lastSearch.projectName}` : lastSearch?.username ? `Bài viết từ @${lastSearch.username}` : `Bài viết về ${lastSearch?.projectName}`}</h3><p className="mt-1 text-xs text-slate-500">Đã tìm thấy {tweets.length} bài · Chọn tối đa 8 bài mẫu tốt nhất</p></div><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!selectedIds.length || saveStyle.isPending} onClick={applySamples}><Sparkles className="mr-2 h-4 w-4" />{saveStyle.isPending ? "Đang lưu..." : `Lưu & dùng ${Math.min(selectedIds.length, 8)} bài`}</Button></div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">{lastSearch?.source === "mentions" ? `Mentions nhiều bình luận nhất về @${lastSearch.handle || lastSearch.projectName}` : lastSearch?.username ? `Bài viết từ @${lastSearch.username}` : `Bài viết về ${lastSearch?.projectName}`}</h3><p className="mt-1 text-xs text-slate-500">Đã tìm thấy {tweets.length} bài · Chọn tối đa {MAX_SAMPLES} bài mẫu</p></div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="rounded-xl" onClick={() => { const visibleIds = tweets.map((tweet) => tweet.id); const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id)); setSelectedIds(allSelected ? [] : visibleIds.slice(0, MAX_SAMPLES)); }}>{tweets.length > 0 && tweets.every((tweet) => selectedIds.includes(tweet.id)) ? "Bỏ chọn tất cả" : "Chọn tất cả bài hiện có"}</Button><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!selectedIds.length || saveStyle.isPending} onClick={applySamples}><Sparkles className="mr-2 h-4 w-4" />{saveStyle.isPending ? "Đang lưu..." : `Lưu & dùng ${Math.min(selectedIds.length, MAX_SAMPLES)} bài`}</Button></div></div>
           {saveStyle.error && <p className="mb-4 text-sm text-red-600">{saveStyle.error.message}</p>}
           <div className="grid gap-3 md:grid-cols-2">
             {tweets.map((tweet) => {
               const selected = selectedIds.includes(tweet.id);
-              return <button key={tweet.id} className={`relative rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${selected ? "border-emerald-400 bg-emerald-50/70 ring-1 ring-emerald-200" : "border-slate-200 bg-white"}`} onClick={() => setSelectedIds((ids) => selected ? ids.filter((id) => id !== tweet.id) : ids.length < 8 ? [...ids, tweet.id] : ids)}>
+              return <button key={tweet.id} className={`relative rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${selected ? "border-emerald-400 bg-emerald-50/70 ring-1 ring-emerald-200" : "border-slate-200 bg-white"}`} onClick={() => setSelectedIds((ids) => selected ? ids.filter((id) => id !== tweet.id) : ids.length < MAX_SAMPLES ? [...ids, tweet.id] : ids)}>
                 <span className={`absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full border ${selected ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-transparent"}`}><Check className="h-3.5 w-3.5" /></span>
                 <div className="pr-8"><p className="text-sm font-semibold text-slate-900">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></p><p className="mt-3 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p></div>
                 <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3 text-[11px] text-slate-400"><span>{new Date(tweet.createdAt).toLocaleDateString("vi-VN")}</span><span className="flex items-center gap-1"><Heart className="h-3 w-3" />{shortNumber(tweet.likes)}</span><span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{shortNumber(tweet.replies)}</span><span className="flex items-center gap-1"><Eye className="h-3 w-3" />{shortNumber(tweet.views)}</span></div>

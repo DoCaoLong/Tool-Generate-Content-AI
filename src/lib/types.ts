@@ -111,6 +111,7 @@ export interface Project {
   id: string;
   name: string;
   description: string;
+  imageUrl: string | null;
   contentOptions: ProjectContentOptions;
   createdAt: string;
   updatedAt: string;

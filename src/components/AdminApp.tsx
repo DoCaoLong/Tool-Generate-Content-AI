@@ -1,9 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- Admin prompt avatars can be local uploads or public paths. */
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, ImagePlus, KeyRound, LogOut, Pencil, Plus, Sparkles, Trash2, Unlock, Users } from "lucide-react";
+import { Ban, KeyRound, LogOut, Pencil, Plus, Sparkles, Trash2, Unlock, Users } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import TurnstileWidget from "@/components/TurnstileWidget";
@@ -12,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, ApiError } from "@/lib/http";
+import PromptAvatar from "@/components/PromptAvatar";
 
 type Tab = "users" | "keys" | "prompts";
 interface AdminUser { id: string; name: string; email: string; disabled: boolean; createdAt: string | null }
@@ -221,13 +220,22 @@ function PromptsTab() {
       {editing && (
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold">{editing.id ? "Sửa prompt" : "Prompt mới"}</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-[8rem_1fr]">
+          <div className="mt-4 grid gap-4 md:grid-cols-[10rem_1fr]">
             <div>
-              <p className="text-sm font-medium">Ảnh</p>
-              <div className="mt-2 grid h-24 w-24 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                {editing.profileImgUrl ? <img src={editing.profileImgUrl} alt="" className="h-full w-full object-cover" /> : <ImagePlus className="h-6 w-6 text-slate-300" />}
-              </div>
-              <input className="mt-2 block w-full text-xs" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => { const file = event.target.files?.[0]; if (file) upload.mutate(file); }} />
+              <p className="text-sm font-medium">Ảnh đại diện</p>
+              <label
+                className="group relative mt-2 flex h-28 w-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50 transition hover:border-cyan-400 hover:bg-cyan-50/40"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) upload.mutate(file); }}
+              >
+                <PromptAvatar src={editing.profileImgUrl} name={editing.name || ""} className="grid h-full w-full place-items-center text-2xl font-bold tracking-wide text-slate-400" />
+                <span className="absolute inset-0 grid place-items-center bg-slate-950/55 text-center text-[11px] font-medium text-white opacity-0 transition group-hover:opacity-100">
+                  {upload.isPending ? "Đang tải..." : editing.profileImgUrl ? "Đổi ảnh" : "Tải ảnh lên"}
+                </span>
+                <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => { const file = event.target.files?.[0]; if (file) upload.mutate(file); event.target.value = ""; }} />
+              </label>
+              <p className="mt-2 text-[11px] leading-4 text-slate-400">JPG, PNG, WEBP. Kéo thả hoặc bấm để chọn.</p>
+              {editing.profileImgUrl && <button type="button" className="mt-1 text-[11px] font-medium text-slate-500 hover:text-red-600" onClick={() => setEditing({ ...editing, profileImgUrl: "" })}>Gỡ ảnh</button>}
               {upload.error && <p className="mt-1 text-xs text-red-600">{upload.error.message}</p>}
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -249,9 +257,7 @@ function PromptsTab() {
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {(query.data?.styles || []).map((style) => (
             <article key={style.id} className="flex gap-3 rounded-2xl border border-slate-200 p-4">
-              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                {style.profileImgUrl ? <img src={style.profileImgUrl} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-[10px] font-bold text-slate-400">{style.name.slice(0, 2).toUpperCase()}</div>}
-              </div>
+              <PromptAvatar src={style.profileImgUrl} name={style.name} className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-emerald-100 text-xs font-bold text-emerald-800" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <div>

@@ -6,8 +6,9 @@ import { normalizeProjectContentOptions } from "@/lib/project-options";
 type RouteContext = { params: Promise<{ projectId: string }> };
 
 const updateSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  description: z.string().trim().max(240).default(""),
+  name: z.string().trim().min(1).max(80).optional(),
+  description: z.string().trim().max(240).optional(),
+  imageUrl: z.string().trim().max(500).nullable().optional(),
 });
 
 export async function PATCH(request: Request, context: RouteContext) {
@@ -18,6 +19,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const parsed = updateSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return errorResponse("Thông tin dự án chưa hợp lệ.");
+  if (!parsed.data.name && parsed.data.description === undefined && parsed.data.imageUrl === undefined) {
+    return errorResponse("Thông tin dự án chưa hợp lệ.");
+  }
 
   const updatedAt = new Date();
   const result = await (await getDb()).collection("projects").findOneAndUpdate(
@@ -32,6 +36,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       id: result._id.toHexString(),
       name: result.name,
       description: result.description || "",
+      imageUrl: result.imageUrl || null,
       contentOptions: normalizeProjectContentOptions(result.contentOptions),
       createdAt: result.createdAt.toISOString(),
       updatedAt: result.updatedAt.toISOString(),

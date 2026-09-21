@@ -143,13 +143,16 @@ function Workspace({ user }: { user: UserProfile }) {
   const isHelpRoute = pathname === "/help";
 
   useEffect(() => {
-    if (!isProjectRoute) return;
+    if (!isProjectRoute || projectsQuery.isPending || !projectsQuery.data) return;
     if (projects.length && !activeProject) {
       setSelectedProjectId(projects[0].id);
       router.replace(`/projects/${projects[0].id}/${composerMode}`);
     }
-    if (!projects.length && selectedProjectId) setSelectedProjectId(null);
-  }, [activeProject, composerMode, isProjectRoute, projects, router, selectedProjectId, setSelectedProjectId]);
+    if (!projects.length) {
+      if (selectedProjectId) setSelectedProjectId(null);
+      setOptionsOpen(false);
+    }
+  }, [activeProject, composerMode, isProjectRoute, projects, projectsQuery.data, projectsQuery.isPending, router, selectedProjectId, setOptionsOpen, setSelectedProjectId]);
 
   useEffect(() => {
     if (!isProjectRoute || !activeProject) return;
@@ -204,7 +207,7 @@ function Workspace({ user }: { user: UserProfile }) {
             {projects.map((project) => (
               <div key={project.id} className={`group flex h-11 items-center rounded-xl ${selectedProjectId === project.id ? "bg-white/10" : "hover:bg-white/5"}`}>
                 <button title={sidebarCollapsed ? project.name : undefined} className={`flex h-full min-w-0 flex-1 items-center text-left ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"}`} onClick={() => { setSelectedProjectId(project.id); router.push(`/projects/${project.id}/${composerMode}`); setSidebarOpen(false); }}>
-                  <Folder className="h-4 w-4 shrink-0 text-slate-400" />
+                  <ProjectNavIcon src={project.imageUrl} />
                   <span className={`block truncate text-sm ${sidebarCollapsed ? "md:hidden" : ""}`}>{project.name}</span>
                 </button>
                 <div className={`mr-2 flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100 ${sidebarCollapsed ? "md:hidden" : ""}`}>
@@ -218,16 +221,16 @@ function Workspace({ user }: { user: UserProfile }) {
         <ProfileMenu user={user} onLogout={() => logout.mutate()} collapsed={sidebarCollapsed} />
       </aside>
 
-      <div className={`flex h-full flex-col transition-[margin] duration-200 ${sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[280px]"} ${isProjectRoute && optionsOpen ? "xl:mr-[340px]" : ""}`}>
+      <div className={`flex h-full flex-col transition-[margin] duration-200 ${sidebarCollapsed ? "md:ml-[72px]" : "md:ml-[280px]"} ${isProjectRoute && activeProject && optionsOpen ? "xl:mr-[340px]" : ""}`}>
         <header className="relative flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-[#f7f7f4]/90 px-4 backdrop-blur md:px-6">
           <div className="flex min-w-0 items-center gap-3"><button className="rounded-lg p-2 hover:bg-slate-200 md:hidden" onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button><button className="hidden rounded-lg p-2 hover:bg-slate-200 md:grid" aria-label={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"} title={sidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"} onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>{sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}</button><div className="hidden min-w-0 sm:block"><h1 className="max-w-52 truncate text-sm font-semibold">{isProjectRoute ? activeProject?.name || "Dự án" : isDiscoverRoute ? "Khám phá phong cách" : isNucleusRoute ? "Nucleus" : isStylesRoute ? "Thư viện phong cách" : isSettingsRoute ? "Cài đặt" : isProfileRoute ? "Hồ sơ" : "Trợ giúp"}</h1>{isProjectRoute && activeProject?.description && <p className="hidden max-w-44 truncate text-xs text-slate-500 lg:block">{activeProject.description}</p>}</div></div>
           {isProjectRoute && <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-200/80 bg-slate-200/60 p-1 shadow-xs" role="tablist" aria-label="Chế độ tạo nội dung">
             <button type="button" role="tab" aria-selected={composerMode === "new"} className={`min-w-[94px] rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${composerMode === "new" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setComposerMode("new"); if (activeProject) router.push(`/projects/${activeProject.id}/new`); }}>Viết mới</button>
             <button type="button" role="tab" aria-selected={composerMode === "rewrite"} className={`min-w-[94px] rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${composerMode === "rewrite" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setComposerMode("rewrite"); if (activeProject) router.push(`/projects/${activeProject.id}/rewrite`); }}>Viết lại</button>
           </div>}
-          {isProjectRoute ? <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900" aria-label="Bật tắt bảng tuỳ chọn" onClick={() => setOptionsOpen(!optionsOpen)}>{optionsOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}</button> : <span />}
+          {isProjectRoute && activeProject ? <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900" aria-label="Bật tắt bảng tuỳ chọn" onClick={() => setOptionsOpen(!optionsOpen)}>{optionsOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}</button> : <span />}
         </header>
-        {isDiscoverRoute ? <DiscoverPanel /> : isNucleusRoute ? <NucleusPanel /> : isStylesRoute ? <StyleLibraryPage /> : isSettingsRoute ? <SettingsPage /> : isProfileRoute ? <ProfilePage user={user} /> : isHelpRoute ? <HelpPage /> : activeProject ? <ComposerWorkspace key={activeProject.id} project={activeProject} optionsOpen={optionsOpen} savedStyle={selectedSavedStyle} /> : <EmptyProjects onCreate={() => setCreateOpen(true)} />}
+        {isDiscoverRoute ? <DiscoverPanel /> : isNucleusRoute ? <NucleusPanel /> : isStylesRoute ? <StyleLibraryPage /> : isSettingsRoute ? <SettingsPage /> : isProfileRoute ? <ProfilePage user={user} /> : isHelpRoute ? <HelpPage /> : projectsQuery.isPending || (isProjectRoute && !activeProject && Boolean(selectedProjectId)) ? <div className="grid flex-1 place-items-center"><Sparkles className="h-7 w-7 animate-pulse text-emerald-600" /></div> : activeProject ? <ComposerWorkspace key={activeProject.id} project={activeProject} optionsOpen={optionsOpen} savedStyle={selectedSavedStyle} /> : <EmptyProjects onCreate={() => setCreateOpen(true)} />}
       </div>
       <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
       <RenameProjectDialog project={editingProject} onClose={() => setEditingProject(null)} />
@@ -253,10 +256,11 @@ function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const queryClient = useQueryClient();
   const router = useRouter();
   const setSelectedProjectId = useAppStore((state) => state.setSelectedProjectId);
+  const setOptionsOpen = useAppStore((state) => state.setOptionsOpen);
   const form = useForm<{ name: string; description: string }>({ defaultValues: { name: "", description: "" } });
   const mutation = useMutation({
     mutationFn: (values: { name: string; description: string }) => apiRequest<{ project: Project }>("/api/projects", { method: "POST", body: JSON.stringify(values) }),
-    onSuccess: async ({ project }) => { await queryClient.invalidateQueries({ queryKey: ["projects"] }); setSelectedProjectId(project.id); router.push(`/projects/${project.id}/new`); form.reset(); onOpenChange(false); },
+    onSuccess: async ({ project }) => { await queryClient.invalidateQueries({ queryKey: ["projects"] }); setSelectedProjectId(project.id); setOptionsOpen(true); router.push(`/projects/${project.id}/new`); form.reset(); onOpenChange(false); },
   });
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="rounded-2xl sm:max-w-md"><DialogHeader><DialogTitle>Tạo dự án mới</DialogTitle><DialogDescription>Dự án giúp bạn gom nội dung và lịch sử theo từng chủ đề.</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}><label className="block text-sm font-medium">Tên dự án<Input autoFocus className="mt-2 rounded-xl" placeholder="Ví dụ: Chuỗi bài ra mắt sản phẩm" {...form.register("name", { required: true, maxLength: 80 })} /></label><label className="block text-sm font-medium">Mô tả <span className="font-normal text-slate-400">(không bắt buộc)</span><Textarea className="mt-2 min-h-24 rounded-xl" placeholder="Mục tiêu hoặc bối cảnh ngắn..." {...form.register("description", { maxLength: 240 })} /></label>{mutation.error && <p className="text-sm text-red-600">{mutation.error.message}</p>}<DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button><Button className="bg-slate-950 text-white hover:bg-slate-800" disabled={mutation.isPending}>{mutation.isPending ? "Đang tạo..." : "Tạo dự án"}</Button></DialogFooter></form></DialogContent></Dialog>;
 }
@@ -350,6 +354,7 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
     queryFn: () => apiRequest<{ generations: Generation[] }>(`/api/projects/${project.id}/generations`),
   });
   const items = history.data?.generations || [];
+  const listRef = useRef<HTMLDivElement>(null);
   const activeProvider = useWatch({ control: form.control, name: "provider" });
   const activeKeywords = useWatch({ control: form.control, name: "keywords" });
   const keywordChips = useMemo(() => Array.from(new Set(activeKeywords.split(/[\n,]/).map((keyword) => keyword.trim()).filter(Boolean))), [activeKeywords]);
@@ -381,8 +386,17 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
     },
   });
 
-  return <FormProvider {...form}><form className="flex min-h-0 flex-1 flex-col" onSubmit={form.handleSubmit((values) => generate.mutate(values))}>
-    <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-3xl space-y-8">
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node) return;
+    requestAnimationFrame(() => node.scrollTo({ top: node.scrollHeight, behavior: "smooth" }));
+  }, [items.length, generate.isPending]);
+
+  const topicField = form.register("topic");
+  const submitCompose = form.handleSubmit((values) => generate.mutate(values));
+
+  return <FormProvider {...form}><form className="flex min-h-0 flex-1 flex-col" onSubmit={submitCompose}>
+    <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-3xl space-y-8">
       {!history.isLoading && items.length === 0 && <div className="py-16 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"><Sparkles className="h-6 w-6 text-emerald-600" /></div><h2 className="mt-5 text-2xl font-semibold tracking-tight">Bạn muốn viết gì hôm nay?</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">Nhập brief bên dưới. Nội dung tạo ra sẽ tự động được lưu vào lịch sử của dự án này.</p></div>}
       {items.map((item) => <HistoryTurn key={item.id} item={item} />)}
       {generate.isPending && <div className="flex items-center gap-3 text-sm text-slate-500"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Đang tạo nội dung...</div>}
@@ -394,7 +408,7 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
           {keywordChips.slice(0, 6).map((keyword) => <span key={keyword} className="inline-flex max-w-48 items-center truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700" title={keyword}>Từ khóa: {keyword}</span>)}
           {keywordChips.length > 6 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">+{keywordChips.length - 6}</span>}
         </div>}
-        <Textarea className="min-h-[76px] resize-none border-0 bg-transparent p-2 text-[15px] shadow-none focus-visible:ring-0" placeholder={composerMode === "rewrite" ? "Mô tả cách bạn muốn viết lại nội dung..." : "Nhập chủ đề, ý tưởng hoặc brief bạn muốn viết..."} {...form.register("topic")} />
+        <Textarea className="min-h-[76px] resize-none border-0 bg-transparent p-2 text-[15px] shadow-none focus-visible:ring-0" placeholder={composerMode === "rewrite" ? "Mô tả cách bạn muốn viết lại nội dung..." : "Nhập chủ đề, ý tưởng hoặc brief bạn muốn viết..."} {...topicField} onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void submitCompose(); } }} />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 flex-wrap items-center gap-2">
           <NativeSelect aria-label="Provider" className={`${quickSelectClass} font-medium`} {...form.register("provider", { onChange: (event) => { const provider = event.target.value as Provider; const model = providerModels[provider][0]; form.setValue("model", model); setProviderConfig(provider, model, form.getValues("apiKey")); } })}>{providers.map((item) => <option key={item} value={item}>{providerLabels[item]}</option>)}</NativeSelect>
           <NativeSelect aria-label="Model" className={`${quickSelectClass} max-w-52`} {...form.register("model", { onChange: (event) => setProviderConfig(form.getValues("provider"), event.target.value, form.getValues("apiKey")) })}>{providerModels[activeProvider].map((item) => <option key={item} value={item}>{item}</option>)}</NativeSelect>
@@ -430,4 +444,10 @@ function OptionsPanel({ saveState }: { saveState: "idle" | "saving" | "saved" | 
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-sm font-medium text-slate-700"><span className="mb-2 block">{label}</span>{children}</label>;
+}
+
+function ProjectNavIcon({ src }: { src?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <Folder className="h-4 w-4 shrink-0 text-slate-400" />;
+  return <img src={src} alt="" referrerPolicy="no-referrer" className="h-5 w-5 shrink-0 rounded object-cover" onError={() => setFailed(true)} />; // eslint-disable-line @next/next/no-img-element
 }

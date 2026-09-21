@@ -254,30 +254,6 @@ function NucleusDetail({ slug }: { slug: string }) {
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"><CalendarRange className="h-3 w-3" />{formatRange(project.startTime, project.endTime)}</span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"><Users className="h-3 w-3" />{project.metrics.usersSignedUpCount.toLocaleString("vi-VN")} tham gia</span>
-                    {Object.entries(project.additionalFields).map(([key, value]) => (
-                      <span key={key} title={fieldLabel(key)} className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">{value}</span>
-                    ))}
-                    {project.mindshare && <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">Mindshare</span>}
-                    {project.reputationScore && <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700">Reputation</span>}
-                    {project.referralScore && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">Referral</span>}
-                    {project.onchainWeight !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">On-chain {project.onchainWeight}%</span>}
-                    {project.offchainWeight !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">Off-chain {project.offchainWeight}%</span>}
-                    {project.quests?.followX && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Follow X</span>}
-                    {project.quests?.joinDiscord && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Join Discord</span>}
-                    {project.quests?.joinTelegram && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Join Telegram</span>}
-                    {project.quests?.requiredWallets.map((wallet) => <span key={wallet} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Ví {wallet.toUpperCase()}</span>)}
-                    {project.categories.map((category) => <span key={category} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] capitalize text-slate-600">{category}</span>)}
-                    {project.nftBonuses.map((bonus) => (
-                      <span key={`${bonus.chain}-${bonus.collectionName}`} className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-800">
-                        {bonus.collectionName || "NFT"}{bonus.chain ? ` · ${bonus.chain}` : ""}{bonus.multiplyValue ? ` · x${bonus.multiplyValue}` : ""}
-                      </span>
-                    ))}
-                    {project.socials.map((social) => (
-                      <a key={`${social.platform}-${social.url}`} href={social.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:border-cyan-300 hover:text-cyan-800">
-                        {social.platform === "discord" || social.platform === "telegram" ? <MessageCircle className="h-3 w-3" /> : social.platform === "official_website" || social.platform === "website" ? <Globe className="h-3 w-3" /> : <ExternalLink className="h-3 w-3" />}
-                        {platformLabels[social.platform] || social.platform}
-                      </a>
-                    ))}
                   </div>
                 </div>
               </div>
@@ -300,18 +276,71 @@ function NucleusDetail({ slug }: { slug: string }) {
                 {applyBrief.error && <p className="mt-2 text-sm text-red-600">{applyBrief.error.message}</p>}
               </div>
 
-              {project.quests && project.quests.eligibilityQuests.length > 0 && (
-                <section className="mt-6">
-                  <h3 className="text-sm font-semibold">Quest tham gia</h3>
-                  <div className="mt-3 space-y-2">
-                    {project.quests.eligibilityQuests.map((quest) => (
-                      <div key={quest.id} className="rounded-2xl border border-slate-200 px-4 py-3">
-                        <p className="text-sm leading-6 text-slate-700">{quest.description}</p>
-                        {quest.buttonUrl && <a href={quest.buttonUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-cyan-700 hover:underline">{quest.buttonText || "Mở liên kết"}<ExternalLink className="h-3 w-3" /></a>}
-                      </div>
-                    ))}
+              {Object.keys(project.additionalFields).length > 0 && (
+                <ChipSection title="Thưởng và điều kiện">
+                  {Object.entries(project.additionalFields).map(([key, value]) => (
+                    <span key={key} title={fieldLabel(key)} className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800">{value}</span>
+                  ))}
+                </ChipSection>
+              )}
+
+              {(project.mindshare || project.reputationScore || project.referralScore || project.onchainWeight !== null || project.offchainWeight !== null) && (
+                <ChipSection title="Cách tính điểm">
+                  {project.mindshare && <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">Mindshare</span>}
+                  {project.reputationScore && <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700">Reputation</span>}
+                  {project.referralScore && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">Referral</span>}
+                  {project.onchainWeight !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">On-chain {project.onchainWeight}%</span>}
+                  {project.offchainWeight !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">Off-chain {project.offchainWeight}%</span>}
+                </ChipSection>
+              )}
+
+              {project.socials.length > 0 && (
+                <ChipSection title="Liên kết">
+                  {project.socials.map((social) => (
+                    <a key={`${social.platform}-${social.url}`} href={social.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:border-cyan-300 hover:text-cyan-800">
+                      {social.platform === "discord" || social.platform === "telegram" ? <MessageCircle className="h-3 w-3" /> : social.platform === "official_website" || social.platform === "website" ? <Globe className="h-3 w-3" /> : <ExternalLink className="h-3 w-3" />}
+                      {platformLabels[social.platform] || social.platform}
+                    </a>
+                  ))}
+                </ChipSection>
+              )}
+
+              {project.quests && (project.quests.followX || project.quests.joinDiscord || project.quests.joinTelegram || project.quests.requiredWallets.length > 0 || project.quests.eligibilityQuests.length > 0) && (
+                <section className="mt-5">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Quest tham gia</h3>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {project.quests.followX && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Follow X</span>}
+                    {project.quests.joinDiscord && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Join Discord</span>}
+                    {project.quests.joinTelegram && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Join Telegram</span>}
+                    {project.quests.requiredWallets.map((wallet) => <span key={wallet} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">Ví {wallet.toUpperCase()}</span>)}
                   </div>
+                  {project.quests.eligibilityQuests.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {project.quests.eligibilityQuests.map((quest) => (
+                        <div key={quest.id} className="rounded-2xl border border-slate-200 px-4 py-3">
+                          <p className="text-sm leading-6 text-slate-700">{quest.description}</p>
+                          {quest.buttonUrl && <a href={quest.buttonUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-cyan-700 hover:underline">{quest.buttonText || "Mở liên kết"}<ExternalLink className="h-3 w-3" /></a>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
+              )}
+
+              {project.categories.length > 0 && (
+                <ChipSection title="Danh mục">
+                  {project.categories.map((category) => <span key={category} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] capitalize text-slate-600">{category}</span>)}
+                </ChipSection>
+              )}
+
+              {project.nftBonuses.length > 0 && (
+                <ChipSection title="NFT bonus">
+                  {project.nftBonuses.map((bonus) => (
+                    <span key={`${bonus.chain}-${bonus.collectionName}`} className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-800">
+                      {bonus.collectionName || "NFT"}{bonus.chain ? ` · ${bonus.chain}` : ""}{bonus.multiplyValue ? ` · x${bonus.multiplyValue}` : ""}
+                    </span>
+                  ))}
+                </ChipSection>
               )}
 
               {project.details.length > 0 && (
@@ -345,6 +374,15 @@ function NucleusDetail({ slug }: { slug: string }) {
         )}
       </div>
     </main>
+  );
+}
+
+function ChipSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-5">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</h3>
+      <div className="mt-2 flex flex-wrap gap-1.5">{children}</div>
+    </section>
   );
 }
 

@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- Nucleus S3 URLs load more reliably as native img than via the Next optimizer. */
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarRange, ChevronDown, ExternalLink, FileText, Globe, LoaderCircle, Lock, MessageCircle, Plus, Users } from "lucide-react";
+import { ArrowLeft, CalendarRange, ChevronDown, ExternalLink, FileText, Globe, LoaderCircle, Lock, Plus, Users } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -227,15 +227,9 @@ function NucleusDetail({ slug }: { slug: string }) {
             <div className="relative h-48 bg-slate-100 sm:h-60">
               <NucleusImg src={project.bannerImageUrl} alt="" className="h-full w-full object-cover" />
             </div>
-            <div className="px-5 pb-8 sm:px-8">
-              <div className="flex flex-col gap-4 pt-3 sm:flex-row sm:items-start sm:gap-6 sm:pt-4">
-                <div className="relative z-10 -mt-10 shrink-0 sm:-mt-14">
-                  <NucleusImg
-                    src={project.thumbnailUrl}
-                    alt={project.name}
-                    className="h-20 w-20 rounded-2xl border-4 border-white bg-white object-cover shadow-md ring-1 ring-slate-900/5 sm:h-24 sm:w-24 sm:rounded-3xl"
-                  />
-                </div>
+            <div className="px-5 pb-8 pt-5 sm:px-8">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+                <NucleusImg src={project.thumbnailUrl} alt={project.name} className="h-16 w-16 shrink-0 rounded-2xl border border-slate-200 bg-white object-cover sm:h-20 sm:w-20" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{project.name}</h2>
@@ -254,15 +248,21 @@ function NucleusDetail({ slug }: { slug: string }) {
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"><CalendarRange className="h-3 w-3" />{formatRange(project.startTime, project.endTime)}</span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"><Users className="h-3 w-3" />{project.metrics.usersSignedUpCount.toLocaleString("vi-VN")} tham gia</span>
+                    {project.socials.map((social) => (
+                      <a key={`${social.platform}-${social.url}`} href={social.url} target="_blank" rel="noopener noreferrer" title={platformLabels[social.platform] || social.platform} className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-slate-600 hover:bg-cyan-50 hover:text-cyan-800">
+                        <SocialGlyph platform={social.platform} />
+                      </a>
+                    ))}
                   </div>
                 </div>
               </div>
 
+              {!existingProject && (
               <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <label className="min-w-0 flex-1 text-sm font-medium text-slate-700">Dự án viết bài
                     <NativeSelect wrapperClassName="mt-2 block w-full" className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-cyan-400" value={selectedTarget} onChange={(event) => setTargetId(event.target.value)}>
-                      {!existingProject && <option value="new">Tạo dự án mới</option>}
+                      <option value="new">Tạo dự án mới</option>
                       {(studioProjects || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                     </NativeSelect>
                   </label>
@@ -271,10 +271,10 @@ function NucleusDetail({ slug }: { slug: string }) {
                     {selectedTarget === "new" ? "Tạo dự án và dùng brief" : "Đưa brief vào dự án"}
                   </Button>
                 </div>
-                {existingProject && <p className="mt-3 text-sm text-amber-700">Dự án “{existingProject.name}” đã tồn tại. Không thể tạo mới, hãy dùng dự án hiện có.</p>}
                 <p className="mt-3 text-xs leading-5 text-slate-500">Rule bắt buộc lấy “{firstDetailTitle}”. Từ khóa bắt buộc gắn {xUsername ? `@${xUsername}` : "username X"}.</p>
                 {applyBrief.error && <p className="mt-2 text-sm text-red-600">{applyBrief.error.message}</p>}
               </div>
+              )}
 
               {Object.keys(project.additionalFields).length > 0 && (
                 <ChipSection title="Thưởng và điều kiện">
@@ -291,17 +291,6 @@ function NucleusDetail({ slug }: { slug: string }) {
                   {project.referralScore && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">Referral</span>}
                   {project.onchainWeight !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">On-chain {project.onchainWeight}%</span>}
                   {project.offchainWeight !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">Off-chain {project.offchainWeight}%</span>}
-                </ChipSection>
-              )}
-
-              {project.socials.length > 0 && (
-                <ChipSection title="Liên kết">
-                  {project.socials.map((social) => (
-                    <a key={`${social.platform}-${social.url}`} href={social.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:border-cyan-300 hover:text-cyan-800">
-                      {social.platform === "discord" || social.platform === "telegram" ? <MessageCircle className="h-3 w-3" /> : social.platform === "official_website" || social.platform === "website" ? <Globe className="h-3 w-3" /> : <ExternalLink className="h-3 w-3" />}
-                      {platformLabels[social.platform] || social.platform}
-                    </a>
-                  ))}
                 </ChipSection>
               )}
 
@@ -384,5 +373,19 @@ function ChipSection({ title, children }: { title: string; children: React.React
       <div className="mt-2 flex flex-wrap gap-1.5">{children}</div>
     </section>
   );
+}
+
+function SocialGlyph({ platform }: { platform: string }) {
+  const type = platform.toLowerCase();
+  if (type === "x" || type === "twitter") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden><path d="M18.244 2H21.5l-7.5 8.57L22.5 22h-6.59l-5.16-6.74L5.2 22H1.94l8.02-9.16L1.5 2h6.76l4.66 6.18L18.244 2Zm-1.16 18h1.8L7.01 3.89H5.08L17.084 20Z" /></svg>;
+  }
+  if (type === "discord") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden><path d="M19.27 5.33A17.3 17.3 0 0 0 14.9 4l-.22.4c1.72.47 2.6.94 3.7 1.64-1.56-.74-3.1-1.22-4.66-1.45-.7-.1-1.4-.16-2.1-.16s-1.4.06-2.1.16c-1.56.23-3.1.71-4.66 1.45 1.1-.7 2.1-1.17 3.7-1.64L8.34 4A17.3 17.3 0 0 0 3.97 5.33C1.7 8.73.9 12 1.05 15.24A17.5 17.5 0 0 0 6.4 18.2l.86-1.16c-.94-.35-1.8-.8-2.58-1.32.7.5 2.9 1.5 7.32 1.5s6.62-1 7.32-1.5c-.78.52-1.64.97-2.58 1.32l.86 1.16a17.5 17.5 0 0 0 5.35-2.96c.22-3.7-.62-6.94-2.98-10.03ZM8.7 13.54c-.83 0-1.5-.77-1.5-1.72s.66-1.72 1.5-1.72 1.52.77 1.5 1.72c0 .95-.67 1.72-1.5 1.72Zm6.6 0c-.83 0-1.5-.77-1.5-1.72s.66-1.72 1.5-1.72 1.52.77 1.5 1.72c0 .95-.66 1.72-1.5 1.72Z" /></svg>;
+  }
+  if (type === "telegram") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden><path d="M21.5 4.4 18.7 19.2c-.2 1-1.3 1.4-2.1.8l-4.5-3.4-2.2 2.1c-.24.24-.6.3-.9.18l.3-4.6 8.4-7.6c.37-.33-.08-.5-.57-.2L6.4 12.4 2 11c-.95-.3-.97-1.6.08-1.95L20.2 3.2c.9-.35 1.7.5 1.3 1.2Z" /></svg>;
+  }
+  return <Globe className="h-3.5 w-3.5" />;
 }
 

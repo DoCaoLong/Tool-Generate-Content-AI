@@ -196,12 +196,16 @@ function NucleusDetail({ slug }: { slug: string }) {
           body: JSON.stringify({
             name: project.name.slice(0, 80),
             description: (project.description || `Chiến dịch Nucleus ${project.slug}`).slice(0, 240),
+            imageUrl: project.thumbnailUrl || project.bannerImageUrl || null,
           }),
         });
         projectId = created.project.id;
         currentOptions = created.project.contentOptions;
       } else if (!currentOptions) {
         throw new Error("Không tìm thấy dự án đã chọn.");
+      } else {
+        const imageUrl = project.thumbnailUrl || project.bannerImageUrl || null;
+        if (imageUrl) await apiRequest(`/api/projects/${projectId}`, { method: "PATCH", body: JSON.stringify({ imageUrl }) });
       }
       const contentOptions = applyNucleusOptions(project, currentOptions);
       await apiRequest<{ contentOptions: Project["contentOptions"] }>(`/api/projects/${projectId}/options`, { method: "PATCH", body: JSON.stringify(contentOptions) });

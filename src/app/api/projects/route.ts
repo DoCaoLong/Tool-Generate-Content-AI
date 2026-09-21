@@ -6,6 +6,7 @@ import { defaultProjectContentOptions, normalizeProjectContentOptions } from "@/
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(240).default(""),
+  imageUrl: z.string().trim().max(500).nullable().optional(),
 });
 
 export async function GET() {
@@ -23,6 +24,7 @@ export async function GET() {
       id: project._id.toHexString(),
       name: project.name,
       description: project.description || "",
+      imageUrl: project.imageUrl || null,
       contentOptions: normalizeProjectContentOptions(project.contentOptions),
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
@@ -47,6 +49,7 @@ export async function POST(request: Request) {
     userId: auth.user.id,
     name: parsed.data.name,
     description: parsed.data.description,
+    imageUrl: parsed.data.imageUrl || null,
     contentOptions: defaultProjectContentOptions,
     createdAt: now,
     updatedAt: now,
@@ -56,7 +59,9 @@ export async function POST(request: Request) {
     {
       project: {
         id: result.insertedId.toHexString(),
-        ...parsed.data,
+        name: parsed.data.name,
+        description: parsed.data.description,
+        imageUrl: parsed.data.imageUrl || null,
         contentOptions: defaultProjectContentOptions,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),

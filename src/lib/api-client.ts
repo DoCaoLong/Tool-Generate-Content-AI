@@ -261,6 +261,15 @@ export async function generateWithAnthropic(options: GenerateOptions): Promise<G
     }
 }
 
+export async function generateWithProvider(provider: Provider, options: GenerateOptions): Promise<GenerateResponse> {
+    if (provider === "gemini") return generateWithGemini(options);
+    if (provider === "deepseek") return generateWithDeepSeek(options);
+    if (provider === "anthropic") return generateWithAnthropic(options);
+    if (provider === "xai") return generateWithXAI(options);
+    if (provider === "openrouter") return generateWithOpenRouter(options);
+    return generateWithOpenAI(options);
+}
+
 async function validateOpenAICompatibleKey(
     options: {
         apiKey: string;

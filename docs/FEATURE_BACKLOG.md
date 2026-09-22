@@ -18,7 +18,7 @@
 
 - Status: proposed
 - Priority: medium
-- Scope: dùng AI tổng hợp các bài mẫu Sorsa thành một style profile ngắn, lưu MongoDB theo user/project để giảm token và tái sử dụng ổn định.
+- Scope: tạo phong cách từ username (Sorsa + AI, lưu theo user) đã có trên `/styles`. Phần còn lại: sau khi đã có instruction, không nhét toàn bộ bài mẫu vào prompt generation để giảm token.
 
 ### Backlog-005: Chỉnh sửa và nhân bản phong cách
 

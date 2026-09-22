@@ -3,6 +3,8 @@
 ## 2026-09-22
 
 - Form tạo phong cách trên `/styles` thêm ô username. Sau access code, Sorsa lấy bài `from:username`, AI (provider, model và API key đã lưu trên client) phân tích tối đa 12 bài thành tên, mô tả và hướng dẫn. Lưu `kind: discovered` kèm tối đa 20 bài mẫu.
+- Thư viện và hộp chi tiết chỉ hiện tên phong cách và hướng dẫn văn phong. Không hiện nội dung bài Sorsa.
+- Phong cách đã lưu sửa được tên, mô tả và hướng dẫn qua `PATCH /api/styles/[styleId]`. Nút bút chì trên thẻ và nút Sửa trong hộp chi tiết. KOL dựng sẵn không sửa tại đây.
 
 ## 2026-09-21
 

@@ -20,11 +20,11 @@
 - Priority: medium
 - Scope: tạo phong cách từ username (Sorsa + AI, lưu theo user) đã có trên `/styles`. Phần còn lại: sau khi đã có instruction, không nhét toàn bộ bài mẫu vào prompt generation để giảm token.
 
-### Backlog-005: Chỉnh sửa và nhân bản phong cách
+### Backlog-005: Nhân bản phong cách
 
 - Status: proposed
 - Priority: medium
-- Scope: cho phép sửa tên, instruction, bài mẫu hoặc nhân bản một style đã lưu để thử biến thể mà không làm mất bản gốc.
+- Scope: sửa tên, mô tả và hướng dẫn của phong cách đã lưu đã có trên `/styles`. Phần còn lại: nhân bản một style để thử biến thể mà không đụng bản gốc.
 
 ### Backlog-006: API key riêng cho từng provider
 

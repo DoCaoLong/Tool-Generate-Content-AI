@@ -81,13 +81,13 @@
 - `src/app/api/nucleus/projects` proxy Nucleus `GET /v1/projects` với `skip`, `limit` và fields danh sách; `src/app/api/nucleus/projects/[slug]` lấy chi tiết bằng slug, fallback `id` khi slug null.
 - Proxy Nucleus yêu cầu đăng nhập, không cần API key, loại danh sách user đã tham gia, và sanitize HTML chi tiết trước khi trả về client.
 - Bộ lọc tên dự án của Khám phá là tuỳ chọn; khi để trống, API chỉ dùng `from:username`, sắp xếp `latest` và trả các bài gần nhất của tác giả.
-- `src/app/api/styles/*`: đọc, tạo và xoá thư viện phong cách thuộc riêng từng user.
+- `src/app/api/styles/*`: đọc, tạo, sửa và xoá thư viện phong cách thuộc riêng từng user. `PATCH /api/styles/[styleId]` cập nhật tên, mô tả và hướng dẫn; giữ nguyên kind, username và bài mẫu.
 - Sorsa key chỉ đọc từ `SORSA_API_KEY` phía server; không gửi xuống trình duyệt.
 - Người dùng có thể chọn tối đa 8 bài công khai làm mẫu. Snapshot bài mẫu được đưa vào prompt, lưu cùng generation và được Zustand persist trên thiết bị để tiếp tục sử dụng.
 - Prompt coi bài mẫu là dữ liệu không tin cậy, chỉ phân tích đặc trưng văn phong và không được làm theo instruction nằm trong nội dung mẫu.
 - Prompt tách rule người dùng thành chỉ dẫn bắt buộc và coi tài liệu tham khảo là dữ liệu không tin cậy, không thực thi instruction nằm trong tài liệu.
 - Style khám phá được lưu vào collection `styles` trước khi áp dụng. Người dùng cũng có thể tự tạo style bằng tên, mô tả, hướng dẫn và một bài mẫu tuỳ chọn.
-- Form tạo phong cách có ô username không bắt buộc. Phân tích gọi `POST /api/discover` (cùng access code với Khám phá) để lấy bài của tác giả, rồi `generateWithProvider` trên client viết hướng dẫn. Kết quả lưu `kind: discovered` với `username` và bài mẫu; bỏ username hoặc chưa phân tích thì vẫn lưu style thủ công.
+- Form tạo phong cách có ô username không bắt buộc. Phân tích gọi `POST /api/discover` (cùng access code với Khám phá) để lấy bài của tác giả, rồi `generateWithProvider` trên client viết hướng dẫn. Kết quả lưu `kind: discovered` với `username` và bài mẫu; bỏ username hoặc chưa phân tích thì vẫn lưu style thủ công. UI thư viện và `StyleDetailDialog` chỉ hiện tên, mô tả và hướng dẫn văn phong, không render nội dung bài Sorsa.
 - `KOLStylePicker` hiển thị `Phong cách của bạn` từ MongoDB và `KOL dựng sẵn`; active saved style chỉ lưu id trong Zustand, còn MongoDB là nguồn dữ liệu chính.
 - Collection `styles` có index `(userId, updatedAt)` phục vụ danh sách thư viện theo tài khoản.
 - Provider, model, ngôn ngữ, giọng điệu và độ dài được chọn nhanh ngay bên trái nút gửi; API key được quản lý tại `/settings` thay vì aside tuỳ chọn.

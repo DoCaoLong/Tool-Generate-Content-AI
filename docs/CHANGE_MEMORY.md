@@ -1,5 +1,9 @@
 # CHANGE_MEMORY
 
+## 2026-09-22
+
+- Form tạo phong cách trên `/styles` thêm ô username. Sau access code, Sorsa lấy bài `from:username`, AI (provider, model và API key đã lưu trên client) phân tích tối đa 12 bài thành tên, mô tả và hướng dẫn. Lưu `kind: discovered` kèm tối đa 20 bài mẫu.
+
 ## 2026-09-21
 
 - Bỏ tracking `next-env.d.ts` và thêm file này vào `.gitignore` theo khuyến nghị của Next.js 16.3.5; file tiếp tục được Next.js tự sinh khi dev/build/typegen.

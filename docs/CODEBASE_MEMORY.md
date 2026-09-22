@@ -87,6 +87,7 @@
 - Prompt coi bài mẫu là dữ liệu không tin cậy, chỉ phân tích đặc trưng văn phong và không được làm theo instruction nằm trong nội dung mẫu.
 - Prompt tách rule người dùng thành chỉ dẫn bắt buộc và coi tài liệu tham khảo là dữ liệu không tin cậy, không thực thi instruction nằm trong tài liệu.
 - Style khám phá được lưu vào collection `styles` trước khi áp dụng. Người dùng cũng có thể tự tạo style bằng tên, mô tả, hướng dẫn và một bài mẫu tuỳ chọn.
+- Form tạo phong cách có ô username không bắt buộc. Phân tích gọi `POST /api/discover` (cùng access code với Khám phá) để lấy bài của tác giả, rồi `generateWithProvider` trên client viết hướng dẫn. Kết quả lưu `kind: discovered` với `username` và bài mẫu; bỏ username hoặc chưa phân tích thì vẫn lưu style thủ công.
 - `KOLStylePicker` hiển thị `Phong cách của bạn` từ MongoDB và `KOL dựng sẵn`; active saved style chỉ lưu id trong Zustand, còn MongoDB là nguồn dữ liệu chính.
 - Collection `styles` có index `(userId, updatedAt)` phục vụ danh sách thư viện theo tài khoản.
 - Provider, model, ngôn ngữ, giọng điệu và độ dài được chọn nhanh ngay bên trái nút gửi; API key được quản lý tại `/settings` thay vì aside tuỳ chọn.

@@ -56,7 +56,7 @@
 - `src/components/ui/native-select.tsx`: native select dùng icon ChevronDown riêng, thống nhất mũi tên giữa composer và Settings.
 - `src/components/ProfileMenu.tsx`: menu tài khoản dạng popover với cá nhân hoá, hồ sơ, cài đặt, trợ giúp và đăng xuất.
 - `src/components/ProfilePage.tsx`, `src/components/HelpPage.tsx`: các page tài khoản hỗ trợ route riêng.
-- `src/components/DiscoverPanel.tsx`: tab Khám phá, form tìm bài X, mục Radar của dự án đang viết, chọn bài mẫu và áp dụng style động. Radar không đưa bài vào ô chọn mẫu.
+- `src/components/DiscoverPanel.tsx`: tab Khám phá, form tìm bài X, mục Radar của mọi dự án trong Dự án của bạn, chọn bài mẫu và áp dụng style động. Radar không đưa bài vào ô chọn mẫu.
 - `src/components/NucleusPanel.tsx`: tab Nucleus, danh sách chiến dịch InfoFi và trang chi tiết theo slug.
 - `src/lib/kol-styles.ts`: adapter có kiểu dữ liệu cho `data/author.json`.
 - `src/lib/app-store.ts`: project đang chọn, trạng thái sidebar/options và provider config.
@@ -80,7 +80,8 @@
 - KOL được chọn bằng mục `Phong cách KOL` ngay dưới nút tạo dự án, được giữ cục bộ bằng Zustand và inject vào prompt.
 - Generation lưu snapshot gồm id, tên và instruction của KOL để lịch sử không phụ thuộc lựa chọn hiện tại.
 - `src/app/api/discover/route.ts` gọi Sorsa v3 từ server, header `ApiKey`. `POST /v3/search-tweets` khi có username (`from:username`, `order: latest`). `POST /v3/mentions` khi chỉ có @handle dự án: `query` là handle không có `@`, `order: popular`. `radar: true` cũng gọi `search-tweets` với `order: latest` và query từ `buildRadarQuery` trong `src/lib/radar-query.ts` (tên dự án, cụm có dấu ngoặc kép, dạng viết liền, và @handle trong từ khoá hoặc dòng `X:`), kèm `lang:en -filter:replies`. Radar không sắp theo số bình luận. Bài lấy từ `tweets[].full_text`; retweet (`retweeted_status`) bị bỏ. `next_cursor` chuỗi rỗng coi như hết trang. Lỗi đọc `message`. 429 và 5xx được thử lại tối đa 3 lần. Chỉ cần một trong hai trường.
-- Radar chỉ chạy khi `DiscoverPanel` đang mở và không cần access code. Kết quả và thời điểm gọi nằm ở `localStorage` khoá `content-studio-radar`, theo dự án và câu query, hạn 30 phút. Trong hạn đó, mở lại tab hoặc tải lại trang không gọi Sorsa. Hết hạn thì gọi một lần lúc vào tab, không gọi lặp khi đang ở lại tab.
+- Radar hiện avatar (`user.profile_image_url`, bản `_400x400`) và tối đa 4 ảnh `entities` loại `photo`. Ảnh bài dùng `link` trên `twimg.com/media`, không có thì dùng `preview`, và `name=orig` khi URL có tham số kích thước. Kết quả cache ở `localStorage` khoá `content-studio-radar-v2`.
+- Radar chỉ chạy khi `DiscoverPanel` đang mở và không cần access code. Mỗi dự án có một cache trong `localStorage` khoá `content-studio-radar-v2`, gồm tên dự án, câu query, thời điểm và bài viết, hạn 30 phút. Tải lại trang đọc cache này và hiện bài ngay, kể cả khi danh sách dự án chưa về. Chỉ gọi Sorsa cho dự án hết hạn hoặc đổi câu query, và không xoá bài cũ khi lời gọi lỗi. Không gọi lặp khi đang ở lại tab.
 - `src/app/api/nucleus/projects` proxy Nucleus `GET /v1/projects` với `skip`, `limit` và fields danh sách; `src/app/api/nucleus/projects/[slug]` lấy chi tiết bằng slug, fallback `id` khi slug null.
 - Proxy Nucleus yêu cầu đăng nhập, không cần API key, loại danh sách user đã tham gia, và sanitize HTML chi tiết trước khi trả về client.
 - Bộ lọc tên dự án của Khám phá là tuỳ chọn; khi để trống, API chỉ dùng `from:username`, sắp xếp `latest` và trả các bài gần nhất của tác giả.

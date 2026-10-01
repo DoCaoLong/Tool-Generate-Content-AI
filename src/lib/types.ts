@@ -66,6 +66,8 @@ export interface DiscoveredTweet {
   createdAt: string;
   username: string;
   displayName: string;
+  avatarUrl: string;
+  images: string[];
   likes: number;
   reposts: number;
   replies: number;

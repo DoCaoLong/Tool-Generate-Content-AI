@@ -2,9 +2,10 @@ import type { DiscoveredTweet } from "@/lib/types";
 
 export const RADAR_TTL_MS = 30 * 60 * 1000;
 
-const CACHE_KEY = "content-studio-radar";
+const CACHE_KEY = "content-studio-radar-v2";
 
 export interface RadarCacheEntry {
+  name: string;
   query: string;
   fetchedAt: number;
   tweets: DiscoveredTweet[];
@@ -27,6 +28,7 @@ export function subscribeRadarCache(listener: () => void) {
 export function getRadarCacheSnapshot() {
   if (!radarReady && typeof window !== "undefined") {
     try {
+      localStorage.removeItem("content-studio-radar");
       radarRaw = localStorage.getItem(CACHE_KEY) || "";
     } catch {
       radarRaw = "";
@@ -40,15 +42,40 @@ export function getRadarCacheServerSnapshot() {
   return "";
 }
 
+export function getRadarCacheReadySnapshot() {
+  getRadarCacheSnapshot();
+  return radarReady ? "ready" : "pending";
+}
+
+export function getRadarCacheReadyServerSnapshot() {
+  return "pending";
+}
+
+function httpsUrl(value: unknown) {
+  if (typeof value !== "string") return "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
 function cleanTweets(tweets: DiscoveredTweet[]) {
   return tweets.slice(0, 20).flatMap((tweet) => {
     if (!tweet || typeof tweet.id !== "string" || typeof tweet.text !== "string") return [];
+    const images = Array.isArray(tweet.images) ? tweet.images.flatMap((item) => {
+      const url = httpsUrl(item);
+      return url ? [url] : [];
+    }).slice(0, 4) : [];
     return [{
       id: tweet.id,
       text: tweet.text.slice(0, 4000),
       createdAt: typeof tweet.createdAt === "string" ? tweet.createdAt : "",
       username: typeof tweet.username === "string" ? tweet.username : "",
       displayName: typeof tweet.displayName === "string" ? tweet.displayName : "",
+      avatarUrl: httpsUrl(tweet.avatarUrl),
+      images,
       likes: Number(tweet.likes) || 0,
       reposts: Number(tweet.reposts) || 0,
       replies: Number(tweet.replies) || 0,
@@ -57,16 +84,31 @@ function cleanTweets(tweets: DiscoveredTweet[]) {
   });
 }
 
-export function readRadarEntry(raw: string, projectId: string, query: string) {
-  if (!raw || !projectId || !query) return null;
+function normalizeEntry(entry: Partial<RadarCacheEntry> | null) {
+  if (!entry || typeof entry.fetchedAt !== "number" || !Array.isArray(entry.tweets)) return null;
+  return {
+    name: typeof entry.name === "string" ? entry.name : "",
+    query: typeof entry.query === "string" ? entry.query : "",
+    fetchedAt: entry.fetchedAt,
+    tweets: cleanTweets(entry.tweets),
+  };
+}
+
+export function readRadarEntry(raw: string, projectId: string) {
+  if (!raw || !projectId) return null;
   try {
     const all = JSON.parse(raw) as Record<string, RadarCacheEntry>;
-    const entry = all[projectId];
-    if (!entry || entry.query !== query || typeof entry.fetchedAt !== "number" || !Array.isArray(entry.tweets)) return null;
-    return { query: entry.query, fetchedAt: entry.fetchedAt, tweets: cleanTweets(entry.tweets) };
+    return normalizeEntry(all[projectId]);
   } catch {
     return null;
   }
+}
+
+export function listRadarEntries(raw: string) {
+  return Object.entries(readRadarMap(raw)).flatMap(([id, entry]) => {
+    const normalized = normalizeEntry(entry);
+    return normalized ? [{ id, ...normalized }] : [];
+  });
 }
 
 export function radarCacheFresh(entry: RadarCacheEntry | null, now = Date.now()) {
@@ -75,13 +117,20 @@ export function radarCacheFresh(entry: RadarCacheEntry | null, now = Date.now())
 
 export function saveRadarEntry(projectId: string, entry: RadarCacheEntry) {
   const all = readRadarMap(getRadarCacheSnapshot());
-  all[projectId] = { query: entry.query, fetchedAt: entry.fetchedAt, tweets: cleanTweets(entry.tweets) };
-  radarRaw = JSON.stringify(all);
+  all[projectId] = { name: entry.name, query: entry.query, fetchedAt: entry.fetchedAt, tweets: cleanTweets(entry.tweets) };
+  const compact = JSON.stringify(all);
+  const withoutImages = JSON.stringify(Object.fromEntries(Object.entries(all).map(([id, item]) => [id, { ...item, tweets: item.tweets.map((tweet) => ({ ...tweet, images: [] })) }])));
   radarReady = true;
   try {
-    localStorage.setItem(CACHE_KEY, radarRaw);
+    localStorage.setItem(CACHE_KEY, compact);
+    radarRaw = compact;
   } catch {
-    radarRaw = JSON.stringify(all);
+    try {
+      localStorage.setItem(CACHE_KEY, withoutImages);
+      radarRaw = withoutImages;
+    } catch {
+      radarRaw = compact;
+    }
   }
   emit(radarListeners);
 }

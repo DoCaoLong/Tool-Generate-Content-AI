@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/lib/app-store";
+import { getKOLInitials } from "@/lib/kol-styles";
 import { ApiError, apiRequest } from "@/lib/http";
-import { getRadarCacheServerSnapshot, getRadarCacheSnapshot, radarCacheFresh, readRadarEntry, saveRadarEntry, shareRadarRequest, subscribeRadarCache } from "@/lib/radar-cache";
+import { getRadarCacheReadyServerSnapshot, getRadarCacheReadySnapshot, getRadarCacheServerSnapshot, getRadarCacheSnapshot, listRadarEntries, radarCacheFresh, readRadarEntry, saveRadarEntry, shareRadarRequest, subscribeRadarCache } from "@/lib/radar-cache";
 import { buildRadarQuery, projectXHandle } from "@/lib/radar-query";
 import { clearSorsaAccessCode, getSorsaAccessServerSnapshot, getSorsaAccessSnapshot, saveSorsaAccessCode, subscribeSorsaAccess } from "@/lib/sorsa-access";
 import type { DiscoveredTweet, Project, SavedStyle } from "@/lib/types";
@@ -34,6 +35,31 @@ function shortNumber(value: number) {
   return new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
+function RadarAvatar({ tweet }: { tweet: DiscoveredTweet }) {
+  const [failed, setFailed] = useState(false);
+  if (!tweet.avatarUrl || failed) {
+    return <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{getKOLInitials(tweet.displayName || tweet.username)}</span>;
+  }
+  return <img src={tweet.avatarUrl} alt="" referrerPolicy="no-referrer" className="h-10 w-10 shrink-0 rounded-full object-cover" onError={() => setFailed(true)} />; // eslint-disable-line @next/next/no-img-element
+}
+
+function RadarPhoto({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return <img src={src} alt="" referrerPolicy="no-referrer" className="w-full rounded-xl" onError={() => setFailed(true)} />; // eslint-disable-line @next/next/no-img-element
+}
+
+function RadarTweetCard({ tweet }: { tweet: DiscoveredTweet }) {
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex items-center gap-3"><RadarAvatar tweet={tweet} /><p className="min-w-0 text-sm font-semibold text-slate-900">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></p></div>
+      <p className="mt-3 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p>
+      {tweet.images.length > 0 && <div className={`mt-3 grid gap-2 ${tweet.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>{tweet.images.map((src) => <RadarPhoto key={src} src={src} />)}</div>}
+      <TweetStats tweet={tweet} />
+    </article>
+  );
+}
+
 function TweetStats({ tweet }: { tweet: DiscoveredTweet }) {
   const created = Number.isNaN(new Date(tweet.createdAt).getTime()) ? "" : new Date(tweet.createdAt).toLocaleDateString("vi-VN");
   return (
@@ -52,7 +78,6 @@ export default function DiscoverPanel() {
   const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
   const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
   const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
-  const selectedProjectId = useAppStore((state) => state.selectedProjectId);
   const [tweets, setTweets] = useState<DiscoveredTweet[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -62,26 +87,50 @@ export default function DiscoverPanel() {
   const [pendingSearch, setPendingSearch] = useState<{ values: DiscoverValues; cursor?: string } | null>(null);
   const verifiedCode = useSyncExternalStore(subscribeSorsaAccess, getSorsaAccessSnapshot, getSorsaAccessServerSnapshot);
   const radarRaw = useSyncExternalStore(subscribeRadarCache, getRadarCacheSnapshot, getRadarCacheServerSnapshot);
+  const radarCacheReady = useSyncExternalStore(subscribeRadarCache, getRadarCacheReadySnapshot, getRadarCacheReadyServerSnapshot) === "ready";
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiRequest<{ projects: Project[] }>("/api/projects") });
-  const writingProject = projectsQuery.data?.projects.find((item) => item.id === selectedProjectId) || null;
-  const radarHandle = writingProject ? projectXHandle(writingProject.contentOptions.keywords, writingProject.contentOptions.documents) : "";
-  const radarQueryText = writingProject ? buildRadarQuery(writingProject.name, radarHandle) : "";
-  const radarCached = useMemo(() => readRadarEntry(radarRaw, selectedProjectId || "", radarQueryText), [radarRaw, selectedProjectId, radarQueryText]);
-  const radarFresh = useMemo(() => radarCacheFresh(radarCached), [radarCached]);
+  const radarTargets = useMemo(() => (projectsQuery.data?.projects || []).flatMap((project) => {
+    const handle = projectXHandle(project.contentOptions.keywords, project.contentOptions.documents);
+    const query = buildRadarQuery(project.name, handle);
+    return query ? [{ id: project.id, name: project.name, handle, query }] : [];
+  }), [projectsQuery.data]);
+  const storedRadar = useMemo(() => listRadarEntries(radarRaw), [radarRaw]);
+  const radarKey = radarTargets.map((target) => `${target.id}:${target.query}`).join("\n");
+  const radarPlan = useMemo(() => {
+    if (!radarTargets.length) {
+      return storedRadar.map((entry) => ({ id: entry.id, name: entry.name || "Dự án", handle: "", query: entry.query, entry, fresh: radarCacheFresh(entry) }));
+    }
+    return radarTargets.map((target) => {
+      const entry = readRadarEntry(radarRaw, target.id);
+      return { ...target, entry, fresh: radarCacheFresh(entry) && entry?.query === target.query };
+    });
+  }, [radarRaw, radarTargets, storedRadar]);
   const form = useForm<DiscoverValues>({ resolver: zodResolver(schema), defaultValues: { username: "", projectName: "" } });
 
   const radar = useQuery({
-    queryKey: ["discover-radar", selectedProjectId, radarQueryText],
-    enabled: Boolean(selectedProjectId && radarQueryText && !radarFresh),
+    queryKey: ["discover-radar", radarKey],
+    enabled: radarCacheReady && radarTargets.length > 0 && radarPlan.some((item) => !item.fresh),
     staleTime: 0,
     retry: false,
-    queryFn: () => shareRadarRequest(`${selectedProjectId}:${radarQueryText}`, async () => {
-      const data = await apiRequest<DiscoverResponse>("/api/discover", {
-        method: "POST",
-        body: JSON.stringify({ radar: true, projectName: writingProject?.name || "", username: radarHandle }),
+    queryFn: () => shareRadarRequest(radarKey, async () => {
+      const pending = radarTargets.filter((target) => {
+        const entry = readRadarEntry(getRadarCacheSnapshot(), target.id);
+        return !radarCacheFresh(entry) || entry?.query !== target.query;
       });
-      if (selectedProjectId) saveRadarEntry(selectedProjectId, { query: radarQueryText, fetchedAt: Date.now(), tweets: data.tweets });
-      return data.tweets;
+      let failure = "";
+      for (const target of pending) {
+        try {
+          const data = await apiRequest<DiscoverResponse>("/api/discover", {
+            method: "POST",
+            body: JSON.stringify({ radar: true, projectName: target.name, username: target.handle }),
+          });
+          saveRadarEntry(target.id, { name: target.name, query: target.query, fetchedAt: Date.now(), tweets: data.tweets });
+        } catch (error) {
+          failure = error instanceof Error ? error.message : "Không tải được radar.";
+        }
+      }
+      if (failure) throw new Error(failure);
+      return [];
     }),
   });
 
@@ -157,17 +206,18 @@ export default function DiscoverPanel() {
     },
   });
 
-  const radarTweets = radarCached?.tweets || [];
-  const radarUpdatedLabel = radarCached ? new Date(radarCached.fetchedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "";
+  const radarUpdatedLabel = radarPlan.length && radarPlan.every((item) => item.fresh)
+    ? new Date(Math.max(...radarPlan.flatMap((item) => item.entry ? [item.entry.fetchedAt] : [0]))).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+    : "";
   const radarHint = projectsQuery.isPending
-    ? "Đang tải dự án đang viết."
-    : !writingProject
-      ? "Chọn một dự án trong Dự án của bạn để xem bài mới."
-      : !radarQueryText
-        ? "Dự án đang viết chưa có tên để tìm radar."
-        : radarFresh && radarUpdatedLabel
-            ? `Bài mới về ${writingProject.name}. Đã cập nhật lúc ${radarUpdatedLabel}.`
-            : `Bài mới về ${writingProject.name}. Làm mới sau 30 phút khi mở lại tab.`;
+    ? "Đang tải danh sách dự án."
+    : !projectsQuery.data?.projects.length
+      ? "Chưa có dự án trong Dự án của bạn."
+      : radarTargets.length === 0
+        ? "Các dự án chưa có tên để tìm radar."
+        : radarUpdatedLabel
+        ? `Bài mới từ ${radarTargets.length} dự án. Đã cập nhật lúc ${radarUpdatedLabel}.`
+        : `Bài mới từ ${radarTargets.length} dự án. Làm mới sau 30 phút khi mở lại tab.`;
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">
@@ -191,10 +241,8 @@ export default function DiscoverPanel() {
             <h3 className="font-semibold">Radar</h3>
             <p className="mt-1 text-xs text-slate-500">{radarHint}</p>
           </div>
-          {radar.isFetching && radarTweets.length === 0 && <div className="flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải radar...</div>}
           {radar.error && <p className="text-sm text-red-600">{radar.error.message}</p>}
-          {radarTweets.length > 0 && <div className="mt-4 grid gap-3 md:grid-cols-2">{radarTweets.map((tweet) => <article key={tweet.id} className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm font-semibold text-slate-900">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></p><p className="mt-3 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p><TweetStats tweet={tweet} /></article>)}</div>}
-          {!radar.isFetching && !radar.error && radarFresh && radarQueryText && radarTweets.length === 0 && <p className="text-sm text-slate-500">Chưa có bài mới cho dự án này.</p>}
+          {radarPlan.map((item) => <div key={item.id} className="mt-6"><h4 className="text-sm font-semibold text-slate-900">{item.name}</h4>{item.entry && item.entry.tweets.length > 0 ? <div className="mt-3 grid gap-3 md:grid-cols-2">{item.entry.tweets.map((tweet) => <RadarTweetCard key={`${item.id}-${tweet.id}`} tweet={tweet} />)}</div> : item.fresh ? <p className="mt-2 text-sm text-slate-500">Chưa có bài mới.</p> : radar.isFetching ? <p className="mt-2 flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải...</p> : null}</div>)}
         </section>
 
         {lastSearch && !search.isPending && tweets.length === 0 && <div className="py-20 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa tìm thấy bài phù hợp</h3><p className="mt-1 text-sm text-slate-500">Thử username tác giả hoặc @mention dự án.</p></div>}

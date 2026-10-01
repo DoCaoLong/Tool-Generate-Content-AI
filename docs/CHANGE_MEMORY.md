@@ -2,8 +2,11 @@
 
 ## 2026-10-01
 
+- Radar giữ bài đã tải trong trình duyệt. Tải lại trang Khám phá vẫn hiện các bài đó, không gọi lại Sorsa nếu chưa quá 30 phút.
+- Radar lấy bài của tất cả dự án trong Dự án của bạn, mỗi dự án một nhóm. Không còn chỉ hiện dự án đang chọn.
+- Radar hiện avatar người đăng và ảnh đầy đủ trong bài. Ảnh lấy từ Sorsa, không cắt khung.
 - Access code của Sorsa chỉ nhập một lần. Mã được lưu trên trình duyệt và dùng chung cho tìm bài, phân tích phong cách và cập nhật bài mẫu. Radar hiện ngay, không hỏi mã.
-- Tab Khám phá có mục Radar dưới ô tìm. Radar lấy bài mới của dự án đang viết trong Dự án của bạn, gọi Sorsa một lần khi mở tab, và chỉ gọi lại sau 30 phút.
+- Tab Khám phá có mục Radar dưới ô tìm. Radar lấy bài mới của mọi dự án trong Dự án của bạn, gọi Sorsa một lần khi mở tab, và chỉ gọi lại sau 30 phút.
 - Popup phong cách dự án có nút xem bài mẫu và nút cập nhật bài mới. Mẫu mới được ghép vào danh sách và giữ tối đa 20 bài.
 - Thanh cuộn mục Dự án của bạn trong menu trái là vạch trắng, không có nền track.
 - Form đăng nhập và đăng ký có icon hiện hoặc ẩn mật khẩu.

@@ -37,9 +37,11 @@ interface SorsaTweet {
   reply_count?: number;
   view_count?: number;
   retweeted_status?: SorsaTweet | null;
+  entities?: Array<{ type?: string; link?: string; preview?: string }>;
   user?: {
     username?: string;
     display_name?: string;
+    profile_image_url?: string;
   };
 }
 
@@ -71,6 +73,44 @@ function asHandle(value: string) {
   return value.match(/@([A-Za-z0-9_]{1,15})/)?.[1] || null;
 }
 
+function httpsUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function avatarUrl(value: unknown) {
+  const url = httpsUrl(value);
+  return url ? url.replace("_normal", "_400x400") : "";
+}
+
+function postImageUrl(link: unknown, preview: unknown) {
+  const direct = httpsUrl(link);
+  const thumb = httpsUrl(preview);
+  const directIsMedia = /twimg\.com\/media\//i.test(direct);
+  const chosen = directIsMedia ? direct : thumb;
+  if (!chosen) return "";
+  return /[?&]name=/i.test(chosen) ? chosen.replace(/name=[^&]+/i, "name=orig") : chosen;
+}
+
+function postImages(tweet: SorsaTweet) {
+  const images: string[] = [];
+  const seen = new Set<string>();
+  for (const entity of tweet.entities || []) {
+    if (entity.type !== "photo") continue;
+    const url = postImageUrl(entity.link, entity.preview);
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    images.push(url);
+    if (images.length >= 4) break;
+  }
+  return images;
+}
+
 function mapTweets(tweets: SorsaTweet[], fallbackUsername: string) {
   return tweets
     .filter((tweet) => tweet.id && tweet.full_text?.trim() && !tweet.retweeted_status)
@@ -80,6 +120,8 @@ function mapTweets(tweets: SorsaTweet[], fallbackUsername: string) {
       createdAt: tweet.created_at || new Date().toISOString(),
       username: tweet.user?.username || fallbackUsername,
       displayName: tweet.user?.display_name || tweet.user?.username || fallbackUsername,
+      avatarUrl: avatarUrl(tweet.user?.profile_image_url),
+      images: postImages(tweet),
       likes: tweet.likes_count ?? 0,
       reposts: tweet.retweet_count ?? 0,
       replies: tweet.reply_count ?? 0,

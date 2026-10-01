@@ -27,3 +27,5 @@ pnpm-debug.log*
 
 # uploaded prompt avatars
 /data/uploads/
+/public/uploads/prompts/*
+!/public/uploads/prompts/.gitkeep

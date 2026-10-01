@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Eye, Heart, LoaderCircle, MessageCircle, Search, Sparkles, UserRoundSearch } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/lib/app-store";
-import { apiRequest } from "@/lib/http";
-import type { DiscoveredTweet, SavedStyle } from "@/lib/types";
+import { ApiError, apiRequest } from "@/lib/http";
+import { getRadarCacheServerSnapshot, getRadarCacheSnapshot, radarCacheFresh, readRadarEntry, saveRadarEntry, shareRadarRequest, subscribeRadarCache } from "@/lib/radar-cache";
+import { buildRadarQuery, projectXHandle } from "@/lib/radar-query";
+import { clearSorsaAccessCode, getSorsaAccessServerSnapshot, getSorsaAccessSnapshot, saveSorsaAccessCode, subscribeSorsaAccess } from "@/lib/sorsa-access";
+import type { DiscoveredTweet, Project, SavedStyle } from "@/lib/types";
 
 const schema = z.object({
   username: z.string().trim().transform((value) => value.replace(/^@/, "")).refine((value) => !value || /^[A-Za-z0-9_]{1,15}$/.test(value), "Username X chưa hợp lệ."),
@@ -24,11 +27,23 @@ const schema = z.object({
 });
 
 type DiscoverValues = z.infer<typeof schema>;
-type DiscoverResponse = { tweets: DiscoveredTweet[]; nextCursor: string | null; query: string; source: "author" | "mentions" | "topic"; handle: string };
+type DiscoverResponse = { tweets: DiscoveredTweet[]; nextCursor: string | null; query: string; source: "author" | "mentions" | "topic" | "radar"; handle: string };
 const MAX_SAMPLES = 20;
 
 function shortNumber(value: number) {
   return new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+function TweetStats({ tweet }: { tweet: DiscoveredTweet }) {
+  const created = Number.isNaN(new Date(tweet.createdAt).getTime()) ? "" : new Date(tweet.createdAt).toLocaleDateString("vi-VN");
+  return (
+    <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3 text-[11px] text-slate-400">
+      {created ? <span>{created}</span> : null}
+      <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{shortNumber(tweet.likes)}</span>
+      <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{shortNumber(tweet.replies)}</span>
+      <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{shortNumber(tweet.views)}</span>
+    </div>
+  );
 }
 
 export default function DiscoverPanel() {
@@ -37,15 +52,38 @@ export default function DiscoverPanel() {
   const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
   const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
   const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
+  const selectedProjectId = useAppStore((state) => state.selectedProjectId);
   const [tweets, setTweets] = useState<DiscoveredTweet[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [lastSearch, setLastSearch] = useState<(DiscoverValues & { source?: DiscoverResponse["source"]; handle?: string }) | null>(null);
   const [accessOpen, setAccessOpen] = useState(false);
   const [accessCode, setAccessCode] = useState("");
-  const [verifiedCode, setVerifiedCode] = useState("");
   const [pendingSearch, setPendingSearch] = useState<{ values: DiscoverValues; cursor?: string } | null>(null);
+  const verifiedCode = useSyncExternalStore(subscribeSorsaAccess, getSorsaAccessSnapshot, getSorsaAccessServerSnapshot);
+  const radarRaw = useSyncExternalStore(subscribeRadarCache, getRadarCacheSnapshot, getRadarCacheServerSnapshot);
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiRequest<{ projects: Project[] }>("/api/projects") });
+  const writingProject = projectsQuery.data?.projects.find((item) => item.id === selectedProjectId) || null;
+  const radarHandle = writingProject ? projectXHandle(writingProject.contentOptions.keywords, writingProject.contentOptions.documents) : "";
+  const radarQueryText = writingProject ? buildRadarQuery(writingProject.name, radarHandle) : "";
+  const radarCached = useMemo(() => readRadarEntry(radarRaw, selectedProjectId || "", radarQueryText), [radarRaw, selectedProjectId, radarQueryText]);
+  const radarFresh = useMemo(() => radarCacheFresh(radarCached), [radarCached]);
   const form = useForm<DiscoverValues>({ resolver: zodResolver(schema), defaultValues: { username: "", projectName: "" } });
+
+  const radar = useQuery({
+    queryKey: ["discover-radar", selectedProjectId, radarQueryText],
+    enabled: Boolean(selectedProjectId && radarQueryText && !radarFresh),
+    staleTime: 0,
+    retry: false,
+    queryFn: () => shareRadarRequest(`${selectedProjectId}:${radarQueryText}`, async () => {
+      const data = await apiRequest<DiscoverResponse>("/api/discover", {
+        method: "POST",
+        body: JSON.stringify({ radar: true, projectName: writingProject?.name || "", username: radarHandle }),
+      });
+      if (selectedProjectId) saveRadarEntry(selectedProjectId, { query: radarQueryText, fetchedAt: Date.now(), tweets: data.tweets });
+      return data.tweets;
+    }),
+  });
 
   const search = useMutation({
     mutationFn: ({ values, cursor, accessCode: code }: { values: DiscoverValues; cursor?: string; accessCode: string }) => apiRequest<DiscoverResponse>("/api/discover", { method: "POST", body: JSON.stringify({ ...values, nextCursor: cursor, accessCode: code }) }),
@@ -54,6 +92,14 @@ export default function DiscoverPanel() {
       setNextCursor(data.nextCursor);
       if (!variables.cursor) setSelectedIds([]);
       setLastSearch({ ...variables.values, source: data.source, handle: data.handle });
+      setPendingSearch(null);
+    },
+    onError: (error, variables) => {
+      if (error instanceof ApiError && error.message === "Access code không đúng.") {
+        clearSorsaAccessCode();
+        setPendingSearch({ values: variables.values, cursor: variables.cursor });
+        setAccessOpen(true);
+      }
     },
   });
 
@@ -102,7 +148,7 @@ export default function DiscoverPanel() {
   const verifyAccess = useMutation({
     mutationFn: (code: string) => apiRequest<{ ok: true }>("/api/auth/access-code", { method: "POST", body: JSON.stringify({ accessCode: code }) }),
     onSuccess: (_, code) => {
-      setVerifiedCode(code);
+      saveSorsaAccessCode(code);
       setAccessOpen(false);
       setAccessCode("");
       const pending = pendingSearch;
@@ -110,6 +156,18 @@ export default function DiscoverPanel() {
       if (pending) search.mutate({ ...pending, accessCode: code });
     },
   });
+
+  const radarTweets = radarCached?.tweets || [];
+  const radarUpdatedLabel = radarCached ? new Date(radarCached.fetchedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "";
+  const radarHint = projectsQuery.isPending
+    ? "Đang tải dự án đang viết."
+    : !writingProject
+      ? "Chọn một dự án trong Dự án của bạn để xem bài mới."
+      : !radarQueryText
+        ? "Dự án đang viết chưa có tên để tìm radar."
+        : radarFresh && radarUpdatedLabel
+            ? `Bài mới về ${writingProject.name}. Đã cập nhật lúc ${radarUpdatedLabel}.`
+            : `Bài mới về ${writingProject.name}. Làm mới sau 30 phút khi mở lại tab.`;
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">
@@ -128,6 +186,17 @@ export default function DiscoverPanel() {
           {(form.formState.errors.username || form.formState.errors.projectName || search.error) && <p className="mt-3 text-sm text-red-600">{search.error?.message || form.formState.errors.username?.message || form.formState.errors.projectName?.message}</p>}
         </section>
 
+        <section className="mt-7">
+          <div className="mb-4">
+            <h3 className="font-semibold">Radar</h3>
+            <p className="mt-1 text-xs text-slate-500">{radarHint}</p>
+          </div>
+          {radar.isFetching && radarTweets.length === 0 && <div className="flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải radar...</div>}
+          {radar.error && <p className="text-sm text-red-600">{radar.error.message}</p>}
+          {radarTweets.length > 0 && <div className="mt-4 grid gap-3 md:grid-cols-2">{radarTweets.map((tweet) => <article key={tweet.id} className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm font-semibold text-slate-900">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></p><p className="mt-3 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p><TweetStats tweet={tweet} /></article>)}</div>}
+          {!radar.isFetching && !radar.error && radarFresh && radarQueryText && radarTweets.length === 0 && <p className="text-sm text-slate-500">Chưa có bài mới cho dự án này.</p>}
+        </section>
+
         {lastSearch && !search.isPending && tweets.length === 0 && <div className="py-20 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa tìm thấy bài phù hợp</h3><p className="mt-1 text-sm text-slate-500">Thử username tác giả hoặc @mention dự án.</p></div>}
 
         {tweets.length > 0 && <section className="mt-7">
@@ -139,7 +208,7 @@ export default function DiscoverPanel() {
               return <button key={tweet.id} className={`relative rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${selected ? "border-emerald-400 bg-emerald-50/70 ring-1 ring-emerald-200" : "border-slate-200 bg-white"}`} onClick={() => setSelectedIds((ids) => selected ? ids.filter((id) => id !== tweet.id) : ids.length < MAX_SAMPLES ? [...ids, tweet.id] : ids)}>
                 <span className={`absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full border ${selected ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-transparent"}`}><Check className="h-3.5 w-3.5" /></span>
                 <div className="pr-8"><p className="text-sm font-semibold text-slate-900">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></p><p className="mt-3 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p></div>
-                <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3 text-[11px] text-slate-400"><span>{new Date(tweet.createdAt).toLocaleDateString("vi-VN")}</span><span className="flex items-center gap-1"><Heart className="h-3 w-3" />{shortNumber(tweet.likes)}</span><span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{shortNumber(tweet.replies)}</span><span className="flex items-center gap-1"><Eye className="h-3 w-3" />{shortNumber(tweet.views)}</span></div>
+                <TweetStats tweet={tweet} />
               </button>;
             })}
           </div>
@@ -159,7 +228,7 @@ export default function DiscoverPanel() {
             {verifyAccess.error && <p className="text-sm text-red-600">{verifyAccess.error.message}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" className="rounded-xl" disabled={verifyAccess.isPending} onClick={() => setAccessOpen(false)}>Huỷ</Button>
-              <Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={verifyAccess.isPending || !accessCode.trim()}>{verifyAccess.isPending ? "Đang kiểm tra..." : "Tìm bài viết"}</Button>
+              <Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={verifyAccess.isPending || !accessCode.trim()}>{verifyAccess.isPending ? "Đang kiểm tra..." : pendingSearch ? "Tìm bài viết" : "Xác nhận"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

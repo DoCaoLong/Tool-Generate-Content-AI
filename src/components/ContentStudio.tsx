@@ -224,7 +224,7 @@ function Workspace({ user }: { user: UserProfile }) {
             <button title={sidebarCollapsed ? "Nucleus" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} ${isNucleusRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onMouseEnter={() => prefetchNucleusList(queryClient)} onFocus={() => prefetchNucleusList(queryClient)} onClick={() => { router.push("/nucleus"); setSidebarOpen(false); }}><Image src="/nucleus-logo.png" alt="Nucleus" width={18} height={18} className="h-4 w-4 shrink-0 rounded-sm object-contain" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Nucleus</span>{!sidebarCollapsed && <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">InfoFi</span>}</button>
           </div>
         </div>
-        <div className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "px-3 md:px-2" : "px-3"}`}>
+        <div className={`sidebar-projects flex-1 overflow-y-auto ${sidebarCollapsed ? "px-3 md:px-2" : "px-3"}`}>
           <p className={`px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 ${sidebarCollapsed ? "md:hidden" : ""}`}>Dự án của bạn</p>
           <div className="space-y-1">
             {projects.map((project) => (

@@ -5,10 +5,14 @@ import { errorResponse, parseObjectId, requireUser } from "@/lib/server-utils";
 
 type RouteContext = { params: Promise<{ styleId: string }> };
 
+const sampleSchema = z.object({ id: z.string().max(100), text: z.string().trim().min(1).max(5000) });
 const updateSchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  description: z.string().trim().max(300).default(""),
-  instruction: z.string().trim().min(10).max(5000),
+  name: z.string().trim().min(2).max(100).optional(),
+  description: z.string().trim().max(300).optional(),
+  instruction: z.string().trim().min(10).max(5000).optional(),
+  samples: z.array(sampleSchema).max(20).optional(),
+}).refine((data) => data.name !== undefined || data.description !== undefined || data.instruction !== undefined || data.samples !== undefined, {
+  message: "Chưa có thông tin để cập nhật.",
 });
 
 export async function PATCH(request: Request, context: RouteContext) {

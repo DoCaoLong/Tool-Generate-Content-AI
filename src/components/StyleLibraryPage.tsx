@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Eye, LoaderCircle, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import PromptAvatar from "@/components/PromptAvatar";
 import { StyleDetailDialog } from "@/components/StyleDetailDialog";
@@ -14,15 +14,27 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { generateWithProvider } from "@/lib/api-client";
 import { useAppStore } from "@/lib/app-store";
-import { apiRequest } from "@/lib/http";
+import { ApiError, apiRequest } from "@/lib/http";
 import { getKOLInitials, kolStyles, type KOLStyle } from "@/lib/kol-styles";
 import { providerLabels } from "@/lib/providers";
 import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
 import { buildStyleAnalysisPrompt, parseStyleAnalysis } from "@/lib/style-analysis";
+import { clearSorsaAccessCode, getSorsaAccessServerSnapshot, getSorsaAccessSnapshot, saveSorsaAccessCode, subscribeSorsaAccess } from "@/lib/sorsa-access";
 import type { DiscoveredTweet, SavedStyle } from "@/lib/types";
 
 interface ManualStyleValues { name: string; description: string; instruction: string; sampleText: string }
 interface AnalyzedAuthor { username: string; projectName: string | null; samples: Array<{ id: string; text: string }> }
+function mergeSamples(fresh: Array<{ id: string; text: string }>, current: Array<{ id: string; text: string }>) {
+  const seen = new Set<string>();
+  const merged: Array<{ id: string; text: string }> = [];
+  for (const sample of [...fresh, ...current]) {
+    if (!sample.id || seen.has(sample.id)) continue;
+    seen.add(sample.id);
+    merged.push({ id: sample.id.slice(0, 100), text: sample.text.slice(0, 4000) });
+    if (merged.length === 20) break;
+  }
+  return merged;
+}
 interface AnalyzeTarget { username: string; projectName: string }
 const colors = ["bg-violet-500", "bg-sky-500", "bg-emerald-500", "bg-orange-500", "bg-rose-500", "bg-indigo-500"];
 const handlePattern = /^[A-Za-z0-9_]{1,15}$/;
@@ -69,11 +81,12 @@ export default function StyleLibraryPage() {
   const [writingProject, setWritingProject] = useState("");
   const [analyzed, setAnalyzed] = useState<AnalyzedAuthor | null>(null);
   const pendingAnalyze = useRef<AnalyzeTarget | null>(null);
+  const pendingRefresh = useRef<SavedStyle | null>(null);
   const [analyzePhase, setAnalyzePhase] = useState<"idle" | "fetch" | "analyze">("idle");
   const [localError, setLocalError] = useState("");
   const [accessOpen, setAccessOpen] = useState(false);
   const [accessCode, setAccessCode] = useState("");
-  const [verifiedCode, setVerifiedCode] = useState("");
+  const verifiedCode = useSyncExternalStore(subscribeSorsaAccess, getSorsaAccessSnapshot, getSorsaAccessServerSnapshot);
   const [detail, setDetail] = useState<{ type: "saved"; style: SavedStyle } | { type: "kol"; style: KOLStyle } | null>(null);
   const [editing, setEditing] = useState(false);
   const [styleToDelete, setStyleToDelete] = useState<SavedStyle | null>(null);
@@ -127,6 +140,13 @@ export default function StyleLibraryPage() {
       form.setValue("sampleText", "");
       setAnalyzed({ username: author, projectName, samples });
       setLocalError("");
+      pendingAnalyze.current = null;
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.message === "Access code không đúng.") {
+        clearSorsaAccessCode();
+        setAccessOpen(true);
+      }
     },
     onSettled: () => setAnalyzePhase("idle"),
   });
@@ -134,9 +154,15 @@ export default function StyleLibraryPage() {
   const verifyAccess = useMutation({
     mutationFn: (code: string) => apiRequest<{ ok: true }>("/api/auth/access-code", { method: "POST", body: JSON.stringify({ accessCode: code }) }),
     onSuccess: (_, code) => {
-      setVerifiedCode(code);
+      saveSorsaAccessCode(code);
       setAccessOpen(false);
       setAccessCode("");
+      const refreshStyle = pendingRefresh.current;
+      pendingRefresh.current = null;
+      if (refreshStyle) {
+        refreshSamples.mutate({ style: refreshStyle, code });
+        return;
+      }
       const pending = pendingAnalyze.current;
       if (pending) analyzeAuthor.mutate({ code, ...pending });
     },
@@ -155,6 +181,7 @@ export default function StyleLibraryPage() {
       return;
     }
     setLocalError("");
+    pendingRefresh.current = null;
     pendingAnalyze.current = target;
     if (!verifiedCode) {
       setAccessOpen(true);
@@ -190,6 +217,43 @@ export default function StyleLibraryPage() {
       setCreating(false);
     },
   });
+  const refreshSamples = useMutation({
+    mutationFn: async ({ style, code }: { style: SavedStyle; code: string }) => {
+      const username = (style.username || "").replace(/^@/, "");
+      const projectName = (style.projectName || "").slice(0, 100);
+      if (!username && !projectName) throw new Error("Phong cách này chưa có username hoặc dự án để lấy bài mới.");
+      const data = await apiRequest<{ tweets?: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ username, projectName, accessCode: code }) });
+      const fresh = (data.tweets || []).filter((tweet) => tweet.text.trim().length >= 20).slice(0, 20).map((tweet) => ({ id: tweet.id.slice(0, 100), text: tweet.text.slice(0, 4000) }));
+      if (!fresh.length) throw new Error("Không tìm thấy bài mới.");
+      const merged = mergeSamples(fresh, style.samples);
+      const unchanged = merged.length === style.samples.length && merged.every((item, index) => item.id === style.samples[index]?.id && item.text === style.samples[index]?.text);
+      if (unchanged) return { style, unchanged: true };
+      const saved = await apiRequest<{ style: SavedStyle }>(`/api/styles/${style.id}`, { method: "PATCH", body: JSON.stringify({ samples: merged }) });
+      return { style: saved.style, unchanged: false };
+    },
+    onSuccess: async ({ style, unchanged }) => {
+      pendingRefresh.current = null;
+      if (unchanged) return;
+      await queryClient.invalidateQueries({ queryKey: ["styles"] });
+      setDetail({ type: "saved", style });
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.message === "Access code không đúng.") {
+        clearSorsaAccessCode();
+        setAccessOpen(true);
+      }
+    },
+  });
+  const requestRefresh = (style: SavedStyle) => {
+    pendingAnalyze.current = null;
+    pendingRefresh.current = style;
+    refreshSamples.reset();
+    if (!verifiedCode) {
+      setAccessOpen(true);
+      return;
+    }
+    refreshSamples.mutate({ style, code: verifiedCode });
+  };
   const updateStyle = useMutation({
     mutationFn: (values: { name: string; description: string; instruction: string }) => {
       if (detail?.type !== "saved") throw new Error("Chỉ sửa được phong cách đã lưu.");
@@ -282,10 +346,15 @@ export default function StyleLibraryPage() {
       editing={editing && detail?.type === "saved"}
       saving={updateStyle.isPending}
       saveError={updateStyle.error?.message}
+      samples={detail?.type === "saved" && resolveStyleCategory(detail.style) === "project" ? detail.style.samples : undefined}
+      onRefreshSamples={detail?.type === "saved" && resolveStyleCategory(detail.style) === "project" ? () => requestRefresh(detail.style) : undefined}
+      refreshing={refreshSamples.isPending}
+      refreshError={refreshSamples.error?.message}
+      refreshNote={refreshSamples.data?.unchanged ? "Các bài mới nhất đã có trong mẫu." : undefined}
       onApply={() => { if (detail?.type === "saved") chooseSaved(detail.style); if (detail?.type === "kol") chooseKOL(detail.style.id); }}
       onEditingChange={(next) => { if (next) updateStyle.reset(); setEditing(next); }}
       onSave={(values) => updateStyle.mutate(values)}
-      onOpenChange={(open) => { if (!open && !updateStyle.isPending) { setDetail(null); setEditing(false); } }}
+      onOpenChange={(open) => { if (!open && !updateStyle.isPending && !refreshSamples.isPending) { refreshSamples.reset(); setDetail(null); setEditing(false); } }}
     />
     <ConfirmDialog
       open={Boolean(styleToDelete)}

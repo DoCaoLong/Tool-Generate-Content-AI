@@ -2,6 +2,7 @@ import dns from "node:dns";
 import https from "node:https";
 import { z } from "zod";
 import { requireAccessCode } from "@/lib/access-code";
+import { buildRadarQuery } from "@/lib/radar-query";
 import { errorResponse, requireUser } from "@/lib/server-utils";
 import { getSorsaApiKey } from "@/lib/sorsa-key";
 
@@ -13,8 +14,12 @@ const requestSchema = z.object({
   username: z.string().trim().transform((value) => value.replace(/^@/, "")).optional().default(""),
   projectName: z.string().trim().max(100).optional().default(""),
   nextCursor: z.string().max(1000).optional(),
-  accessCode: z.string().trim().min(1).max(128),
+  accessCode: z.string().trim().max(128).optional().default(""),
+  radar: z.boolean().optional().default(false),
 }).superRefine((data, context) => {
+  if (!data.radar && !data.accessCode) {
+    context.addIssue({ code: "custom", message: "Hãy nhập access code." });
+  }
   if (!data.username && !data.projectName) {
     context.addIssue({ code: "custom", message: "Hãy nhập username hoặc tên dự án." });
   }
@@ -184,8 +189,10 @@ export async function POST(request: Request) {
     const message = parsed.error.issues[0]?.message || "Username hoặc tên dự án chưa hợp lệ.";
     return errorResponse(message);
   }
-  const access = requireAccessCode(parsed.data.accessCode);
-  if (!access.ok) return errorResponse(access.message, access.status);
+  if (!parsed.data.radar) {
+    const access = requireAccessCode(parsed.data.accessCode);
+    if (!access.ok) return errorResponse(access.message, access.status);
+  }
 
   const apiKey = await getSorsaApiKey();
   if (!apiKey) return errorResponse("Sorsa API key chưa được cấu hình (env hoặc Admin).", 503);
@@ -193,16 +200,21 @@ export async function POST(request: Request) {
   const username = parsed.data.username;
   const projectName = parsed.data.projectName;
   const projectHandle = projectName ? asHandle(projectName) : null;
-  const useMentions = Boolean(projectName) && !username && Boolean(projectHandle);
-  const source = useMentions ? "mentions" : username ? "author" : "topic";
+  const radar = parsed.data.radar;
+  const radarQuery = radar ? buildRadarQuery(projectName, username) : "";
+  if (radar && !radarQuery) return errorResponse("Dự án đang viết chưa có tên để tìm radar.");
+  const useMentions = !radar && Boolean(projectName) && !username && Boolean(projectHandle);
+  const source = radar ? "radar" : useMentions ? "mentions" : username ? "author" : "topic";
   const fallbackUsername = username || projectHandle || "unknown";
   const cursor = parsed.data.nextCursor ? { next_cursor: parsed.data.nextCursor } : {};
 
   let endpoint = "search-tweets";
   let body: Record<string, unknown>;
-  let queryLabel = "";
+  let queryLabel = radarQuery;
 
-  if (useMentions && projectHandle) {
+  if (radar) {
+    body = { query: radarQuery, order: "latest", ...cursor };
+  } else if (useMentions && projectHandle) {
     endpoint = "mentions";
     body = { query: projectHandle, order: "popular", ...cursor };
     queryLabel = `@${projectHandle}`;
@@ -231,7 +243,7 @@ export async function POST(request: Request) {
   }
 
   let tweets = mapTweets(data.tweets || [], fallbackUsername);
-  if (source !== "author") {
+  if (source !== "author" && source !== "radar") {
     tweets = [...tweets].sort((left, right) => right.replies - left.replies || right.likes - left.likes);
   }
 

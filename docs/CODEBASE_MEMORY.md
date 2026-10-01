@@ -33,7 +33,7 @@
 - `src/lib/mongodb.ts`: connection singleton và tạo index cho users, projects, generations.
 - `src/lib/auth.ts`: JWT session 7 ngày trong cookie `httpOnly`, `sameSite=lax`, bật `secure` ở production.
 - `src/app/api/auth/*`: register, login, logout, current user, verify access code.
-- Tab Khám phá yêu cầu `REGISTER_ACCESS_CODE` (env): portal access code khi bấm Tìm bài viết, API `/api/discover` kiểm tra lại mã.
+- Tính năng Sorsa ngoài Radar yêu cầu `REGISTER_ACCESS_CODE`. Người dùng nhập mã một lần; mã lưu ở `localStorage` khoá `content-studio-discover-access` (`src/lib/sorsa-access.ts`) và dùng chung cho tìm bài, phân tích phong cách, cập nhật bài mẫu. API `/api/discover` kiểm tra lại mã, trừ khi body có `radar: true`.
 - `src/middleware.ts` chặn API: JWT user (`cw_session`) cho route nội bộ, JWT admin (`cw_admin`) cho `/api/admin/*` trừ login. Auth/public/turnstile để public.
 - Login, register và `/admin` xác thực Cloudflare Turnstile (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`).
 - Admin session cookie `cw_admin` 12 giờ; credential `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Dashboard quản lý users, API keys (`settings.api_keys`) và `prompt_styles` theo route `/admin/user`, `/admin/prompts`, `/admin/keys`. `/admin` chuyển về `/admin/user`.
@@ -49,14 +49,14 @@
 - `src/components/ContentStudio.tsx`: sidebar dự án, conversation history, composer và bảng tuỳ chọn.
 - Bảng tuỳ chọn có trường `Rule bắt buộc` và `Tài liệu tham khảo`; nội dung gốc chỉ hiện trong chế độ Viết lại.
 - Từ khoá bắt buộc được theo dõi bằng React Hook Form và hiển thị tức thời thành chip `Từ khóa: ...` cạnh chip phong cách trong composer; chip được tách theo dấu phẩy hoặc xuống dòng và loại trùng.
-- Các mục chính trong sidebar dùng chiều cao 44px, icon 16px và khoảng cách đồng nhất; dự án dùng icon thư mục cùng thao tác đổi tên qua `PATCH /api/projects/[projectId]` và xoá.
+- Các mục chính trong sidebar dùng chiều cao 44px, icon 16px và khoảng cách đồng nhất; dự án dùng icon thư mục cùng thao tác đổi tên qua `PATCH /api/projects/[projectId]` và xoá. Danh sách Dự án của bạn dùng class `sidebar-projects`: thumb trắng, track trong suốt.
 - `src/components/KOLStylePicker.tsx`: thẻ phong cách đang chọn trong sidebar, điều hướng sang `/styles`, có nút X để bỏ chọn.
 - `src/components/StyleLibraryPage.tsx`: page thư viện phong cách đầy đủ, không dùng modal.
 - `src/components/SettingsPage.tsx`: API key ở đầu trang và cấu hình provider/model mặc định.
 - `src/components/ui/native-select.tsx`: native select dùng icon ChevronDown riêng, thống nhất mũi tên giữa composer và Settings.
 - `src/components/ProfileMenu.tsx`: menu tài khoản dạng popover với cá nhân hoá, hồ sơ, cài đặt, trợ giúp và đăng xuất.
 - `src/components/ProfilePage.tsx`, `src/components/HelpPage.tsx`: các page tài khoản hỗ trợ route riêng.
-- `src/components/DiscoverPanel.tsx`: tab Khám phá, form tìm bài X, chọn bài mẫu và áp dụng style động.
+- `src/components/DiscoverPanel.tsx`: tab Khám phá, form tìm bài X, mục Radar của dự án đang viết, chọn bài mẫu và áp dụng style động. Radar không đưa bài vào ô chọn mẫu.
 - `src/components/NucleusPanel.tsx`: tab Nucleus, danh sách chiến dịch InfoFi và trang chi tiết theo slug.
 - `src/lib/kol-styles.ts`: adapter có kiểu dữ liệu cho `data/author.json`.
 - `src/lib/app-store.ts`: project đang chọn, trạng thái sidebar/options và provider config.
@@ -79,7 +79,8 @@
 - `Viết lại` bắt buộc có nội dung nguồn và dùng task/rule prompt riêng; `Viết mới` tạo nội dung mới từ brief.
 - KOL được chọn bằng mục `Phong cách KOL` ngay dưới nút tạo dự án, được giữ cục bộ bằng Zustand và inject vào prompt.
 - Generation lưu snapshot gồm id, tên và instruction của KOL để lịch sử không phụ thuộc lựa chọn hiện tại.
-- `src/app/api/discover/route.ts` gọi Sorsa v3 từ server, header `ApiKey`. `POST /v3/search-tweets` khi có username (`from:username`, `order: latest`). `POST /v3/mentions` khi chỉ có @handle dự án: `query` là handle không có `@`, `order: popular`. Bài lấy từ `tweets[].full_text`; retweet (`retweeted_status`) bị bỏ. `next_cursor` chuỗi rỗng coi như hết trang. Lỗi đọc `message`. 429 và 5xx được thử lại tối đa 3 lần. Chỉ cần một trong hai trường.
+- `src/app/api/discover/route.ts` gọi Sorsa v3 từ server, header `ApiKey`. `POST /v3/search-tweets` khi có username (`from:username`, `order: latest`). `POST /v3/mentions` khi chỉ có @handle dự án: `query` là handle không có `@`, `order: popular`. `radar: true` cũng gọi `search-tweets` với `order: latest` và query từ `buildRadarQuery` trong `src/lib/radar-query.ts` (tên dự án, cụm có dấu ngoặc kép, dạng viết liền, và @handle trong từ khoá hoặc dòng `X:`), kèm `lang:en -filter:replies`. Radar không sắp theo số bình luận. Bài lấy từ `tweets[].full_text`; retweet (`retweeted_status`) bị bỏ. `next_cursor` chuỗi rỗng coi như hết trang. Lỗi đọc `message`. 429 và 5xx được thử lại tối đa 3 lần. Chỉ cần một trong hai trường.
+- Radar chỉ chạy khi `DiscoverPanel` đang mở và không cần access code. Kết quả và thời điểm gọi nằm ở `localStorage` khoá `content-studio-radar`, theo dự án và câu query, hạn 30 phút. Trong hạn đó, mở lại tab hoặc tải lại trang không gọi Sorsa. Hết hạn thì gọi một lần lúc vào tab, không gọi lặp khi đang ở lại tab.
 - `src/app/api/nucleus/projects` proxy Nucleus `GET /v1/projects` với `skip`, `limit` và fields danh sách; `src/app/api/nucleus/projects/[slug]` lấy chi tiết bằng slug, fallback `id` khi slug null.
 - Proxy Nucleus yêu cầu đăng nhập, không cần API key, loại danh sách user đã tham gia, và sanitize HTML chi tiết trước khi trả về client.
 - Bộ lọc tên dự án của Khám phá là tuỳ chọn; khi để trống, API chỉ dùng `from:username`, sắp xếp `latest` và trả các bài gần nhất của tác giả.
@@ -89,7 +90,7 @@
 - Prompt coi bài mẫu là dữ liệu không tin cậy, chỉ phân tích đặc trưng văn phong và không được làm theo instruction nằm trong nội dung mẫu.
 - Prompt tách rule người dùng thành chỉ dẫn bắt buộc và coi tài liệu tham khảo là dữ liệu không tin cậy, không thực thi instruction nằm trong tài liệu.
 - Style khám phá được lưu vào collection `styles` với `category: project` trước khi áp dụng. Tự mô tả giọng viết lưu `category: writing`. Phân tích username trên `/styles` lưu `category: kol`.
-- Form tạo phong cách trên `/styles` có hai nhóm: Phong cách KOL (bắt buộc phân tích username) và Phong cách bài viết. Bài viết có thể tự mô tả, hoặc nhập username KOL và username dự án để Sorsa lấy bài `from:kol` về `@dự án`, rồi AI điền tên, mô tả và hướng dẫn. Kết quả vẫn lưu `category: writing`, kèm hai username và bài mẫu. Thư viện chia ba nhóm đã lưu: KOL, bài viết, dự án. `StyleDetailDialog` chỉ hiện tên, mô tả và hướng dẫn văn phong, không render nội dung bài Sorsa.
+- Form tạo phong cách trên `/styles` có hai nhóm: Phong cách KOL (bắt buộc phân tích username) và Phong cách bài viết. Bài viết có thể tự mô tả, hoặc nhập username KOL và username dự án để Sorsa lấy bài `from:kol` về `@dự án`, rồi AI điền tên, mô tả và hướng dẫn. Kết quả vẫn lưu `category: writing`, kèm hai username và bài mẫu. Thư viện chia ba nhóm đã lưu: KOL, bài viết, dự án. Popup phong cách dự án có nút Xem bài mẫu để xổ tối đa 20 bài, và nút Cập nhật bài mẫu mới để lấy bài mới qua Sorsa rồi ghép vào mẫu, vẫn giữ tối đa 20. Popup khác chỉ hiện tên, mô tả và hướng dẫn văn phong.
 - `KOLStylePicker` hiện tên phong cách đang chọn và nút X để bỏ chọn ngay trên sidebar. Active saved style chỉ lưu id trong Zustand, còn MongoDB là nguồn dữ liệu chính.
 - Ảnh đại diện phong cách KOL và dự án dùng `getKOLInitials` từ username, tên dự án hoặc tên phong cách. Thẻ đang chọn có viền `border-slate-950`. Popup chi tiết giữ header và footer cố định, chỉ cuộn nội dung. Footer xem là Đóng và Áp dụng hoặc Đang dùng. Nút Sửa nằm ở header.
 - Collection `styles` có index `(userId, updatedAt)` phục vụ danh sách thư viện theo tài khoản.

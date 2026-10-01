@@ -104,6 +104,18 @@
 - Priority: low
 - Scope: khi người dùng tự chọn phong cách KOL sau khi vào dự án tạo từ brief Nucleus, ghi nhớ lựa chọn đó cho lần mở lại cùng dự án, thay vì bỏ KOL mỗi lần quay lại.
 
+### Backlog-018: Chọn bài nào giữ khi cập nhật mẫu dự án
+
+- Status: proposed
+- Priority: low
+- Scope: khi cập nhật bài mẫu của phong cách dự án, cho chọn bài mới nào được giữ thay vì luôn ghép trang mới nhất rồi cắt còn 20.
+
+### Backlog-019: Radar theo ngôn ngữ dự án
+
+- Status: proposed
+- Priority: low
+- Scope: mục Radar ở tab Khám phá luôn tìm `lang:en`. Cho phép dùng ngôn ngữ đã lưu trong dự án đang viết khi ngôn ngữ đó khác tiếng Anh.
+
 ### Backlog-017: Chọn bài trước khi phân tích phong cách bài viết
 
 - Status: proposed

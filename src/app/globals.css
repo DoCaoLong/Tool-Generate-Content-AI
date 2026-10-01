@@ -109,3 +109,23 @@ body {
   border-color: #10b981;
   box-shadow: 0 0 0 3px rgb(16 185 129 / 0.14);
 }
+
+.sidebar-projects {
+  scrollbar-color: #fff transparent;
+  scrollbar-width: thin;
+}
+
+.sidebar-projects::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.sidebar-projects::-webkit-scrollbar-track,
+.sidebar-projects::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.sidebar-projects::-webkit-scrollbar-thumb {
+  background: #fff;
+  border-radius: 999px;
+}

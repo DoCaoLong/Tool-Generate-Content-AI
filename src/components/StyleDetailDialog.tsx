@@ -27,6 +27,11 @@ interface StyleDetailDialogProps {
   saveError?: string;
   onApply: () => void;
   onOpenChange: (open: boolean) => void;
+  samples?: Array<{ id: string; text: string }>;
+  onRefreshSamples?: () => void;
+  refreshing?: boolean;
+  refreshError?: string;
+  refreshNote?: string;
   onEditingChange?: (editing: boolean) => void;
   onSave?: (values: StyleDraft) => void;
 }
@@ -44,6 +49,11 @@ export function StyleDetailDialog({
   editing = false,
   saving = false,
   saveError,
+  samples,
+  onRefreshSamples,
+  refreshing = false,
+  refreshError,
+  refreshNote,
   onApply,
   onOpenChange,
   onEditingChange,
@@ -65,6 +75,11 @@ export function StyleDetailDialog({
           editing={editing}
           saving={saving}
           saveError={saveError}
+          samples={samples}
+          onRefreshSamples={onRefreshSamples}
+          refreshing={refreshing}
+          refreshError={refreshError}
+          refreshNote={refreshNote}
           onApply={onApply}
           onOpenChange={onOpenChange}
           onEditingChange={onEditingChange}
@@ -87,6 +102,11 @@ function StyleDetailBody({
   editing,
   saving,
   saveError,
+  samples,
+  onRefreshSamples,
+  refreshing = false,
+  refreshError,
+  refreshNote,
   onApply,
   onOpenChange,
   onEditingChange,
@@ -94,6 +114,7 @@ function StyleDetailBody({
 }: Omit<StyleDetailDialogProps, "open">) {
   const [draft, setDraft] = useState<StyleDraft>({ name, description: description || "", instruction });
   const [localError, setLocalError] = useState("");
+  const [showSamples, setShowSamples] = useState(false);
 
   const submit = () => {
     const next = {
@@ -157,6 +178,21 @@ function StyleDetailBody({
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Hướng dẫn văn phong</h3>
               <p className="mt-2 whitespace-pre-wrap leading-6 text-slate-700">{instruction}</p>
             </section>
+            {samples && (
+              <section>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" className="h-8 rounded-lg px-3" onClick={() => setShowSamples((open) => !open)}>{showSamples ? "Ẩn bài mẫu" : "Xem bài mẫu"}</Button>
+                  {onRefreshSamples && <Button type="button" variant="outline" className="h-8 rounded-lg px-3" disabled={refreshing} onClick={() => { setShowSamples(true); onRefreshSamples(); }}>{refreshing ? "Đang lấy bài mới..." : "Cập nhật bài mẫu mới"}</Button>}
+                </div>
+                {refreshNote && <p className="mt-2 text-xs text-slate-500">{refreshNote}</p>}
+                {refreshError && <p className="mt-2 text-sm text-red-600">{refreshError}</p>}
+                {showSamples && (samples.length ? (
+                  <ol className="mt-3 space-y-2">
+                    {samples.map((sample, index) => <li key={sample.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600"><span className="font-semibold text-slate-400">{index + 1}. </span><span className="whitespace-pre-wrap">{sample.text}</span></li>)}
+                  </ol>
+                ) : <p className="mt-3 text-xs text-slate-500">Chưa có bài mẫu.</p>)}
+              </section>
+            )}
           </div>
           <DialogFooter className="shrink-0 flex-row justify-end gap-1.5 border-t border-slate-100 px-6 py-3 sm:space-x-0">
             <Button type="button" variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Đóng</Button>

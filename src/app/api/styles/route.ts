@@ -59,6 +59,9 @@ export async function POST(request: Request) {
   if (category === "project" && !parsed.data.username && !parsed.data.projectName) {
     return errorResponse("Phong cách dự án cần username hoặc tên dự án.");
   }
+  if (category === "writing" && (parsed.data.username || parsed.data.projectName) && (!parsed.data.username || !parsed.data.projectName || !parsed.data.samples.length)) {
+    return errorResponse("Phong cách bài viết từ KOL và dự án cần cả hai username và ít nhất một bài mẫu.");
+  }
 
   const now = new Date();
   const document = {
@@ -66,8 +69,8 @@ export async function POST(request: Request) {
     ...parsed.data,
     category,
     kind: category === "writing" ? "manual" : "discovered",
-    username: category === "writing" ? null : parsed.data.username,
-    projectName: category === "writing" ? null : parsed.data.projectName,
+    username: parsed.data.username,
+    projectName: parsed.data.projectName,
     createdAt: now,
     updatedAt: now,
   };

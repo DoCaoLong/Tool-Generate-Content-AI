@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Eye, LoaderCircle, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import PromptAvatar from "@/components/PromptAvatar";
 import { StyleDetailDialog } from "@/components/StyleDetailDialog";
@@ -22,7 +22,8 @@ import { buildStyleAnalysisPrompt, parseStyleAnalysis } from "@/lib/style-analys
 import type { DiscoveredTweet, SavedStyle } from "@/lib/types";
 
 interface ManualStyleValues { name: string; description: string; instruction: string; sampleText: string }
-interface AnalyzedAuthor { username: string; samples: Array<{ id: string; text: string }> }
+interface AnalyzedAuthor { username: string; projectName: string | null; samples: Array<{ id: string; text: string }> }
+interface AnalyzeTarget { username: string; projectName: string }
 const colors = ["bg-violet-500", "bg-sky-500", "bg-emerald-500", "bg-orange-500", "bg-rose-500", "bg-indigo-500"];
 const handlePattern = /^[A-Za-z0-9_]{1,15}$/;
 
@@ -36,8 +37,8 @@ function categoryLabel(category: StyleCategory) {
 
 function SavedStyleCard({ style, active, color, onChoose, onView, onEdit, onDelete }: { style: SavedStyle; active: boolean; color: string; onChoose: () => void; onView: () => void; onEdit: () => void; onDelete: () => void }) {
   const category = resolveStyleCategory(style);
-  const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (style.projectName || (style.username ? `@${style.username}` : "Dự án")) : "Bài viết";
-  const mark = category === "writing" ? getKOLInitials(style.name) : category === "project" && style.projectName ? "#" : "@";
+  const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (style.projectName || (style.username ? `@${style.username}` : "Dự án")) : style.username && style.projectName ? `@${style.username} · @${style.projectName.replace(/^@/, "")}` : "Bài viết";
+  const mark = category === "writing" && !style.username ? getKOLInitials(style.name) : category === "project" && style.projectName && !style.username ? "#" : "@";
   const tone = category === "kol" ? "bg-violet-500" : category === "project" ? "bg-sky-500" : color;
   return <article className="group relative rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
     <button className="w-full text-left" onClick={onChoose}>
@@ -64,7 +65,10 @@ export default function StyleLibraryPage() {
   const [createCategory, setCreateCategory] = useState<StyleCategory>("kol");
   const [search, setSearch] = useState("");
   const [username, setUsername] = useState("");
+  const [writingKol, setWritingKol] = useState("");
+  const [writingProject, setWritingProject] = useState("");
   const [analyzed, setAnalyzed] = useState<AnalyzedAuthor | null>(null);
+  const pendingAnalyze = useRef<AnalyzeTarget | null>(null);
   const [analyzePhase, setAnalyzePhase] = useState<"idle" | "fetch" | "analyze">("idle");
   const [localError, setLocalError] = useState("");
   const [accessOpen, setAccessOpen] = useState(false);
@@ -94,31 +98,34 @@ export default function StyleLibraryPage() {
   const filteredKOLs = useMemo(() => kolList.filter((style) => `${style.name} ${style.content}`.toLowerCase().includes(search.toLowerCase())), [kolList, search]);
   const form = useForm<ManualStyleValues>({ defaultValues: { name: "", description: "", instruction: "", sampleText: "" } });
   const handle = normalizeHandle(username);
-  const analyzedMatch = analyzed && analyzed.username === handle ? analyzed : null;
+  const writingKolHandle = normalizeHandle(writingKol);
+  const writingProjectHandle = normalizeHandle(writingProject);
+  const kolMatch = analyzed && !analyzed.projectName && analyzed.username === handle ? analyzed : null;
+  const writingMatch = analyzed?.projectName && analyzed.username === writingKolHandle && analyzed.projectName === writingProjectHandle ? analyzed : null;
+  const writingHandlesFilled = Boolean(writingKolHandle || writingProjectHandle);
 
   const analyzeAuthor = useMutation({
-    mutationFn: async (code: string) => {
-      const author = normalizeHandle(username);
-      if (!handlePattern.test(author)) throw new Error("Username X chưa hợp lệ.");
+    mutationFn: async ({ code, username: author, projectName }: AnalyzeTarget & { code: string }) => {
+      if (!handlePattern.test(author) || (projectName && !handlePattern.test(projectName))) throw new Error("Username X chưa hợp lệ.");
       if (!apiKey.trim()) throw new Error("Hãy lưu API key trong Cài đặt trước khi phân tích.");
       setAnalyzePhase("fetch");
-      const data = await apiRequest<{ tweets?: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ username: author, projectName: "", accessCode: code }) });
+      const data = await apiRequest<{ tweets?: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ username: author, projectName: projectName ? `@${projectName}` : "", accessCode: code }) });
       const samples = (data.tweets || [])
         .filter((tweet) => tweet.text.trim().length >= 20 && !/^RT @/i.test(tweet.text.trim()))
         .slice(0, 20)
         .map((tweet) => ({ id: tweet.id.slice(0, 100), text: tweet.text.slice(0, 4000) }));
-      if (!samples.length) throw new Error(`Không tìm thấy bài viết của @${author}.`);
+      if (!samples.length) throw new Error(projectName ? `Không tìm thấy bài của @${author} về @${projectName}.` : `Không tìm thấy bài viết của @${author}.`);
       setAnalyzePhase("analyze");
-      const result = await generateWithProvider(provider, { apiKey, model, prompt: buildStyleAnalysisPrompt(author, samples.slice(0, 12)) });
+      const result = await generateWithProvider(provider, { apiKey, model, prompt: buildStyleAnalysisPrompt(author, samples.slice(0, 12), projectName || undefined) });
       if (!result.success || !result.content) throw new Error(result.error || "Không thể phân tích phong cách.");
-      return { author, samples, draft: parseStyleAnalysis(result.content, author, samples.length) };
+      return { author, projectName: projectName || null, samples, draft: parseStyleAnalysis(result.content, author, samples.length, projectName || undefined) };
     },
-    onSuccess: ({ author, samples, draft }) => {
+    onSuccess: ({ author, projectName, samples, draft }) => {
       form.setValue("name", draft.name, { shouldValidate: true });
       form.setValue("description", draft.description, { shouldValidate: true });
       form.setValue("instruction", draft.instruction, { shouldValidate: true });
       form.setValue("sampleText", "");
-      setAnalyzed({ username: author, samples });
+      setAnalyzed({ username: author, projectName, samples });
       setLocalError("");
     },
     onSettled: () => setAnalyzePhase("idle"),
@@ -130,13 +137,17 @@ export default function StyleLibraryPage() {
       setVerifiedCode(code);
       setAccessOpen(false);
       setAccessCode("");
-      analyzeAuthor.mutate(code);
+      const pending = pendingAnalyze.current;
+      if (pending) analyzeAuthor.mutate({ code, ...pending });
     },
   });
 
   const requestAnalyze = () => {
-    if (!handlePattern.test(handle)) {
-      setLocalError("Username X chưa hợp lệ.");
+    const target: AnalyzeTarget = createCategory === "writing"
+      ? { username: writingKolHandle, projectName: writingProjectHandle }
+      : { username: handle, projectName: "" };
+    if (!handlePattern.test(target.username) || (createCategory === "writing" && !handlePattern.test(target.projectName))) {
+      setLocalError(createCategory === "writing" ? "Hãy nhập đủ username KOL và username dự án." : "Username X chưa hợp lệ.");
       return;
     }
     if (!apiKey.trim()) {
@@ -144,19 +155,23 @@ export default function StyleLibraryPage() {
       return;
     }
     setLocalError("");
+    pendingAnalyze.current = target;
     if (!verifiedCode) {
       setAccessOpen(true);
       return;
     }
-    analyzeAuthor.mutate(verifiedCode);
+    analyzeAuthor.mutate({ code: verifiedCode, ...target });
   };
 
   const createStyle = useMutation({
     mutationFn: (values: ManualStyleValues) => {
-      const author = analyzed && analyzed.username === normalizeHandle(username) ? analyzed : null;
       if (createCategory === "kol") {
-        if (!author) throw new Error("Hãy phân tích username trước khi lưu phong cách KOL.");
-        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "kol", name: values.name, description: values.description, instruction: values.instruction, username: author.username, projectName: null, samples: author.samples }) });
+        if (!kolMatch) throw new Error("Hãy phân tích username trước khi lưu phong cách KOL.");
+        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "kol", name: values.name, description: values.description, instruction: values.instruction, username: kolMatch.username, projectName: null, samples: kolMatch.samples }) });
+      }
+      if (writingKolHandle || writingProjectHandle) {
+        if (!writingMatch) throw new Error("Hãy phân tích hai username trước khi lưu.");
+        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "manual", category: "writing", name: values.name, description: values.description, instruction: values.instruction, username: writingMatch.username, projectName: writingMatch.projectName, samples: writingMatch.samples }) });
       }
       return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "manual", category: "writing", name: values.name, description: values.description, instruction: values.instruction, username: null, projectName: null, samples: values.sampleText.trim() ? [{ id: crypto.randomUUID(), text: values.sampleText.trim().slice(0, 5000) }] : [] }) });
     },
@@ -167,6 +182,8 @@ export default function StyleLibraryPage() {
       setDiscoveredStyle(null);
       form.reset();
       setUsername("");
+      setWritingKol("");
+      setWritingProject("");
       setAnalyzed(null);
       setCreateCategory("kol");
       setLocalError("");
@@ -194,13 +211,13 @@ export default function StyleLibraryPage() {
   const clearStyle = () => { setSelectedKolId(null); setSelectedSavedStyleId(null); setDiscoveredStyle(null); };
 
   return <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-6xl">
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Cá nhân hoá</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Thư viện phong cách</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Phong cách KOL lấy từ username trên X. Phong cách bài viết là giọng bạn tự mô tả. Phong cách dự án đến từ tab Khám phá.</p></div><div className="flex gap-2"><Button variant="outline" className="rounded-xl" onClick={clearStyle}><X className="mr-2 h-4 w-4" />Dùng mặc định</Button><Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCreating(!creating)}><Plus className="mr-2 h-4 w-4" />Tạo phong cách</Button></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Cá nhân hoá</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Thư viện phong cách</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Phong cách KOL lấy từ username trên X. Phong cách bài viết có thể tự mô tả, hoặc phân tích bài của một KOL về một dự án. Phong cách dự án đến từ tab Khám phá.</p></div><div className="flex gap-2"><Button variant="outline" className="rounded-xl" onClick={clearStyle}><X className="mr-2 h-4 w-4" />Dùng mặc định</Button><Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCreating(!creating)}><Plus className="mr-2 h-4 w-4" />Tạo phong cách</Button></div></div>
 
     {creating && <section className="mt-7 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold">Phong cách mới</h2><p className="mt-1 text-xs text-slate-500">{createCategory === "kol" ? "Phân tích username trên X. Kết quả được xếp vào Phong cách KOL." : "Tự mô tả giọng viết. Kết quả được xếp vào Phong cách bài viết."}</p></div><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100" onClick={() => setCreating(false)}><X className="h-4 w-4" /></button></div>
+      <div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold">Phong cách mới</h2><p className="mt-1 text-xs text-slate-500">{createCategory === "kol" ? "Phân tích username trên X. Kết quả được xếp vào Phong cách KOL." : "Tự mô tả, hoặc lấy bài của một KOL về một dự án. Kết quả được xếp vào Phong cách bài viết."}</p></div><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100" onClick={() => setCreating(false)}><X className="h-4 w-4" /></button></div>
       <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
         <button type="button" className={`h-10 rounded-xl text-sm font-medium ${createCategory === "kol" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setCreateCategory("kol"); setLocalError(""); }}>Phong cách KOL</button>
-        <button type="button" className={`h-10 rounded-xl text-sm font-medium ${createCategory === "writing" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setCreateCategory("writing"); setUsername(""); setAnalyzed(null); setLocalError(""); }}>Phong cách bài viết</button>
+        <button type="button" className={`h-10 rounded-xl text-sm font-medium ${createCategory === "writing" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setCreateCategory("writing"); setLocalError(""); }}>Phong cách bài viết</button>
       </div>
       <form onSubmit={form.handleSubmit((values) => createStyle.mutate(values))}>
         {createCategory === "kol" && <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
@@ -211,18 +228,29 @@ export default function StyleLibraryPage() {
           </div>
           <p className="mt-2 text-xs leading-5 text-slate-500">{apiKey.trim() ? <>Dùng {providerLabels[provider]} · {model}. Kết quả chỉ là văn phong, không hiện bài viết.</> : <>Chưa có API key. <Link className="font-medium text-violet-700 hover:text-violet-900" href="/settings">Mở Cài đặt</Link> để lưu key trước khi phân tích.</>}</p>
           {(localError || analyzeAuthor.error) && <p className="mt-2 text-sm text-red-600">{localError || analyzeAuthor.error?.message}</p>}
-          {analyzedMatch && <p className="mt-2 text-xs font-medium text-violet-700">Đã điền văn phong của @{analyzedMatch.username}. Sửa rồi lưu nếu cần.</p>}
-          {analyzed && handle && !analyzedMatch && <p className="mt-2 text-xs font-medium text-amber-700">Username đã đổi so với lần phân tích @{analyzed.username}. Bấm Phân tích lại trước khi lưu.</p>}
+          {kolMatch && <p className="mt-2 text-xs font-medium text-violet-700">Đã điền văn phong của @{kolMatch.username}. Sửa rồi lưu nếu cần.</p>}
+          {analyzed && handle && !kolMatch && <p className="mt-2 text-xs font-medium text-amber-700">Username đã đổi so với lần phân tích @{analyzed.username}. Bấm Phân tích lại trước khi lưu.</p>}
         </div>}
-        <div className={`${createCategory === "kol" ? "mt-5" : ""} grid gap-5 md:grid-cols-2`}>
+        {createCategory === "writing" && <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-800" htmlFor="writing-kol">Username KOL<div className="relative mt-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input id="writing-kol" className="h-11 rounded-xl bg-white pl-7" placeholder="elonmusk" value={writingKol} autoComplete="off" onChange={(event) => { setWritingKol(event.target.value); setLocalError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); requestAnalyze(); } }} /></div></label>
+            <label className="block text-sm font-medium text-slate-800" htmlFor="writing-project">Username dự án<div className="relative mt-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input id="writing-project" className="h-11 rounded-xl bg-white pl-7" placeholder="PlayOnMint" value={writingProject} autoComplete="off" onChange={(event) => { setWritingProject(event.target.value); setLocalError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); requestAnalyze(); } }} /></div></label>
+          </div>
+          <div className="mt-3 flex justify-end"><Button type="button" className="h-11 rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800" disabled={analyzeAuthor.isPending} onClick={requestAnalyze}>{analyzeAuthor.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}{analyzeAuthor.isPending ? (analyzePhase === "analyze" ? "Đang phân tích..." : "Đang lấy bài viết...") : "Phân tích"}</Button></div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{apiKey.trim() ? <>Lấy bài của KOL nói về dự án qua Sorsa, rồi phân tích bằng {providerLabels[provider]} · {model}. Không hiện nội dung bài.</> : <>Chưa có API key. <Link className="font-medium text-violet-700 hover:text-violet-900" href="/settings">Mở Cài đặt</Link> để lưu key trước khi phân tích.</>}</p>
+          {(localError || analyzeAuthor.error) && <p className="mt-2 text-sm text-red-600">{localError || analyzeAuthor.error?.message}</p>}
+          {writingMatch && <p className="mt-2 text-xs font-medium text-violet-700">Đã điền văn phong của @{writingMatch.username} về @{writingMatch.projectName}. Sửa rồi lưu nếu cần.</p>}
+          {writingHandlesFilled && !writingMatch && <p className="mt-2 text-xs font-medium text-amber-700">{analyzed?.projectName ? `Username đã đổi so với lần phân tích @${analyzed.username} · @${analyzed.projectName}. Bấm Phân tích lại trước khi lưu.` : "Phân tích hai username trước khi lưu."}</p>}
+        </div>}
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
           <label className="text-sm font-medium">Tên phong cách<Input className="mt-2 rounded-xl" placeholder="Founder thẳng thắn" {...form.register("name", { required: true, minLength: 2 })} /></label>
           <label className="text-sm font-medium">Mô tả ngắn<Input className="mt-2 rounded-xl" placeholder="Dùng cho bài xây dựng thương hiệu cá nhân" {...form.register("description", { maxLength: 300 })} /></label>
-          <label className={`text-sm font-medium ${createCategory === "kol" || analyzedMatch ? "md:col-span-2" : ""}`}>Hướng dẫn văn phong<Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Giọng điệu, nhịp câu, cách mở bài, cấu trúc và điều cần tránh..." {...form.register("instruction", { required: true, minLength: 10, maxLength: 5000 })} /></label>
-          {createCategory === "writing" && <label className="text-sm font-medium">Bài mẫu <span className="font-normal text-slate-400">(không bắt buộc)</span><Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Dán bài viết thể hiện đúng phong cách..." {...form.register("sampleText", { maxLength: 5000 })} /></label>}
+          <label className={`text-sm font-medium ${createCategory === "kol" || writingMatch ? "md:col-span-2" : ""}`}>Hướng dẫn văn phong<Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Giọng điệu, nhịp câu, cách mở bài, cấu trúc và điều cần tránh..." {...form.register("instruction", { required: true, minLength: 10, maxLength: 5000 })} /></label>
+          {createCategory === "writing" && !writingMatch && <label className="text-sm font-medium">Bài mẫu <span className="font-normal text-slate-400">(không bắt buộc)</span><Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Dán bài viết thể hiện đúng phong cách..." {...form.register("sampleText", { maxLength: 5000 })} /></label>}
         </div>
-        {createCategory === "kol" && !analyzedMatch && <p className="mt-4 text-xs text-slate-500">Phân tích username trước khi lưu vào Phong cách KOL.</p>}
+        {createCategory === "kol" && !kolMatch && <p className="mt-4 text-xs text-slate-500">Phân tích username trước khi lưu vào Phong cách KOL.</p>}
         {createStyle.error && <p className="mt-4 text-sm text-red-600">{createStyle.error.message}</p>}
-        <div className="mt-5 flex justify-end"><Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={createStyle.isPending || analyzeAuthor.isPending || (createCategory === "kol" && !analyzedMatch)}>{createStyle.isPending ? "Đang lưu..." : "Lưu và áp dụng"}</Button></div>
+        <div className="mt-5 flex justify-end"><Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={createStyle.isPending || analyzeAuthor.isPending || (createCategory === "kol" && !kolMatch) || (createCategory === "writing" && writingHandlesFilled && !writingMatch)}>{createStyle.isPending ? "Đang lưu..." : "Lưu và áp dụng"}</Button></div>
       </form>
     </section>}
 
@@ -230,7 +258,7 @@ export default function StyleLibraryPage() {
 
     {([
       { id: "kol" as const, title: "Phong cách KOL", hint: "Tạo từ username trên X.", empty: "Chưa có phong cách KOL." },
-      { id: "writing" as const, title: "Phong cách bài viết", hint: "Giọng viết bạn tự mô tả.", empty: "Chưa có phong cách bài viết." },
+      { id: "writing" as const, title: "Phong cách bài viết", hint: "Tự mô tả, hoặc phân tích bài của một KOL về một dự án.", empty: "Chưa có phong cách bài viết." },
       { id: "project" as const, title: "Phong cách dự án", hint: "Lưu từ tab Khám phá.", empty: "Chưa có phong cách dự án." },
     ]).map((group) => {
       const items = groupedStyles[group.id];

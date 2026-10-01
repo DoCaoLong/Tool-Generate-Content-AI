@@ -26,13 +26,12 @@ const requestSchema = z.object({
 interface SorsaTweet {
   id?: string;
   full_text?: string;
-  text?: string;
   created_at?: string;
   likes_count?: number;
-  favorite_count?: number;
   retweet_count?: number;
   reply_count?: number;
   view_count?: number;
+  retweeted_status?: SorsaTweet | null;
   user?: {
     username?: string;
     display_name?: string;
@@ -43,7 +42,16 @@ interface SorsaResponse {
   tweets?: SorsaTweet[];
   next_cursor?: string | null;
   message?: string;
-  error?: string;
+}
+
+class SorsaHttpError extends Error {
+  status: number;
+  data: SorsaResponse;
+  constructor(status: number, data: SorsaResponse) {
+    super("sorsa");
+    this.status = status;
+    this.data = data;
+  }
 }
 
 function projectQuery(value: string) {
@@ -60,14 +68,14 @@ function asHandle(value: string) {
 
 function mapTweets(tweets: SorsaTweet[], fallbackUsername: string) {
   return tweets
-    .filter((tweet) => tweet.id && (tweet.full_text || tweet.text))
+    .filter((tweet) => tweet.id && tweet.full_text?.trim() && !tweet.retweeted_status)
     .map((tweet) => ({
       id: String(tweet.id),
-      text: String(tweet.full_text || tweet.text),
+      text: String(tweet.full_text),
       createdAt: tweet.created_at || new Date().toISOString(),
       username: tweet.user?.username || fallbackUsername,
       displayName: tweet.user?.display_name || tweet.user?.username || fallbackUsername,
-      likes: tweet.likes_count ?? tweet.favorite_count ?? 0,
+      likes: tweet.likes_count ?? 0,
       reposts: tweet.retweet_count ?? 0,
       replies: tweet.reply_count ?? 0,
       views: tweet.view_count ?? 0,
@@ -75,14 +83,34 @@ function mapTweets(tweets: SorsaTweet[], fallbackUsername: string) {
 }
 
 function sorsaError(status: number, data: SorsaResponse) {
-  const fallback = status === 401
-    ? "Sorsa API key không hợp lệ."
-    : status === 403
-      ? "Sorsa API đã hết quota hoặc gói dịch vụ đã hết hạn."
-      : status === 429
-        ? "Đang vượt giới hạn Sorsa API. Hãy thử lại sau ít phút."
-        : "Không thể lấy dữ liệu từ Sorsa API.";
-  return errorResponse(data.message || data.error || fallback, status);
+  const fallback = status === 400
+    ? "Tham số gửi tới Sorsa không hợp lệ."
+    : status === 401
+      ? "Sorsa API key không hợp lệ."
+      : status === 403
+        ? "Sorsa API đã hết quota hoặc gói dịch vụ đã hết hạn."
+        : status === 404
+          ? "Không tìm thấy tài khoản hoặc bài viết công khai trên X."
+          : status === 429
+            ? "Đang vượt giới hạn Sorsa API. Hãy thử lại sau ít phút."
+            : status >= 500
+              ? "Sorsa đang lỗi. Hãy thử lại sau."
+              : "Không thể lấy dữ liệu từ Sorsa API.";
+  return errorResponse(data.message || fallback, status >= 400 && status < 600 ? status : 502);
+}
+
+function parseSorsaBody(raw: string): SorsaResponse {
+  if (!raw.trim()) return {};
+  try {
+    const data = JSON.parse(raw) as SorsaResponse;
+    return data && typeof data === "object" ? data : {};
+  } catch {
+    return { message: "Sorsa trả về dữ liệu không đọc được." };
+  }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function sorsaPost(path: string, body: Record<string, unknown>, apiKey: string) {
@@ -103,9 +131,10 @@ function sorsaPost(path: string, body: Record<string, unknown>, apiKey: string) 
       const chunks: Buffer[] = [];
       response.on("data", (chunk) => chunks.push(chunk as Buffer));
       response.on("end", () => {
-        const data = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as SorsaResponse;
-        if ((response.statusCode || 500) >= 400) {
-          reject(Object.assign(new Error("sorsa"), { status: response.statusCode, data }));
+        const data = parseSorsaBody(Buffer.concat(chunks).toString("utf8"));
+        const status = response.statusCode || 500;
+        if (status >= 400) {
+          reject(new SorsaHttpError(status, data));
           return;
         }
         resolve(data);
@@ -119,6 +148,31 @@ function sorsaPost(path: string, body: Record<string, unknown>, apiKey: string) 
     request.write(payload);
     request.end();
   });
+}
+
+function isRetryable(error: unknown) {
+  if (error instanceof SorsaHttpError) return error.status === 429 || error.status >= 500;
+  return error instanceof Error && error.message === "connect";
+}
+
+async function sorsaPostWithRetry(path: string, body: Record<string, unknown>, apiKey: string) {
+  let last: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await sorsaPost(path, body, apiKey);
+    } catch (error) {
+      last = error;
+      if (!isRetryable(error) || attempt === 2) throw error;
+      await sleep(Math.min(2 ** attempt, 4) * 1000);
+    }
+  }
+  throw last;
+}
+
+function discoverError(error: unknown) {
+  if (error instanceof SorsaHttpError) return sorsaError(error.status, error.data);
+  if (error instanceof Error && error.message === "connect") return errorResponse("Không thể kết nối đến Sorsa API. Hãy thử lại sau.", 502);
+  return errorResponse("Không thể lấy dữ liệu từ Sorsa API.", 502);
 }
 
 export async function POST(request: Request) {
@@ -164,23 +218,15 @@ export async function POST(request: Request) {
 
   let data: SorsaResponse;
   try {
-    data = await sorsaPost(endpoint, body, apiKey);
+    data = await sorsaPostWithRetry(endpoint, body, apiKey);
   } catch (error) {
-    if (endpoint === "mentions" && projectHandle) {
-      try {
-        data = await sorsaPost("search-tweets", { query: `@${projectHandle} -filter:retweets`, order: "popular", ...cursor }, apiKey);
-      } catch (fallbackError) {
-        if (fallbackError instanceof Error && fallbackError.message === "connect") {
-          return errorResponse("Không thể kết nối đến Sorsa API. Hãy thử lại sau.", 502);
-        }
-        const failed = fallbackError as { status?: number; data?: SorsaResponse };
-        return sorsaError(failed.status || 502, failed.data || {});
-      }
-    } else if (error instanceof Error && error.message === "connect") {
-      return errorResponse("Không thể kết nối đến Sorsa API. Hãy thử lại sau.", 502);
-    } else {
-      const failed = error as { status?: number; data?: SorsaResponse };
-      return sorsaError(failed.status || 502, failed.data || {});
+    const mentionsDown = error instanceof Error && error.message === "connect" || error instanceof SorsaHttpError && (error.status === 404 || error.status >= 500);
+    const fallback = endpoint === "mentions" && projectHandle && mentionsDown;
+    if (!fallback) return discoverError(error);
+    try {
+      data = await sorsaPostWithRetry("search-tweets", { query: `@${projectHandle} -filter:retweets`, order: "popular", ...cursor }, apiKey);
+    } catch (fallbackError) {
+      return discoverError(fallbackError);
     }
   }
 
@@ -191,7 +237,7 @@ export async function POST(request: Request) {
 
   return Response.json({
     tweets,
-    nextCursor: data.next_cursor || null,
+    nextCursor: typeof data.next_cursor === "string" && data.next_cursor.trim() ? data.next_cursor : null,
     query: queryLabel,
     source,
     handle: username || projectHandle || projectName,

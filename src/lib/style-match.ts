@@ -1,3 +1,4 @@
+import { resolveStyleCategory } from "@/lib/style-category";
 import type { Project, SavedStyle } from "@/lib/types";
 
 function normalizeMention(value: string) {
@@ -37,10 +38,16 @@ export function projectMentionTokens(project: Project) {
   return tokens;
 }
 
+export function projectHasNucleusBrief(project: Pick<Project, "contentOptions">) {
+  return /--- Nucleus:\s*\S+/i.test(project.contentOptions.documents || "");
+}
+
 export function findStyleForProject(styles: SavedStyle[], project: Project) {
   const projectTokens = projectMentionTokens(project);
   if (!projectTokens.size) return null;
+  const skipKol = projectHasNucleusBrief(project);
   return styles.find((style) => {
+    if (skipKol && resolveStyleCategory(style) === "kol") return false;
     const styleTokens = styleMentionTokens(style);
     if (!styleTokens.size) return false;
     for (const token of styleTokens) {

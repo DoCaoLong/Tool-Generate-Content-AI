@@ -84,7 +84,7 @@ export function StyleDetailDialog({
       <DialogContent className="max-h-[min(80vh,720px)] overflow-y-auto rounded-2xl sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{editing ? "Sửa phong cách" : name}</DialogTitle>
-          <DialogDescription>{kindLabel}{username ? ` · @${username}` : ""}{projectName ? ` · ${projectName}` : ""}</DialogDescription>
+          <DialogDescription>{kindLabel}{username ? ` · @${username}` : ""}{projectName ? ` · ${/^[A-Za-z0-9_]{1,15}$/.test(projectName) ? `@${projectName}` : projectName}` : ""}</DialogDescription>
         </DialogHeader>
         {editing ? (
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submit(); }}>

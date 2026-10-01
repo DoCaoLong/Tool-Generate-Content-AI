@@ -2,6 +2,9 @@
 
 ## 2026-10-01
 
+- Lời gọi Sorsa trong Khám phá theo tài liệu API v3: bài viết đọc `full_text`, bỏ retweet có `retweeted_status`, mentions gửi handle không có `@`, lỗi chỉ lấy `message`, và thử lại khi 429 hoặc 5xx.
+- Tab Phong cách bài viết khi tạo mới thêm username KOL và username dự án. Phân tích gọi Sorsa lấy bài của KOL về dự án đó, rồi điền văn phong. Bài viết không hiện ra. Để trống hai ô thì vẫn tự mô tả như trước.
+- Tạo dự án từ brief Nucleus không gắn phong cách KOL mặc định. Mở dự án đã có marker Nucleus cũng bỏ KOL dựng sẵn và style `category: kol`. Phong cách bài viết hoặc dự án vẫn tự khớp.
 - Ô tạo bài xoá text ngay khi gửi. Câu vừa gửi hiện ở khung xem như một lượt chat, sau đó là nội dung AI. Gửi khi ô trống dùng rule và tài liệu, đồng thời bám style nếu đang chọn. Không có style, rule và tài liệu thì báo vui lòng nhập chủ đề hoặc ý tưởng.
 - Thư viện `/styles` tách phong cách đã lưu thành Phong cách KOL, Phong cách bài viết và Phong cách dự án. Tạo từ username X lưu `category: kol`. Tự mô tả giọng viết lưu `category: writing`. Lưu từ Khám phá lưu `category: project`.
 - Tab Phong cách trên sidebar hiện nút X khi đang chọn một phong cách để bỏ chọn ngay, không cần mở thư viện.

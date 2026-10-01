@@ -28,7 +28,8 @@ import { useAppStore } from "@/lib/app-store";
 import { apiRequest, ApiError } from "@/lib/http";
 import { buildContentPrompt } from "@/lib/prompt-builder";
 import { getKOLStyle } from "@/lib/kol-styles";
-import { findStyleForProject } from "@/lib/style-match";
+import { resolveStyleCategory } from "@/lib/style-category";
+import { findStyleForProject, projectHasNucleusBrief } from "@/lib/style-match";
 import { providerLabels, providerModels, providers } from "@/lib/providers";
 import { prefetchNucleusList } from "@/lib/nucleus-query";
 import type { Generation, Project, ProjectContentOptions, Provider, SavedStyle, UserProfile } from "@/lib/types";
@@ -179,15 +180,23 @@ function Workspace({ user }: { user: UserProfile }) {
   }, [selectedSavedStyle, selectedSavedStyleId, setSelectedSavedStyleId, stylesQuery.data]);
 
   useEffect(() => {
-    if (!isProjectRoute || !activeProject || !savedStyles.length) return;
+    if (!isProjectRoute || !activeProject || !stylesQuery.data) return;
     if (autoStyledProjectId.current === activeProject.id) return;
+    const fromNucleusBrief = projectHasNucleusBrief(activeProject);
     const match = findStyleForProject(savedStyles, activeProject);
     autoStyledProjectId.current = activeProject.id;
-    if (!match) return;
-    setSelectedSavedStyleId(match.id);
+    if (match) {
+      setSelectedSavedStyleId(match.id);
+      setSelectedKolId(null);
+      setDiscoveredStyle(null);
+      return;
+    }
+    if (!fromNucleusBrief) return;
     setSelectedKolId(null);
     setDiscoveredStyle(null);
-  }, [activeProject, isProjectRoute, savedStyles, setDiscoveredStyle, setSelectedKolId, setSelectedSavedStyleId]);
+    const current = savedStyles.find((style) => style.id === selectedSavedStyleId);
+    if (current && resolveStyleCategory(current) === "kol") setSelectedSavedStyleId(null);
+  }, [activeProject, isProjectRoute, savedStyles, selectedSavedStyleId, setDiscoveredStyle, setSelectedKolId, setSelectedSavedStyleId, stylesQuery.data]);
 
   const logout = useMutation({
     mutationFn: () => apiRequest<{ ok: true }>("/api/auth/logout", { method: "POST" }),

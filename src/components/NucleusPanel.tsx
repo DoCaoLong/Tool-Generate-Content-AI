@@ -12,7 +12,8 @@ import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
 import { applyNucleusOptions, findExistingStudioProject, nucleusFieldLabels, nucleusXUsername } from "@/lib/nucleus-brief";
 import { fetchNucleusDetail, fetchNucleusList, nucleusCacheOptions, nucleusDetailParam, nucleusKeys, nucleusListNextPageParam, prefetchNucleusDetail } from "@/lib/nucleus-query";
-import type { Project } from "@/lib/types";
+import { resolveStyleCategory } from "@/lib/style-category";
+import type { Project, SavedStyle } from "@/lib/types";
 
 const NUCLEUS_FALLBACK_SRC = "/nucleus-fallback.svg";
 const platformLabels: Record<string, string> = {
@@ -209,10 +210,18 @@ function NucleusDetail({ slug }: { slug: string }) {
       }
       const contentOptions = applyNucleusOptions(project, currentOptions);
       await apiRequest<{ contentOptions: Project["contentOptions"] }>(`/api/projects/${projectId}/options`, { method: "PATCH", body: JSON.stringify(contentOptions) });
-      return { projectId, contentOptions };
+      return { projectId, created: selectedTarget === "new" };
     },
-    onSuccess: async ({ projectId }) => {
+    onSuccess: async ({ projectId, created }) => {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      if (created) {
+        const store = useAppStore.getState();
+        store.setSelectedKolId(null);
+        store.setDiscoveredStyle(null);
+        const styles = queryClient.getQueryData<{ styles: SavedStyle[] }>(["styles"]);
+        const current = styles?.styles.find((style) => style.id === store.selectedSavedStyleId);
+        if (current && resolveStyleCategory(current) === "kol") store.setSelectedSavedStyleId(null);
+      }
       setSelectedProjectId(projectId);
       setOptionsOpen(true);
       router.push(`/projects/${projectId}/new`);

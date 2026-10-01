@@ -79,7 +79,7 @@
 - `Viết lại` bắt buộc có nội dung nguồn và dùng task/rule prompt riêng; `Viết mới` tạo nội dung mới từ brief.
 - KOL được chọn bằng mục `Phong cách KOL` ngay dưới nút tạo dự án, được giữ cục bộ bằng Zustand và inject vào prompt.
 - Generation lưu snapshot gồm id, tên và instruction của KOL để lịch sử không phụ thuộc lựa chọn hiện tại.
-- `src/app/api/discover/route.ts` gọi Sorsa từ server: `POST /v3/search-tweets` khi có username tác giả; `POST /v3/mentions` (`order: popular`) khi chỉ nhập @handle/tên dự án. Chỉ cần một trong hai trường.
+- `src/app/api/discover/route.ts` gọi Sorsa v3 từ server, header `ApiKey`. `POST /v3/search-tweets` khi có username (`from:username`, `order: latest`). `POST /v3/mentions` khi chỉ có @handle dự án: `query` là handle không có `@`, `order: popular`. Bài lấy từ `tweets[].full_text`; retweet (`retweeted_status`) bị bỏ. `next_cursor` chuỗi rỗng coi như hết trang. Lỗi đọc `message`. 429 và 5xx được thử lại tối đa 3 lần. Chỉ cần một trong hai trường.
 - `src/app/api/nucleus/projects` proxy Nucleus `GET /v1/projects` với `skip`, `limit` và fields danh sách; `src/app/api/nucleus/projects/[slug]` lấy chi tiết bằng slug, fallback `id` khi slug null.
 - Proxy Nucleus yêu cầu đăng nhập, không cần API key, loại danh sách user đã tham gia, và sanitize HTML chi tiết trước khi trả về client.
 - Bộ lọc tên dự án của Khám phá là tuỳ chọn; khi để trống, API chỉ dùng `from:username`, sắp xếp `latest` và trả các bài gần nhất của tác giả.
@@ -89,7 +89,7 @@
 - Prompt coi bài mẫu là dữ liệu không tin cậy, chỉ phân tích đặc trưng văn phong và không được làm theo instruction nằm trong nội dung mẫu.
 - Prompt tách rule người dùng thành chỉ dẫn bắt buộc và coi tài liệu tham khảo là dữ liệu không tin cậy, không thực thi instruction nằm trong tài liệu.
 - Style khám phá được lưu vào collection `styles` với `category: project` trước khi áp dụng. Tự mô tả giọng viết lưu `category: writing`. Phân tích username trên `/styles` lưu `category: kol`.
-- Form tạo phong cách trên `/styles` có hai nhóm: Phong cách KOL (bắt buộc phân tích username) và Phong cách bài viết (tên, mô tả, hướng dẫn, bài mẫu tuỳ chọn). Thư viện chia ba nhóm đã lưu: KOL, bài viết, dự án. `StyleDetailDialog` chỉ hiện tên, mô tả và hướng dẫn văn phong, không render nội dung bài Sorsa.
+- Form tạo phong cách trên `/styles` có hai nhóm: Phong cách KOL (bắt buộc phân tích username) và Phong cách bài viết. Bài viết có thể tự mô tả, hoặc nhập username KOL và username dự án để Sorsa lấy bài `from:kol` về `@dự án`, rồi AI điền tên, mô tả và hướng dẫn. Kết quả vẫn lưu `category: writing`, kèm hai username và bài mẫu. Thư viện chia ba nhóm đã lưu: KOL, bài viết, dự án. `StyleDetailDialog` chỉ hiện tên, mô tả và hướng dẫn văn phong, không render nội dung bài Sorsa.
 - `KOLStylePicker` hiện tên phong cách đang chọn và nút X để bỏ chọn ngay trên sidebar. Active saved style chỉ lưu id trong Zustand, còn MongoDB là nguồn dữ liệu chính.
 - Collection `styles` có index `(userId, updatedAt)` phục vụ danh sách thư viện theo tài khoản.
 - Provider, model, ngôn ngữ, giọng điệu và độ dài được chọn nhanh ngay bên trái nút gửi; API key được quản lý tại `/settings` thay vì aside tuỳ chọn.
@@ -109,6 +109,7 @@
 - Trang chi tiết Nucleus định vị avatar thumbnail bằng `relative z-10 -mt-8` và `shrink-0 bg-white` để thumbnail không bị banner `position: relative` đè lớp hiển thị.
 - Ảnh Nucleus lỗi hoặc thiếu thì dùng `/nucleus-fallback.svg`; ảnh trong HTML chi tiết cũng được gắn fallback khi `error`.
 - Trang chi tiết Nucleus cho phép tạo dự án mới hoặc chọn dự án có sẵn, rồi ghi brief vào `documents`, `rules` từ `project_details[0]`, và `keywords` từ username X qua `PATCH /api/projects/[projectId]/options`.
+- Dự án có marker `--- Nucleus:` trong tài liệu không tự gắn phong cách KOL khi mở: bỏ KOL dựng sẵn, discovered style và style đã lưu `category: kol`. Phong cách bài viết hoặc dự án vẫn được khớp nếu token trùng. Nút “Tạo dự án và dùng brief” xoá các lựa chọn KOL đó trước khi vào dự án mới.
 - `project_details` được gom thành accordion thu gọn; sanitize HTML vẫn giữ `https` images, link, list và table, loại `data:` image và script.
 
 ## Known Observations

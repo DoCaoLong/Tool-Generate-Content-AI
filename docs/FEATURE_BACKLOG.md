@@ -98,4 +98,16 @@
 - Priority: low
 - Scope: thêm nút copy link nhanh trên header chi tiết dự án Nucleus kèm thông báo toast để tiện chia sẻ cho cộng đồng hoặc lưu lại xem sau.
 
+### Backlog-016: Giữ phong cách KOL đã chọn tay trên dự án Nucleus
+
+- Status: proposed
+- Priority: low
+- Scope: khi người dùng tự chọn phong cách KOL sau khi vào dự án tạo từ brief Nucleus, ghi nhớ lựa chọn đó cho lần mở lại cùng dự án, thay vì bỏ KOL mỗi lần quay lại.
+
+### Backlog-017: Chọn bài trước khi phân tích phong cách bài viết
+
+- Status: proposed
+- Priority: low
+- Scope: ở form Phong cách bài viết, sau khi Sorsa trả bài của KOL về một dự án, cho chọn bài mẫu rồi mới phân tích, giống ô chọn bài ở tab Khám phá. Hiện lấy tối đa 20 bài đầu.
+
 

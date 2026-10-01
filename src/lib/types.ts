@@ -81,6 +81,7 @@ export interface DiscoveredStyle {
 export interface SavedStyle {
   id: string;
   kind: "manual" | "discovered";
+  category: "kol" | "writing" | "project";
   name: string;
   description: string;
   instruction: string;

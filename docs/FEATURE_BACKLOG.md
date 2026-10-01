@@ -32,6 +32,24 @@
 - Priority: medium
 - Scope: lưu riêng key OpenAI, Gemini và DeepSeek trong Settings để đổi provider cạnh nút gửi mà không phải nhập lại key.
 
+### Backlog-010: Hiện câu trả lời AI ngay trong khung chat
+
+- Status: proposed
+- Priority: medium
+- Scope: stream nội dung đang viết vào bong bóng Content Studio, thay vì chỉ hiện "Đang tạo nội dung..." rồi đổi sang bản đã lưu.
+
+### Backlog-009: Chuyển nhóm phong cách đã lưu
+
+- Status: proposed
+- Priority: low
+- Scope: cho phép đổi một phong cách đã lưu giữa Phong cách KOL, Phong cách bài viết và Phong cách dự án mà không phải tạo lại.
+
+### Backlog-008: Ảnh prompt dựng sẵn thiếu và file mồ côi
+
+- Status: proposed
+- Priority: low
+- Scope: báo khi `profileImgUrl` của KOL dựng sẵn (ví dụ `/Punk9277.jpg`) không có trong `public/`, và dọn file trong `data/uploads/prompts` khi admin gỡ hoặc thay ảnh.
+
 ### Backlog-007: Ghi nhớ tuỳ chọn soạn bài nhanh
 
 - Status: proposed

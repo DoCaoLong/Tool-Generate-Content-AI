@@ -36,7 +36,8 @@
 - Tab Khám phá yêu cầu `REGISTER_ACCESS_CODE` (env): portal access code khi bấm Tìm bài viết, API `/api/discover` kiểm tra lại mã.
 - `src/middleware.ts` chặn API: JWT user (`cw_session`) cho route nội bộ, JWT admin (`cw_admin`) cho `/api/admin/*` trừ login. Auth/public/turnstile để public.
 - Login, register và `/admin` xác thực Cloudflare Turnstile (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`).
-- Admin session cookie `cw_admin` 12 giờ; credential `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Dashboard `/admin` quản lý users, API keys (`settings.api_keys`) và `prompt_styles`.
+- Admin session cookie `cw_admin` 12 giờ; credential `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Dashboard quản lý users, API keys (`settings.api_keys`) và `prompt_styles` theo route `/admin/user`, `/admin/prompts`, `/admin/keys`. `/admin` chuyển về `/admin/user`.
+- Ảnh prompt dựng sẵn ghi vào `data/uploads/prompts` và được phục vụ bởi `GET /uploads/prompts/[file]`. `next start` không nhận file thêm vào `public/` sau khi process đã boot, nên không lưu ảnh mới ở `public/uploads`.
 - `src/app/api/projects/*`: tạo, đọc, sửa, xoá dự án và đọc/lưu lịch sử.
 - Mọi truy vấn project/generation đều lọc theo `userId` lấy từ session phía server.
 - Password được hash bằng bcryptjs cost 12.
@@ -49,7 +50,7 @@
 - Bảng tuỳ chọn có trường `Rule bắt buộc` và `Tài liệu tham khảo`; nội dung gốc chỉ hiện trong chế độ Viết lại.
 - Từ khoá bắt buộc được theo dõi bằng React Hook Form và hiển thị tức thời thành chip `Từ khóa: ...` cạnh chip phong cách trong composer; chip được tách theo dấu phẩy hoặc xuống dòng và loại trùng.
 - Các mục chính trong sidebar dùng chiều cao 44px, icon 16px và khoảng cách đồng nhất; dự án dùng icon thư mục cùng thao tác đổi tên qua `PATCH /api/projects/[projectId]` và xoá.
-- `src/components/KOLStylePicker.tsx`: thẻ phong cách đang chọn trong sidebar, điều hướng sang `/styles`.
+- `src/components/KOLStylePicker.tsx`: thẻ phong cách đang chọn trong sidebar, điều hướng sang `/styles`, có nút X để bỏ chọn.
 - `src/components/StyleLibraryPage.tsx`: page thư viện phong cách đầy đủ, không dùng modal.
 - `src/components/SettingsPage.tsx`: API key ở đầu trang và cấu hình provider/model mặc định.
 - `src/components/ui/native-select.tsx`: native select dùng icon ChevronDown riêng, thống nhất mũi tên giữa composer và Settings.
@@ -74,6 +75,7 @@
 - React Hook Form quản lý auth, project form và content composer.
 - Thanh trên của workspace có segmented tabs `Viết mới` và `Viết lại`; mode được giữ bằng Zustand và đồng bộ vào React Hook Form.
 - Tabs `Viết mới` và `Viết lại` dùng route riêng `/projects/[id]/new` và `/projects/[id]/rewrite`, nên reload không đổi màn hình.
+- Ô soạn bài xoá nội dung ngay khi gửi và hiện câu đó thành bong bóng chat trong khung lịch sử, rồi tới câu trả lời của Content Studio. Gửi trống vẫn chạy nếu dự án đã có rule, tài liệu hoặc style; prompt bám style khi có. Nếu thiếu cả ba, báo `Vui lòng nhập chủ đề hoặc ý tưởng.`
 - `Viết lại` bắt buộc có nội dung nguồn và dùng task/rule prompt riêng; `Viết mới` tạo nội dung mới từ brief.
 - KOL được chọn bằng mục `Phong cách KOL` ngay dưới nút tạo dự án, được giữ cục bộ bằng Zustand và inject vào prompt.
 - Generation lưu snapshot gồm id, tên và instruction của KOL để lịch sử không phụ thuộc lựa chọn hiện tại.
@@ -86,9 +88,9 @@
 - Người dùng có thể chọn tối đa 8 bài công khai làm mẫu. Snapshot bài mẫu được đưa vào prompt, lưu cùng generation và được Zustand persist trên thiết bị để tiếp tục sử dụng.
 - Prompt coi bài mẫu là dữ liệu không tin cậy, chỉ phân tích đặc trưng văn phong và không được làm theo instruction nằm trong nội dung mẫu.
 - Prompt tách rule người dùng thành chỉ dẫn bắt buộc và coi tài liệu tham khảo là dữ liệu không tin cậy, không thực thi instruction nằm trong tài liệu.
-- Style khám phá được lưu vào collection `styles` trước khi áp dụng. Người dùng cũng có thể tự tạo style bằng tên, mô tả, hướng dẫn và một bài mẫu tuỳ chọn.
-- Form tạo phong cách có ô username không bắt buộc. Phân tích gọi `POST /api/discover` (cùng access code với Khám phá) để lấy bài của tác giả, rồi `generateWithProvider` trên client viết hướng dẫn. Kết quả lưu `kind: discovered` với `username` và bài mẫu; bỏ username hoặc chưa phân tích thì vẫn lưu style thủ công. UI thư viện và `StyleDetailDialog` chỉ hiện tên, mô tả và hướng dẫn văn phong, không render nội dung bài Sorsa.
-- `KOLStylePicker` hiển thị `Phong cách của bạn` từ MongoDB và `KOL dựng sẵn`; active saved style chỉ lưu id trong Zustand, còn MongoDB là nguồn dữ liệu chính.
+- Style khám phá được lưu vào collection `styles` với `category: project` trước khi áp dụng. Tự mô tả giọng viết lưu `category: writing`. Phân tích username trên `/styles` lưu `category: kol`.
+- Form tạo phong cách trên `/styles` có hai nhóm: Phong cách KOL (bắt buộc phân tích username) và Phong cách bài viết (tên, mô tả, hướng dẫn, bài mẫu tuỳ chọn). Thư viện chia ba nhóm đã lưu: KOL, bài viết, dự án. `StyleDetailDialog` chỉ hiện tên, mô tả và hướng dẫn văn phong, không render nội dung bài Sorsa.
+- `KOLStylePicker` hiện tên phong cách đang chọn và nút X để bỏ chọn ngay trên sidebar. Active saved style chỉ lưu id trong Zustand, còn MongoDB là nguồn dữ liệu chính.
 - Collection `styles` có index `(userId, updatedAt)` phục vụ danh sách thư viện theo tài khoản.
 - Provider, model, ngôn ngữ, giọng điệu và độ dài được chọn nhanh ngay bên trái nút gửi; API key được quản lý tại `/settings` thay vì aside tuỳ chọn.
 - Selector giọng điệu có 15 phong cách từ tự nhiên/chuyên nghiệp tới thuyết phục, phân tích, sang trọng và gợi tranh luận.

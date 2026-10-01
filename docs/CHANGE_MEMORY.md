@@ -1,5 +1,14 @@
 # CHANGE_MEMORY
 
+## 2026-10-01
+
+- Ô tạo bài xoá text ngay khi gửi. Câu vừa gửi hiện ở khung xem như một lượt chat, sau đó là nội dung AI. Gửi khi ô trống dùng rule và tài liệu, đồng thời bám style nếu đang chọn. Không có style, rule và tài liệu thì báo vui lòng nhập chủ đề hoặc ý tưởng.
+- Thư viện `/styles` tách phong cách đã lưu thành Phong cách KOL, Phong cách bài viết và Phong cách dự án. Tạo từ username X lưu `category: kol`. Tự mô tả giọng viết lưu `category: writing`. Lưu từ Khám phá lưu `category: project`.
+- Tab Phong cách trên sidebar hiện nút X khi đang chọn một phong cách để bỏ chọn ngay, không cần mở thư viện.
+- Sửa upload ảnh prompt dựng sẵn: ô chọn file phủ kín vùng thả (không dùng `sr-only`), nhận file kể cả khi MIME trống hoặc không phải `instanceof File`, lưu vào `data/uploads/prompts` và trả ảnh qua `GET /uploads/prompts/[file]`.
+- Sửa và thêm prompt dựng sẵn mở trong popup, không còn form đẩy danh sách xuống phía dưới.
+- Tab admin đổi URL thành `/admin/user`, `/admin/prompts`, `/admin/keys`. Tải lại trang giữ đúng tab. `/admin` chuyển về `/admin/user`.
+
 ## 2026-09-22
 
 - Form tạo phong cách trên `/styles` thêm ô username. Sau access code, Sorsa lấy bài `from:username`, AI (provider, model và API key đã lưu trên client) phân tích tối đa 12 bài thành tên, mô tả và hướng dẫn. Lưu `kind: discovered` kèm tối đa 20 bài mẫu.

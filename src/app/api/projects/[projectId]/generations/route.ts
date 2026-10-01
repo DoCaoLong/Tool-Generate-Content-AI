@@ -22,7 +22,7 @@ const inputSchema = z.object({
     instruction: z.string().max(5000),
     samples: z.array(z.object({ id: z.string().max(100), text: z.string().max(5000) })).max(20),
   }).nullable().default(null),
-  topic: z.string().trim().min(1).max(500),
+  topic: z.string().trim().min(1).max(5000),
   sourceText: z.string().max(30000).default(""),
   rules: z.string().max(5000).default(""),
   documents: z.string().max(50000).default(""),

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
+import { resolveStyleCategory } from "@/lib/style-category";
 import { errorResponse, parseObjectId, requireUser } from "@/lib/server-utils";
 
 type RouteContext = { params: Promise<{ styleId: string }> };
@@ -29,6 +30,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     style: {
       id: result._id.toHexString(),
       kind: result.kind,
+      category: resolveStyleCategory({
+        category: typeof result.category === "string" ? result.category : null,
+        kind: typeof result.kind === "string" ? result.kind : null,
+        username: typeof result.username === "string" ? result.username : null,
+        projectName: typeof result.projectName === "string" ? result.projectName : null,
+      }),
       name: result.name,
       description: result.description || "",
       instruction: result.instruction,

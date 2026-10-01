@@ -38,7 +38,7 @@ const formSchema = z.object({
   kolStyle: z.object({ id: z.string(), name: z.string(), instruction: z.string() }).nullable(),
   discoveredStyle: z.object({ username: z.string(), projectName: z.string(), samples: z.array(z.object({ id: z.string(), text: z.string() })) }).nullable(),
   libraryStyle: z.object({ id: z.string(), name: z.string(), instruction: z.string(), samples: z.array(z.object({ id: z.string(), text: z.string() })) }).nullable(),
-  topic: z.string().trim().min(1, "Hãy nhập chủ đề hoặc brief."),
+  topic: z.string().trim(),
   sourceText: z.string(),
   rules: z.string(),
   documents: z.string(),
@@ -54,7 +54,21 @@ const formSchema = z.object({
   if (values.mode === "rewrite" && !values.sourceText.trim()) {
     context.addIssue({ code: "custom", path: ["sourceText"], message: "Chế độ viết lại cần có nội dung nguồn." });
   }
+  const hasStyle = Boolean(values.kolStyle || values.discoveredStyle || values.libraryStyle);
+  const hasMaterial = Boolean(values.rules.trim() || values.documents.trim() || hasStyle);
+  if (!values.topic.trim() && !hasMaterial) {
+    context.addIssue({ code: "custom", path: ["topic"], message: "Vui lòng nhập chủ đề hoặc ý tưởng." });
+  }
 });
+
+function fallbackTopic(values: Pick<ComposerValues, "rules" | "documents" | "kolStyle" | "discoveredStyle" | "libraryStyle">) {
+  const hasRules = Boolean(values.rules.trim() || values.documents.trim());
+  const hasStyle = Boolean(values.kolStyle || values.discoveredStyle || values.libraryStyle);
+  if (hasRules && hasStyle) return "Viết theo rule, tài liệu và bám sát phong cách đã chọn.";
+  if (hasRules) return "Viết theo rule và tài liệu đã có.";
+  if (hasStyle) return "Viết bám sát phong cách đã chọn.";
+  return "";
+}
 
 type ComposerValues = z.infer<typeof formSchema>;
 
@@ -355,15 +369,19 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
   });
   const items = history.data?.generations || [];
   const listRef = useRef<HTMLDivElement>(null);
+  const [pendingTurn, setPendingTurn] = useState<{ topic: string; startedAt: number } | null>(null);
+  const pendingVisible = Boolean(pendingTurn && !items.some((item) => item.input.topic === pendingTurn.topic && new Date(item.createdAt).getTime() >= pendingTurn.startedAt - 2000));
   const activeProvider = useWatch({ control: form.control, name: "provider" });
   const activeKeywords = useWatch({ control: form.control, name: "keywords" });
   const keywordChips = useMemo(() => Array.from(new Set(activeKeywords.split(/[\n,]/).map((keyword) => keyword.trim()).filter(Boolean))), [activeKeywords]);
 
   const generate = useMutation({
     mutationFn: async (values: ComposerValues) => {
+      const typedTopic = values.topic.trim();
+      const topic = typedTopic || fallbackTopic(values);
       const { apiKey, ...input } = values;
       setProviderConfig(values.provider, values.model, apiKey);
-      const prompt = buildContentPrompt(input);
+      const prompt = buildContentPrompt({ ...input, topic: typedTopic });
       const generateOptions = { apiKey, model: values.model, prompt };
       const result = values.provider === "gemini"
         ? await generateWithGemini(generateOptions)
@@ -377,12 +395,21 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
                 ? await generateWithOpenRouter(generateOptions)
                 : await generateWithOpenAI(generateOptions);
       if (!result.success || !result.content) throw new Error(result.error || "Không thể tạo nội dung.");
-      return apiRequest<{ generation: Generation }>(`/api/projects/${project.id}/generations`, { method: "POST", body: JSON.stringify({ input, output: result.content }) });
+      return apiRequest<{ generation: Generation }>(`/api/projects/${project.id}/generations`, { method: "POST", body: JSON.stringify({ input: { ...input, topic }, output: result.content }) });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["generations", project.id] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      form.reset({ ...form.getValues(), topic: "", sourceText: "" });
+    onMutate: (values) => {
+      setPendingTurn({ topic: values.topic.trim() || fallbackTopic(values), startedAt: Date.now() });
+      form.setValue("topic", "");
+      form.clearErrors("topic");
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["generations", project.id] });
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setPendingTurn(null);
+    },
+    onError: (_error, values) => {
+      setPendingTurn(null);
+      if (!form.getValues("topic").trim() && values.topic.trim()) form.setValue("topic", values.topic);
     },
   });
 
@@ -390,16 +417,17 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
     const node = listRef.current;
     if (!node) return;
     requestAnimationFrame(() => node.scrollTo({ top: node.scrollHeight, behavior: "smooth" }));
-  }, [items.length, generate.isPending]);
+  }, [items.length, generate.isPending, pendingVisible]);
 
   const topicField = form.register("topic");
   const submitCompose = form.handleSubmit((values) => generate.mutate(values));
 
   return <FormProvider {...form}><form className="flex min-h-0 flex-1 flex-col" onSubmit={submitCompose}>
     <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-3xl space-y-8">
-      {!history.isLoading && items.length === 0 && <div className="py-16 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"><Sparkles className="h-6 w-6 text-emerald-600" /></div><h2 className="mt-5 text-2xl font-semibold tracking-tight">Bạn muốn viết gì hôm nay?</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">Nhập brief bên dưới. Nội dung tạo ra sẽ tự động được lưu vào lịch sử của dự án này.</p></div>}
+      {!history.isLoading && items.length === 0 && !pendingVisible && <div className="py-16 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"><Sparkles className="h-6 w-6 text-emerald-600" /></div><h2 className="mt-5 text-2xl font-semibold tracking-tight">Bạn muốn viết gì hôm nay?</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">Nhập chủ đề hoặc ý tưởng. Nếu đã có rule, tài liệu hoặc style, có thể gửi trống.</p></div>}
       {items.map((item) => <HistoryTurn key={item.id} item={item} />)}
-      {generate.isPending && <div className="flex items-center gap-3 text-sm text-slate-500"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Đang tạo nội dung...</div>}
+      {pendingVisible && pendingTurn && <UserBubble topic={pendingTurn.topic} mode={composerMode} styleLabel={savedStyle?.name || selectedKOL?.name || (discoveredStyle ? `@${discoveredStyle.username}` : null)} meta={`${form.getValues("language").toUpperCase()} · ${form.getValues("tone")} · ${form.getValues("model")}`} />}
+      {generate.isPending && <div className="flex items-center gap-3 text-sm text-slate-500"><span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-400 text-slate-950"><Sparkles className="h-3.5 w-3.5" /></span>Đang tạo nội dung...</div>}
     </div></div>
     <div className="shrink-0 px-4 pb-5 sm:px-8"><div className="mx-auto max-w-3xl">
       <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
@@ -408,7 +436,7 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
           {keywordChips.slice(0, 6).map((keyword) => <span key={keyword} className="inline-flex max-w-48 items-center truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700" title={keyword}>Từ khóa: {keyword}</span>)}
           {keywordChips.length > 6 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">+{keywordChips.length - 6}</span>}
         </div>}
-        <Textarea className="min-h-[76px] resize-none border-0 bg-transparent p-2 text-[15px] shadow-none focus-visible:ring-0" placeholder={composerMode === "rewrite" ? "Mô tả cách bạn muốn viết lại nội dung..." : "Nhập chủ đề, ý tưởng hoặc brief bạn muốn viết..."} {...topicField} onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void submitCompose(); } }} />
+        <Textarea className="min-h-[76px] resize-none border-0 bg-transparent p-2 text-[15px] shadow-none focus-visible:ring-0" placeholder={composerMode === "rewrite" ? "Mô tả cách viết lại. Để trống nếu muốn dùng rule, tài liệu và style." : "Nhập chủ đề hoặc ý tưởng. Để trống nếu muốn dùng rule, tài liệu và style."} {...topicField} onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void submitCompose(); } }} />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 flex-wrap items-center gap-2">
           <NativeSelect aria-label="Provider" className={`${quickSelectClass} font-medium`} {...form.register("provider", { onChange: (event) => { const provider = event.target.value as Provider; const model = providerModels[provider][0]; form.setValue("model", model); setProviderConfig(provider, model, form.getValues("apiKey")); } })}>{providers.map((item) => <option key={item} value={item}>{providerLabels[item]}</option>)}</NativeSelect>
           <NativeSelect aria-label="Model" className={`${quickSelectClass} max-w-52`} {...form.register("model", { onChange: (event) => setProviderConfig(form.getValues("provider"), event.target.value, form.getValues("apiKey")) })}>{providerModels[activeProvider].map((item) => <option key={item} value={item}>{item}</option>)}</NativeSelect>
@@ -423,10 +451,14 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
   </form>{optionsOpen && <OptionsPanel saveState={optionsSaveState} />}</FormProvider>;
 }
 
+function UserBubble({ topic, mode, styleLabel, meta }: { topic: string; mode: "new" | "rewrite"; styleLabel: string | null; meta: string }) {
+  return <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-slate-200/80 px-4 py-3"><div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500"><span>{mode === "rewrite" ? "Viết lại" : "Viết mới"}</span>{styleLabel && <><span>·</span><span className="text-emerald-700">Style {styleLabel}</span></>}</div><p className="whitespace-pre-wrap text-sm leading-6">{topic}</p><p className="mt-2 text-[11px] text-slate-500">{meta}</p></div>;
+}
+
 function HistoryTurn({ item }: { item: Generation }) {
   const [copied, setCopied] = useState(false);
   const styleLabel = item.input.libraryStyle?.name || item.input.kolStyle?.name || (item.input.discoveredStyle ? `@${item.input.discoveredStyle.username}` : null);
-  return <article className="space-y-5"><div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-slate-200/80 px-4 py-3"><div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500"><span>{item.input.mode === "rewrite" ? "Viết lại" : "Viết mới"}</span>{styleLabel && <><span>·</span><span className="text-emerald-700">Style {styleLabel}</span></>}</div><p className="whitespace-pre-wrap text-sm leading-6">{item.input.topic}</p><p className="mt-2 text-[11px] text-slate-500">{item.input.language.toUpperCase()} · {item.input.tone} · {item.input.model}</p></div><div className="group relative"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-500"><span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-400 text-slate-950"><Sparkles className="h-3.5 w-3.5" /></span>Content Studio <span className="font-normal text-slate-400">{new Date(item.createdAt).toLocaleString("vi-VN")}</span></div><div className="whitespace-pre-wrap text-[15px] leading-7 text-slate-800">{item.output}</div><button className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-slate-200 hover:text-slate-700" type="button" onClick={async () => { await navigator.clipboard.writeText(item.output); setCopied(true); setTimeout(() => setCopied(false), 1500); }}><Copy className="h-3.5 w-3.5" />{copied ? "Đã sao chép" : "Sao chép"}</button></div></article>;
+  return <article className="space-y-5"><UserBubble topic={item.input.topic} mode={item.input.mode} styleLabel={styleLabel} meta={`${item.input.language.toUpperCase()} · ${item.input.tone} · ${item.input.model}`} /><div className="group relative"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-500"><span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-400 text-slate-950"><Sparkles className="h-3.5 w-3.5" /></span>Content Studio <span className="font-normal text-slate-400">{new Date(item.createdAt).toLocaleString("vi-VN")}</span></div><div className="whitespace-pre-wrap text-[15px] leading-7 text-slate-800">{item.output}</div><button className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-slate-200 hover:text-slate-700" type="button" onClick={async () => { await navigator.clipboard.writeText(item.output); setCopied(true); setTimeout(() => setCopied(false), 1500); }}><Copy className="h-3.5 w-3.5" />{copied ? "Đã sao chép" : "Sao chép"}</button></div></article>;
 }
 
 function OptionsPanel({ saveState }: { saveState: "idle" | "saving" | "saved" | "error" }) {

@@ -58,7 +58,7 @@ export default function DiscoverPanel() {
   });
 
   const saveStyle = useMutation({
-    mutationFn: (payload: { name: string; description: string; instruction: string; username: string; projectName: string | null; samples: Array<{ id: string; text: string }> }) => apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", ...payload }) }),
+    mutationFn: (payload: { name: string; description: string; instruction: string; username: string; projectName: string | null; samples: Array<{ id: string; text: string }> }) => apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "project", ...payload }) }),
     onSuccess: async ({ style }) => {
       await queryClient.invalidateQueries({ queryKey: ["styles"] });
       setSelectedKolId(null);

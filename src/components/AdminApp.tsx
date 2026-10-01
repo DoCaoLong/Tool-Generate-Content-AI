@@ -3,10 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, KeyRound, LogOut, Pencil, Plus, Sparkles, Trash2, Unlock, Users } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, ApiError } from "@/lib/http";
@@ -68,14 +71,25 @@ function AdminLogin() {
   );
 }
 
+const adminTabs: { id: Tab; href: string; label: string; icon: typeof Users }[] = [
+  { id: "users", href: "/admin/user", label: "Người dùng", icon: Users },
+  { id: "prompts", href: "/admin/prompts", label: "Prompt dựng sẵn", icon: Sparkles },
+  { id: "keys", href: "/admin/keys", label: "API key", icon: KeyRound },
+];
+
+function tabFromPath(pathname: string): Tab {
+  return adminTabs.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))?.id || "users";
+}
+
 function AdminDashboard() {
+  const pathname = usePathname();
+  const tab = tabFromPath(pathname);
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<Tab>("users");
   const logout = useMutation({
     mutationFn: () => apiRequest<{ ok: true }>("/api/admin/logout", { method: "POST" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-me"] }),
   });
-  const titles: Record<Tab, string> = { users: "Người dùng", keys: "API key", prompts: "Prompt dựng sẵn" };
+  const title = adminTabs.find((item) => item.id === tab)?.label || "Người dùng";
 
   return (
     <div className="min-h-screen bg-[#f7f7f4] text-slate-900">
@@ -85,9 +99,7 @@ function AdminDashboard() {
           Admin
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
-          <SideItem active={tab === "users"} icon={Users} label="Người dùng" onClick={() => setTab("users")} />
-          <SideItem active={tab === "prompts"} icon={Sparkles} label="Prompt dựng sẵn" onClick={() => setTab("prompts")} />
-          <SideItem active={tab === "keys"} icon={KeyRound} label="API key" onClick={() => setTab("keys")} />
+          {adminTabs.map((item) => <SideItem key={item.id} href={item.href} active={tab === item.id} icon={item.icon} label={item.label} />)}
         </nav>
         <div className="border-t border-white/10 p-3">
           <button type="button" className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white" onClick={() => logout.mutate()}>
@@ -97,7 +109,7 @@ function AdminDashboard() {
       </aside>
       <div className="ml-[240px]">
         <header className="flex h-16 items-center border-b border-slate-200 bg-white px-6">
-          <h1 className="text-sm font-semibold">{titles[tab]}</h1>
+          <h1 className="text-sm font-semibold">{title}</h1>
         </header>
         <div className="p-6">
           {tab === "users" && <UsersTab />}
@@ -109,8 +121,8 @@ function AdminDashboard() {
   );
 }
 
-function SideItem({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Users; label: string; onClick: () => void }) {
-  return <button type="button" className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm ${active ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onClick={onClick}><Icon className="h-4 w-4 shrink-0" />{label}</button>;
+function SideItem({ href, active, icon: Icon, label }: { href: string; active: boolean; icon: typeof Users; label: string }) {
+  return <Link href={href} aria-current={active ? "page" : undefined} className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm ${active ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-4 w-4 shrink-0" />{label}</Link>;
 }
 
 function UsersTab() {
@@ -206,52 +218,66 @@ function PromptsTab() {
     mutationFn: async (file: File) => {
       const body = new FormData();
       body.append("file", file);
-      const response = await fetch("/api/admin/uploads", { method: "POST", body });
+      const response = await fetch("/api/admin/uploads", { method: "POST", body, credentials: "same-origin" });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Không thể tải ảnh.");
+      if (!response.ok || typeof data.url !== "string") throw new Error(data.error || "Không thể tải ảnh.");
       return data as { url: string };
     },
     onSuccess: (data) => setEditing((current) => current ? { ...current, profileImgUrl: data.url } : current),
   });
+  const openEditor = (style: Partial<PromptStyle>) => { upload.reset(); setEditing(style); };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end"><Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setEditing(empty)}><Plus className="mr-2 h-4 w-4" />Thêm prompt</Button></div>
-      {editing && (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="font-semibold">{editing.id ? "Sửa prompt" : "Prompt mới"}</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-[10rem_1fr]">
-            <div>
-              <p className="text-sm font-medium">Ảnh đại diện</p>
-              <label
-                className="group relative mt-2 flex h-28 w-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50 transition hover:border-cyan-400 hover:bg-cyan-50/40"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) upload.mutate(file); }}
-              >
-                <PromptAvatar src={editing.profileImgUrl} name={editing.name || ""} className="grid h-full w-full place-items-center text-2xl font-bold tracking-wide text-slate-400" />
-                <span className="absolute inset-0 grid place-items-center bg-slate-950/55 text-center text-[11px] font-medium text-white opacity-0 transition group-hover:opacity-100">
-                  {upload.isPending ? "Đang tải..." : editing.profileImgUrl ? "Đổi ảnh" : "Tải ảnh lên"}
-                </span>
-                <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(event) => { const file = event.target.files?.[0]; if (file) upload.mutate(file); event.target.value = ""; }} />
-              </label>
-              <p className="mt-2 text-[11px] leading-4 text-slate-400">JPG, PNG, WEBP. Kéo thả hoặc bấm để chọn.</p>
-              {editing.profileImgUrl && <button type="button" className="mt-1 text-[11px] font-medium text-slate-500 hover:text-red-600" onClick={() => setEditing({ ...editing, profileImgUrl: "" })}>Gỡ ảnh</button>}
-              {upload.error && <p className="mt-1 text-xs text-red-600">{upload.error.message}</p>}
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="text-sm font-medium">Tên<Input className="mt-2 rounded-xl" value={editing.name || ""} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
-              <label className="text-sm font-medium">Mô tả (VI)<Input className="mt-2 rounded-xl" value={editing.style_vi || ""} onChange={(event) => setEditing({ ...editing, style_vi: event.target.value })} /></label>
-              <label className="text-sm font-medium md:col-span-2">Mô tả (EN)<Input className="mt-2 rounded-xl" value={editing.style || ""} onChange={(event) => setEditing({ ...editing, style: event.target.value })} /></label>
-              <label className="text-sm font-medium md:col-span-2">Prompt / content<Textarea className="mt-2 min-h-40 rounded-xl" value={editing.content || ""} onChange={(event) => setEditing({ ...editing, content: event.target.value })} /></label>
-            </div>
-          </div>
-          {save.error && <p className="mt-3 text-sm text-red-600">{save.error.message}</p>}
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" className="rounded-xl" onClick={() => setEditing(null)}>Huỷ</Button>
-            <Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Đang lưu..." : "Lưu"}</Button>
-          </div>
-        </section>
-      )}
+      <div className="flex justify-end"><Button type="button" className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => openEditor(empty)}><Plus className="mr-2 h-4 w-4" />Thêm prompt</Button></div>
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open && !save.isPending && !upload.isPending) setEditing(null); }}>
+        <DialogContent
+          className="max-h-[85vh] overflow-y-auto rounded-2xl sm:max-w-3xl"
+          onFocusOutside={(event) => event.preventDefault()}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
+          {editing && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{editing.id ? "Sửa prompt" : "Prompt mới"}</DialogTitle>
+                <DialogDescription>Cập nhật ảnh, mô tả và nội dung prompt.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 md:grid-cols-[10rem_1fr]">
+                <div>
+                  <p className="text-sm font-medium">Ảnh đại diện</p>
+                  <div
+                    className="group relative mt-2 h-28 w-28"
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) upload.mutate(file); }}
+                  >
+                    <div className="pointer-events-none flex h-full w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50">
+                      <PromptAvatar src={editing.profileImgUrl} name={editing.name || ""} className="grid h-full w-full place-items-center text-2xl font-bold tracking-wide text-slate-400" />
+                      <span className={`absolute inset-0 grid place-items-center bg-slate-950/55 text-center text-[11px] font-medium text-white transition ${upload.isPending ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                        {upload.isPending ? "Đang tải..." : editing.profileImgUrl ? "Đổi ảnh" : "Tải ảnh lên"}
+                      </span>
+                    </div>
+                    <input className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" disabled={upload.isPending} onChange={(event) => { const file = event.target.files?.[0]; if (file) upload.mutate(file); event.target.value = ""; }} />
+                  </div>
+                  <p className="mt-2 text-[11px] leading-4 text-slate-400">JPG, PNG, WEBP, GIF. Tối đa 2MB.</p>
+                  {editing.profileImgUrl && <button type="button" className="mt-1 text-[11px] font-medium text-slate-500 hover:text-red-600" onClick={() => setEditing({ ...editing, profileImgUrl: "" })}>Gỡ ảnh</button>}
+                  {upload.error && <p className="mt-1 text-xs text-red-600">{upload.error.message}</p>}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="text-sm font-medium">Tên<Input className="mt-2 rounded-xl" value={editing.name || ""} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label>
+                  <label className="text-sm font-medium">Mô tả (VI)<Input className="mt-2 rounded-xl" value={editing.style_vi || ""} onChange={(event) => setEditing({ ...editing, style_vi: event.target.value })} /></label>
+                  <label className="text-sm font-medium md:col-span-2">Mô tả (EN)<Input className="mt-2 rounded-xl" value={editing.style || ""} onChange={(event) => setEditing({ ...editing, style: event.target.value })} /></label>
+                  <label className="text-sm font-medium md:col-span-2">Prompt / content<Textarea className="mt-2 min-h-40 rounded-xl" value={editing.content || ""} onChange={(event) => setEditing({ ...editing, content: event.target.value })} /></label>
+                </div>
+              </div>
+              {save.error && <p className="text-sm text-red-600">{save.error.message}</p>}
+              <DialogFooter>
+                <Button type="button" variant="outline" className="rounded-xl" disabled={save.isPending} onClick={() => setEditing(null)}>Huỷ</Button>
+                <Button type="button" className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={save.isPending || upload.isPending} onClick={() => save.mutate()}>{save.isPending ? "Đang lưu..." : "Lưu"}</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="font-semibold">Danh sách prompt</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -265,7 +291,7 @@ function PromptsTab() {
                     <p className="mt-1 line-clamp-2 text-xs text-slate-500">{style.style_vi || style.style || "Không có mô tả"}</p>
                   </div>
                   <div className="flex gap-1">
-                    <button type="button" title="Sửa" className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={() => setEditing(style)}><Pencil className="h-4 w-4" /></button>
+                    <button type="button" title="Sửa" className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={() => openEditor(style)}><Pencil className="h-4 w-4" /></button>
                     <button type="button" title="Xoá" className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600" onClick={() => setPending(style)}><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>

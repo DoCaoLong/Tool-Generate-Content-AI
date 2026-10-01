@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Eye, LoaderCircle, Pencil, Plus, Search, Sparkles, Trash2, UserRound, X } from "lucide-react";
+import { Check, Eye, LoaderCircle, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -17,6 +17,7 @@ import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
 import { getKOLInitials, kolStyles, type KOLStyle } from "@/lib/kol-styles";
 import { providerLabels } from "@/lib/providers";
+import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
 import { buildStyleAnalysisPrompt, parseStyleAnalysis } from "@/lib/style-analysis";
 import type { DiscoveredTweet, SavedStyle } from "@/lib/types";
 
@@ -27,10 +28,40 @@ const handlePattern = /^[A-Za-z0-9_]{1,15}$/;
 
 function compact(value: string) { return value.replace(/[#\s]+/g, " ").trim(); }
 function normalizeHandle(value: string) { return value.trim().replace(/^@/, ""); }
+function categoryLabel(category: StyleCategory) {
+  if (category === "kol") return "Phong cách KOL";
+  if (category === "project") return "Phong cách dự án";
+  return "Phong cách bài viết";
+}
+
+function SavedStyleCard({ style, active, color, onChoose, onView, onEdit, onDelete }: { style: SavedStyle; active: boolean; color: string; onChoose: () => void; onView: () => void; onEdit: () => void; onDelete: () => void }) {
+  const category = resolveStyleCategory(style);
+  const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (style.projectName || (style.username ? `@${style.username}` : "Dự án")) : "Bài viết";
+  const mark = category === "writing" ? getKOLInitials(style.name) : category === "project" && style.projectName ? "#" : "@";
+  const tone = category === "kol" ? "bg-violet-500" : category === "project" ? "bg-sky-500" : color;
+  return <article className="group relative rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <button className="w-full text-left" onClick={onChoose}>
+      <div className="flex items-start gap-3">
+        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-bold text-white ${tone}`}>{mark}</span>
+        <div className="min-w-0 flex-1 pr-20">
+          <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{style.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div>
+          <p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{style.description || compact(style.instruction)}</p>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-violet-500"><Sparkles className="h-3 w-3" />{badge}</div>
+    </button>
+    <div className="absolute right-3 top-3 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
+      <button type="button" aria-label={`Xem ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={onView}><Eye className="h-4 w-4" /></button>
+      <button type="button" aria-label={`Sửa ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={onEdit}><Pencil className="h-4 w-4" /></button>
+      <button type="button" aria-label={`Xoá ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500" onClick={onDelete}><Trash2 className="h-4 w-4" /></button>
+    </div>
+  </article>;
+}
 
 export default function StyleLibraryPage() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
+  const [createCategory, setCreateCategory] = useState<StyleCategory>("kol");
   const [search, setSearch] = useState("");
   const [username, setUsername] = useState("");
   const [analyzed, setAnalyzed] = useState<AnalyzedAuthor | null>(null);
@@ -55,6 +86,11 @@ export default function StyleLibraryPage() {
   const styles = useMemo(() => stylesQuery.data?.styles || [], [stylesQuery.data?.styles]);
   const kolList = promptQuery.data?.styles || kolStyles;
   const filteredStyles = useMemo(() => styles.filter((style) => `${style.name} ${style.description} ${style.instruction}`.toLowerCase().includes(search.toLowerCase())), [styles, search]);
+  const groupedStyles = useMemo(() => ({
+    kol: filteredStyles.filter((style) => resolveStyleCategory(style) === "kol"),
+    writing: filteredStyles.filter((style) => resolveStyleCategory(style) === "writing"),
+    project: filteredStyles.filter((style) => resolveStyleCategory(style) === "project"),
+  }), [filteredStyles]);
   const filteredKOLs = useMemo(() => kolList.filter((style) => `${style.name} ${style.content}`.toLowerCase().includes(search.toLowerCase())), [kolList, search]);
   const form = useForm<ManualStyleValues>({ defaultValues: { name: "", description: "", instruction: "", sampleText: "" } });
   const handle = normalizeHandle(username);
@@ -118,10 +154,11 @@ export default function StyleLibraryPage() {
   const createStyle = useMutation({
     mutationFn: (values: ManualStyleValues) => {
       const author = analyzed && analyzed.username === normalizeHandle(username) ? analyzed : null;
-      if (author) {
-        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", name: values.name, description: values.description, instruction: values.instruction, username: author.username, projectName: null, samples: author.samples }) });
+      if (createCategory === "kol") {
+        if (!author) throw new Error("Hãy phân tích username trước khi lưu phong cách KOL.");
+        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "kol", name: values.name, description: values.description, instruction: values.instruction, username: author.username, projectName: null, samples: author.samples }) });
       }
-      return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "manual", name: values.name, description: values.description, instruction: values.instruction, samples: values.sampleText.trim() ? [{ id: crypto.randomUUID(), text: values.sampleText.trim().slice(0, 5000) }] : [] }) });
+      return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "manual", category: "writing", name: values.name, description: values.description, instruction: values.instruction, username: null, projectName: null, samples: values.sampleText.trim() ? [{ id: crypto.randomUUID(), text: values.sampleText.trim().slice(0, 5000) }] : [] }) });
     },
     onSuccess: async ({ style }) => {
       await queryClient.invalidateQueries({ queryKey: ["styles"] });
@@ -131,6 +168,7 @@ export default function StyleLibraryPage() {
       form.reset();
       setUsername("");
       setAnalyzed(null);
+      setCreateCategory("kol");
       setLocalError("");
       setCreating(false);
     },
@@ -156,13 +194,17 @@ export default function StyleLibraryPage() {
   const clearStyle = () => { setSelectedKolId(null); setSelectedSavedStyleId(null); setDiscoveredStyle(null); };
 
   return <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-6xl">
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Cá nhân hoá</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Thư viện phong cách</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Quản lý phong cách đã lưu, tự viết, lấy giọng từ username trên X, hoặc dùng bộ KOL dựng sẵn.</p></div><div className="flex gap-2"><Button variant="outline" className="rounded-xl" onClick={clearStyle}><X className="mr-2 h-4 w-4" />Dùng mặc định</Button><Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCreating(!creating)}><Plus className="mr-2 h-4 w-4" />Tạo phong cách</Button></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Cá nhân hoá</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Thư viện phong cách</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Phong cách KOL lấy từ username trên X. Phong cách bài viết là giọng bạn tự mô tả. Phong cách dự án đến từ tab Khám phá.</p></div><div className="flex gap-2"><Button variant="outline" className="rounded-xl" onClick={clearStyle}><X className="mr-2 h-4 w-4" />Dùng mặc định</Button><Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCreating(!creating)}><Plus className="mr-2 h-4 w-4" />Tạo phong cách</Button></div></div>
 
     {creating && <section className="mt-7 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold">Phong cách mới</h2><p className="mt-1 text-xs text-slate-500">Tự mô tả giọng viết, hoặc nhập username để Sorsa lấy bài và AI phân tích.</p></div><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100" onClick={() => setCreating(false)}><X className="h-4 w-4" /></button></div>
+      <div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold">Phong cách mới</h2><p className="mt-1 text-xs text-slate-500">{createCategory === "kol" ? "Phân tích username trên X. Kết quả được xếp vào Phong cách KOL." : "Tự mô tả giọng viết. Kết quả được xếp vào Phong cách bài viết."}</p></div><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100" onClick={() => setCreating(false)}><X className="h-4 w-4" /></button></div>
+      <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+        <button type="button" className={`h-10 rounded-xl text-sm font-medium ${createCategory === "kol" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setCreateCategory("kol"); setLocalError(""); }}>Phong cách KOL</button>
+        <button type="button" className={`h-10 rounded-xl text-sm font-medium ${createCategory === "writing" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setCreateCategory("writing"); setUsername(""); setAnalyzed(null); setLocalError(""); }}>Phong cách bài viết</button>
+      </div>
       <form onSubmit={form.handleSubmit((values) => createStyle.mutate(values))}>
-        <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
-          <label className="text-sm font-medium text-slate-800" htmlFor="style-username">Lấy từ username <span className="font-normal text-slate-400">(không bắt buộc)</span></label>
+        {createCategory === "kol" && <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+          <label className="text-sm font-medium text-slate-800" htmlFor="style-username">Username trên X</label>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <div className="relative min-w-0 flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input id="style-username" className="h-11 rounded-xl bg-white pl-7" placeholder="elonmusk" value={username} autoComplete="off" onChange={(event) => { setUsername(event.target.value); setLocalError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); requestAnalyze(); } }} /></div>
             <Button type="button" className="h-11 rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800" disabled={analyzeAuthor.isPending} onClick={requestAnalyze}>{analyzeAuthor.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}{analyzeAuthor.isPending ? (analyzePhase === "analyze" ? "Đang phân tích..." : "Đang lấy bài viết...") : "Phân tích"}</Button>
@@ -171,27 +213,38 @@ export default function StyleLibraryPage() {
           {(localError || analyzeAuthor.error) && <p className="mt-2 text-sm text-red-600">{localError || analyzeAuthor.error?.message}</p>}
           {analyzedMatch && <p className="mt-2 text-xs font-medium text-violet-700">Đã điền văn phong của @{analyzedMatch.username}. Sửa rồi lưu nếu cần.</p>}
           {analyzed && handle && !analyzedMatch && <p className="mt-2 text-xs font-medium text-amber-700">Username đã đổi so với lần phân tích @{analyzed.username}. Bấm Phân tích lại trước khi lưu.</p>}
-        </div>
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
+        </div>}
+        <div className={`${createCategory === "kol" ? "mt-5" : ""} grid gap-5 md:grid-cols-2`}>
           <label className="text-sm font-medium">Tên phong cách<Input className="mt-2 rounded-xl" placeholder="Founder thẳng thắn" {...form.register("name", { required: true, minLength: 2 })} /></label>
           <label className="text-sm font-medium">Mô tả ngắn<Input className="mt-2 rounded-xl" placeholder="Dùng cho bài xây dựng thương hiệu cá nhân" {...form.register("description", { maxLength: 300 })} /></label>
-          <label className={`text-sm font-medium ${analyzedMatch ? "md:col-span-2" : ""}`}>Hướng dẫn văn phong<Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Giọng điệu, nhịp câu, cách mở bài, cấu trúc và điều cần tránh..." {...form.register("instruction", { required: true, minLength: 10, maxLength: 5000 })} /></label>
-          {!analyzedMatch && <label className="text-sm font-medium">Bài mẫu <span className="font-normal text-slate-400">(không bắt buộc)</span><Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Dán bài viết thể hiện đúng phong cách..." {...form.register("sampleText", { maxLength: 5000 })} /></label>}
+          <label className={`text-sm font-medium ${createCategory === "kol" || analyzedMatch ? "md:col-span-2" : ""}`}>Hướng dẫn văn phong<Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Giọng điệu, nhịp câu, cách mở bài, cấu trúc và điều cần tránh..." {...form.register("instruction", { required: true, minLength: 10, maxLength: 5000 })} /></label>
+          {createCategory === "writing" && <label className="text-sm font-medium">Bài mẫu <span className="font-normal text-slate-400">(không bắt buộc)</span><Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Dán bài viết thể hiện đúng phong cách..." {...form.register("sampleText", { maxLength: 5000 })} /></label>}
         </div>
+        {createCategory === "kol" && !analyzedMatch && <p className="mt-4 text-xs text-slate-500">Phân tích username trước khi lưu vào Phong cách KOL.</p>}
         {createStyle.error && <p className="mt-4 text-sm text-red-600">{createStyle.error.message}</p>}
-        <div className="mt-5 flex justify-end"><Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={createStyle.isPending || analyzeAuthor.isPending || Boolean(analyzed && handle && !analyzedMatch)}>{createStyle.isPending ? "Đang lưu..." : "Lưu và áp dụng"}</Button></div>
+        <div className="mt-5 flex justify-end"><Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={createStyle.isPending || analyzeAuthor.isPending || (createCategory === "kol" && !analyzedMatch)}>{createStyle.isPending ? "Đang lưu..." : "Lưu và áp dụng"}</Button></div>
       </form>
     </section>}
 
     <div className="relative mt-7 max-w-md"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input className="h-11 rounded-xl bg-white pl-9" placeholder="Tìm trong thư viện..." value={search} onChange={(event) => setSearch(event.target.value)} /></div>
 
-    <section className="mt-7"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-semibold">Phong cách của bạn</h2><p className="mt-1 text-xs text-slate-500">Được đồng bộ với tài khoản và có thể dùng lại ở mọi dự án.</p></div><span className="text-xs text-slate-400">{styles.length} phong cách</span></div>{filteredStyles.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredStyles.map((style, index) => { const active = selectedSavedStyleId === style.id; return <article key={style.id} className="group relative rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md"><button className="w-full text-left" onClick={() => chooseSaved(style)}><div className="flex items-start gap-3"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-bold text-white ${style.kind === "discovered" ? "bg-violet-500" : colors[index % colors.length]}`}>{style.kind === "discovered" ? "@" : getKOLInitials(style.name)}</span><div className="min-w-0 flex-1 pr-20"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{style.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div><p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{style.description || compact(style.instruction)}</p></div></div><div className="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-violet-500"><Sparkles className="h-3 w-3" />{style.kind === "discovered" ? (style.username ? `@${style.username}` : "Từ username") : "Tự tạo"}</div></button><div className="absolute right-3 top-3 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100"><button type="button" aria-label={`Xem ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={() => { setEditing(false); setDetail({ type: "saved", style }); }}><Eye className="h-4 w-4" /></button><button type="button" aria-label={`Sửa ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={() => { updateStyle.reset(); setEditing(true); setDetail({ type: "saved", style }); }}><Pencil className="h-4 w-4" /></button><button type="button" aria-label={`Xoá ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500" onClick={() => setStyleToDelete(style)}><Trash2 className="h-4 w-4" /></button></div></article>; })}</div> : <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center"><UserRound className="mx-auto h-7 w-7 text-slate-300" /><p className="mt-3 text-sm text-slate-500">Chưa có phong cách riêng.</p></div>}</section>
+    {([
+      { id: "kol" as const, title: "Phong cách KOL", hint: "Tạo từ username trên X.", empty: "Chưa có phong cách KOL." },
+      { id: "writing" as const, title: "Phong cách bài viết", hint: "Giọng viết bạn tự mô tả.", empty: "Chưa có phong cách bài viết." },
+      { id: "project" as const, title: "Phong cách dự án", hint: "Lưu từ tab Khám phá.", empty: "Chưa có phong cách dự án." },
+    ]).map((group) => {
+      const items = groupedStyles[group.id];
+      return <section key={group.id} className="mt-7">
+        <div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-semibold">{group.title}</h2><p className="mt-1 text-xs text-slate-500">{group.hint}</p></div><span className="text-xs text-slate-400">{items.length}</span></div>
+        {items.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map((style, index) => <SavedStyleCard key={style.id} style={style} active={selectedSavedStyleId === style.id} color={colors[index % colors.length]} onChoose={() => chooseSaved(style)} onView={() => { setEditing(false); setDetail({ type: "saved", style }); }} onEdit={() => { updateStyle.reset(); setEditing(true); setDetail({ type: "saved", style }); }} onDelete={() => setStyleToDelete(style)} />)}</div> : <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-8 text-center text-sm text-slate-500">{search.trim() ? "Không có phong cách khớp." : group.empty}</div>}
+      </section>;
+    })}
 
     <section className="mt-10"><div className="mb-4"><h2 className="text-lg font-semibold">KOL dựng sẵn</h2><p className="mt-1 text-xs text-slate-500">Chọn nhanh một bộ đặc trưng văn phong đã được chuẩn bị.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredKOLs.map((author, index) => { const active = selectedKolId === author.id; return <article key={author.id} className="group relative rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md"><button className="w-full text-left" onClick={() => chooseKOL(author.id)}><div className="flex items-start gap-3"><PromptAvatar src={author.profileImgUrl} name={author.name} className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white ${colors[index % colors.length]}`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{author.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div><p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{compact(author.style_vi || author.style || author.content)}</p></div></div></button><button type="button" aria-label={`Xem ${author.name}`} className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-300 opacity-100 hover:bg-slate-100 hover:text-slate-700 md:opacity-0 md:group-hover:opacity-100" onClick={() => setDetail({ type: "kol", style: author })}><Eye className="h-4 w-4" /></button></article>; })}</div></section>
     <StyleDetailDialog
       open={Boolean(detail)}
       name={detail?.style.name || ""}
-      kindLabel={detail?.type === "saved" ? (detail.style.kind === "discovered" ? "Từ username" : "Tự tạo") : "KOL dựng sẵn"}
+      kindLabel={detail?.type === "saved" ? categoryLabel(resolveStyleCategory(detail.style)) : "KOL dựng sẵn"}
       description={detail?.type === "saved" ? detail.style.description : detail?.type === "kol" ? detail.style.style_vi || detail.style.style : ""}
       instruction={detail?.type === "saved" ? detail.style.instruction : detail?.type === "kol" ? detail.style.content : ""}
       username={detail?.type === "saved" ? detail.style.username : null}

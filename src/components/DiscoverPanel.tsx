@@ -49,12 +49,36 @@ function RadarPhoto({ src }: { src: string }) {
   return <img src={src} alt="" referrerPolicy="no-referrer" className="w-full rounded-xl" onError={() => setFailed(true)} />; // eslint-disable-line @next/next/no-img-element
 }
 
-function RadarTweetCard({ tweet }: { tweet: DiscoveredTweet }) {
+function xProfileUrl(username: string) {
+  const handle = username.replace(/^@/, "").trim();
+  return handle ? `https://x.com/${encodeURIComponent(handle)}` : "https://x.com";
+}
+
+function xStatusUrl(username: string, id: string) {
+  const handle = username.replace(/^@/, "").trim();
+  return handle ? `https://x.com/${encodeURIComponent(handle)}/status/${encodeURIComponent(id)}` : `https://x.com/i/status/${encodeURIComponent(id)}`;
+}
+
+function openX(url: string) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function RadarTweetCard({ tweet, projectName }: { tweet: DiscoveredTweet; projectName: string }) {
+  const profileUrl = xProfileUrl(tweet.username);
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="flex items-center gap-3"><RadarAvatar tweet={tweet} /><p className="min-w-0 text-sm font-semibold text-slate-900">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></p></div>
-      <p className="mt-3 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p>
-      {tweet.images.length > 0 && <div className={`mt-3 grid gap-2 ${tweet.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>{tweet.images.map((src) => <RadarPhoto key={src} src={src} />)}</div>}
+    <article
+      className="mb-3 cursor-pointer break-inside-avoid rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300"
+      tabIndex={0}
+      onClick={() => openX(xStatusUrl(tweet.username, tweet.id))}
+      onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); openX(xStatusUrl(tweet.username, tweet.id)); } }}
+    >
+      <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+        <RadarAvatar tweet={tweet} />
+        <span className="min-w-0 truncate text-sm font-semibold text-slate-900 hover:underline">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></span>
+      </a>
+      {projectName ? <p className="mt-1 truncate pl-[3.25rem] text-xs text-slate-400">{projectName}</p> : null}
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p>
+      {tweet.images.length > 0 && <div className="mt-3 space-y-2">{tweet.images.map((src) => <RadarPhoto key={src} src={src} />)}</div>}
       <TweetStats tweet={tweet} />
     </article>
   );
@@ -206,6 +230,19 @@ export default function DiscoverPanel() {
     },
   });
 
+  const radarPosts = useMemo(() => {
+    const seen = new Set<string>();
+    const posts: Array<{ tweet: DiscoveredTweet; projectName: string }> = [];
+    for (const item of radarPlan) {
+      for (const tweet of item.entry?.tweets || []) {
+        if (!tweet.id || seen.has(tweet.id)) continue;
+        seen.add(tweet.id);
+        posts.push({ tweet, projectName: item.name });
+      }
+    }
+    return posts.sort((left, right) => right.tweet.views - left.tweet.views || right.tweet.replies - left.tweet.replies || right.tweet.likes - left.tweet.likes);
+  }, [radarPlan]);
+  const radarLoading = projectsQuery.isPending || radar.isFetching;
   const radarUpdatedLabel = radarPlan.length && radarPlan.every((item) => item.fresh)
     ? new Date(Math.max(...radarPlan.flatMap((item) => item.entry ? [item.entry.fetchedAt] : [0]))).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
     : "";
@@ -216,8 +253,8 @@ export default function DiscoverPanel() {
       : radarTargets.length === 0
         ? "Các dự án chưa có tên để tìm radar."
         : radarUpdatedLabel
-        ? `Bài mới từ ${radarTargets.length} dự án. Đã cập nhật lúc ${radarUpdatedLabel}.`
-        : `Bài mới từ ${radarTargets.length} dự án. Làm mới sau 30 phút khi mở lại tab.`;
+        ? `Bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Đã cập nhật lúc ${radarUpdatedLabel}.`
+        : `Bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Làm mới sau 30 phút khi mở lại tab.`;
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">
@@ -241,8 +278,10 @@ export default function DiscoverPanel() {
             <h3 className="font-semibold">Radar</h3>
             <p className="mt-1 text-xs text-slate-500">{radarHint}</p>
           </div>
-          {radar.error && <p className="text-sm text-red-600">{radar.error.message}</p>}
-          {radarPlan.map((item) => <div key={item.id} className="mt-6"><h4 className="text-sm font-semibold text-slate-900">{item.name}</h4>{item.entry && item.entry.tweets.length > 0 ? <div className="mt-3 grid gap-3 md:grid-cols-2">{item.entry.tweets.map((tweet) => <RadarTweetCard key={`${item.id}-${tweet.id}`} tweet={tweet} />)}</div> : item.fresh ? <p className="mt-2 text-sm text-slate-500">Chưa có bài mới.</p> : radar.isFetching ? <p className="mt-2 flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải...</p> : null}</div>)}
+          {radar.error && <p className="mb-3 text-sm text-red-600">{radar.error.message}</p>}
+          {radarLoading && <div className="flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải radar...</div>}
+          {radarPosts.length > 0 && <div className="mt-4 columns-1 gap-3 md:columns-2 xl:columns-3">{radarPosts.map((item) => <RadarTweetCard key={item.tweet.id} tweet={item.tweet} projectName={item.projectName} />)}</div>}
+          {!radarLoading && !radar.error && radarPosts.length === 0 && radarTargets.length > 0 && <p className="text-sm text-slate-500">Chưa có bài mới.</p>}
         </section>
 
         {lastSearch && !search.isPending && tweets.length === 0 && <div className="py-20 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa tìm thấy bài phù hợp</h3><p className="mt-1 text-sm text-slate-500">Thử username tác giả hoặc @mention dự án.</p></div>}

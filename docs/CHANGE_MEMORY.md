@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- Bấm một bài Radar mở bài đó trên X. Bấm avatar hoặc tên mở trang cá nhân của người đăng.
+- Radar xếp bài theo kiểu masonry và chỉ có một chỗ đang tải. Bài nhiều lượt xem, rồi nhiều bình luận, hiện trước.
 - Radar giữ bài đã tải trong trình duyệt. Tải lại trang Khám phá vẫn hiện các bài đó, không gọi lại Sorsa nếu chưa quá 30 phút.
 - Radar lấy bài của tất cả dự án trong Dự án của bạn, mỗi dự án một nhóm. Không còn chỉ hiện dự án đang chọn.
 - Radar hiện avatar người đăng và ảnh đầy đủ trong bài. Ảnh lấy từ Sorsa, không cắt khung.

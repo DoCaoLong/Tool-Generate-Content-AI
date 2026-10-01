@@ -56,7 +56,7 @@
 - `src/components/ui/native-select.tsx`: native select dùng icon ChevronDown riêng, thống nhất mũi tên giữa composer và Settings.
 - `src/components/ProfileMenu.tsx`: menu tài khoản dạng popover với cá nhân hoá, hồ sơ, cài đặt, trợ giúp và đăng xuất.
 - `src/components/ProfilePage.tsx`, `src/components/HelpPage.tsx`: các page tài khoản hỗ trợ route riêng.
-- `src/components/DiscoverPanel.tsx`: tab Khám phá, form tìm bài X, mục Radar của mọi dự án trong Dự án của bạn, chọn bài mẫu và áp dụng style động. Radar không đưa bài vào ô chọn mẫu.
+- `src/components/DiscoverPanel.tsx`: tab Khám phá, form tìm bài X, mục Radar của mọi dự án trong Dự án của bạn, chọn bài mẫu và áp dụng style động. Radar gom bài thành masonry (`columns`), một dòng đang tải cho cả mục, và xếp bài theo lượt xem rồi số bình luận. Bấm thẻ mở `https://x.com/{username}/status/{id}`. Bấm avatar hoặc tên mở `https://x.com/{username}`. Cả hai mở tab mới. Radar không đưa bài vào ô chọn mẫu.
 - `src/components/NucleusPanel.tsx`: tab Nucleus, danh sách chiến dịch InfoFi và trang chi tiết theo slug.
 - `src/lib/kol-styles.ts`: adapter có kiểu dữ liệu cho `data/author.json`.
 - `src/lib/app-store.ts`: project đang chọn, trạng thái sidebar/options và provider config.

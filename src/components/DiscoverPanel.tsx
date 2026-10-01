@@ -67,7 +67,7 @@ function RadarTweetCard({ tweet, projectName }: { tweet: DiscoveredTweet; projec
   const profileUrl = xProfileUrl(tweet.username);
   return (
     <article
-      className="mb-3 cursor-pointer break-inside-avoid rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300"
+      className="mb-3 min-w-0 max-w-full cursor-pointer break-inside-avoid overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300"
       tabIndex={0}
       onClick={() => openX(xStatusUrl(tweet.username, tweet.id))}
       onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); openX(xStatusUrl(tweet.username, tweet.id)); } }}
@@ -77,7 +77,7 @@ function RadarTweetCard({ tweet, projectName }: { tweet: DiscoveredTweet; projec
         <span className="min-w-0 truncate text-sm font-semibold text-slate-900 hover:underline">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></span>
       </a>
       {projectName ? <p className="mt-1 truncate pl-[3.25rem] text-xs text-slate-400">{projectName}</p> : null}
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p>
+      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 [overflow-wrap:anywhere]">{tweet.text}</p>
       {tweet.images.length > 0 && <div className="mt-3 space-y-2">{tweet.images.map((src) => <RadarPhoto key={src} src={src} />)}</div>}
       <TweetStats tweet={tweet} />
     </article>

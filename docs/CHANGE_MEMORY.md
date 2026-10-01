@@ -2,6 +2,7 @@
 
 ## 2026-10-01
 
+- Chữ Radar không có dấu cách được xuống dòng, không đẩy rộng cột.
 - Bấm một bài Radar mở bài đó trên X. Bấm avatar hoặc tên mở trang cá nhân của người đăng.
 - Radar xếp bài theo kiểu masonry và chỉ có một chỗ đang tải. Bài nhiều lượt xem, rồi nhiều bình luận, hiện trước.
 - Radar giữ bài đã tải trong trình duyệt. Tải lại trang Khám phá vẫn hiện các bài đó, không gọi lại Sorsa nếu chưa quá 30 phút.

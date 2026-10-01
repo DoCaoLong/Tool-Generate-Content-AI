@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
@@ -25,6 +25,7 @@ export default function AuthScreen() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReset, setTurnstileReset] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
   const queryClient = useQueryClient();
   const form = useForm<AuthValues>({
     resolver: zodResolver(schema),
@@ -42,6 +43,7 @@ export default function AuthScreen() {
   const switchMode = () => {
     setMode(mode === "login" ? "register" : "login");
     setTurnstileToken("");
+    setShowPassword(false);
     setTurnstileReset((value) => value + 1);
     mutation.reset();
     form.clearErrors();
@@ -86,9 +88,13 @@ export default function AuthScreen() {
             <label className="block text-sm font-medium">Email
               <Input className="mt-2 h-12 rounded-xl bg-white" type="email" placeholder="ban@example.com" {...form.register("email")} />
             </label>
-            <label className="block text-sm font-medium">Mật khẩu
-              <Input className="mt-2 h-12 rounded-xl bg-white" type="password" placeholder="Tối thiểu 8 ký tự" {...form.register("password")} />
-            </label>
+            <div className="block text-sm font-medium">
+              <label htmlFor="auth-password">Mật khẩu</label>
+              <span className="relative mt-2 block">
+                <Input id="auth-password" className="h-12 rounded-xl bg-white pr-12" type={showPassword ? "text" : "password"} placeholder="Tối thiểu 8 ký tự" {...form.register("password")} />
+                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+              </span>
+            </div>
             <TurnstileWidget onToken={setTurnstileToken} resetKey={turnstileReset} />
             {(form.formState.errors.email || form.formState.errors.password || mutation.error) && (
               <p className="text-sm text-red-600">{mutation.error?.message || form.formState.errors.email?.message || form.formState.errors.password?.message}</p>

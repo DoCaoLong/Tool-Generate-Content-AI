@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- Form đăng nhập và đăng ký có icon hiện hoặc ẩn mật khẩu.
+- Ảnh phong cách KOL và dự án hiện 2 chữ cái của tên, không còn dấu @. Thẻ đang chọn có viền đậm. Popup chi tiết giữ header và footer, chỉ cuộn nội dung. Hai nút footer và icon với chữ trên nút được kéo gần lại.
 - Lời gọi Sorsa trong Khám phá theo tài liệu API v3: bài viết đọc `full_text`, bỏ retweet có `retweeted_status`, mentions gửi handle không có `@`, lỗi chỉ lấy `message`, và thử lại khi 429 hoặc 5xx.
 - Tab Phong cách bài viết khi tạo mới thêm username KOL và username dự án. Phân tích gọi Sorsa lấy bài của KOL về dự án đó, rồi điền văn phong. Bài viết không hiện ra. Để trống hai ô thì vẫn tự mô tả như trước.
 - Tạo dự án từ brief Nucleus không gắn phong cách KOL mặc định. Mở dự án đã có marker Nucleus cũng bỏ KOL dựng sẵn và style `category: kol`. Phong cách bài viết hoặc dự án vẫn tự khớp.

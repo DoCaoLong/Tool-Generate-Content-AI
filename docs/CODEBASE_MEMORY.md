@@ -45,7 +45,7 @@
 
 ## Frontend Modules
 
-- `src/components/AuthScreen.tsx`: form đăng nhập/đăng ký.
+- `src/components/AuthScreen.tsx`: form đăng nhập/đăng ký. Ô mật khẩu có nút hiện hoặc ẩn.
 - `src/components/ContentStudio.tsx`: sidebar dự án, conversation history, composer và bảng tuỳ chọn.
 - Bảng tuỳ chọn có trường `Rule bắt buộc` và `Tài liệu tham khảo`; nội dung gốc chỉ hiện trong chế độ Viết lại.
 - Từ khoá bắt buộc được theo dõi bằng React Hook Form và hiển thị tức thời thành chip `Từ khóa: ...` cạnh chip phong cách trong composer; chip được tách theo dấu phẩy hoặc xuống dòng và loại trùng.
@@ -91,6 +91,7 @@
 - Style khám phá được lưu vào collection `styles` với `category: project` trước khi áp dụng. Tự mô tả giọng viết lưu `category: writing`. Phân tích username trên `/styles` lưu `category: kol`.
 - Form tạo phong cách trên `/styles` có hai nhóm: Phong cách KOL (bắt buộc phân tích username) và Phong cách bài viết. Bài viết có thể tự mô tả, hoặc nhập username KOL và username dự án để Sorsa lấy bài `from:kol` về `@dự án`, rồi AI điền tên, mô tả và hướng dẫn. Kết quả vẫn lưu `category: writing`, kèm hai username và bài mẫu. Thư viện chia ba nhóm đã lưu: KOL, bài viết, dự án. `StyleDetailDialog` chỉ hiện tên, mô tả và hướng dẫn văn phong, không render nội dung bài Sorsa.
 - `KOLStylePicker` hiện tên phong cách đang chọn và nút X để bỏ chọn ngay trên sidebar. Active saved style chỉ lưu id trong Zustand, còn MongoDB là nguồn dữ liệu chính.
+- Ảnh đại diện phong cách KOL và dự án dùng `getKOLInitials` từ username, tên dự án hoặc tên phong cách. Thẻ đang chọn có viền `border-slate-950`. Popup chi tiết giữ header và footer cố định, chỉ cuộn nội dung. Footer xem là Đóng và Áp dụng hoặc Đang dùng. Nút Sửa nằm ở header.
 - Collection `styles` có index `(userId, updatedAt)` phục vụ danh sách thư viện theo tài khoản.
 - Provider, model, ngôn ngữ, giọng điệu và độ dài được chọn nhanh ngay bên trái nút gửi; API key được quản lý tại `/settings` thay vì aside tuỳ chọn.
 - Selector giọng điệu có 15 phong cách từ tự nhiên/chuyên nghiệp tới thuyết phục, phân tích, sang trọng và gợi tranh luận.

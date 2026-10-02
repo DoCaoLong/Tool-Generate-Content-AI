@@ -64,15 +64,36 @@ function postResend(apiKey: string, payload: { from: string; to: string[]; subje
   });
 }
 
-export async function sendPasswordResetEmail(to: string, resetUrl: string) {
+export async function sendPasswordResetEmail(to: string, name: string, resetUrl: string, appUrl: string) {
   const config = getResendConfig();
   if (!config) throw new Error("RESEND_API_KEY hoặc EMAIL_FROM chưa được cấu hình.");
   const safeUrl = escapeHtml(resetUrl);
+  const safeName = escapeHtml(name.trim() || to);
+  const safeAppUrl = escapeHtml(appUrl);
   const result = await postResend(config.apiKey, {
     from: config.from,
     to: [to],
     subject: "Đặt lại mật khẩu Content Studio",
-    html: `<p>Bạn vừa yêu cầu đặt lại mật khẩu Content Studio.</p><p><a href="${safeUrl}">Đặt mật khẩu mới</a></p><p>Liên kết có hiệu lực trong 30 phút. Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>`,
+    html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;color:#0f172a;padding:32px;border-radius:16px;border:1px solid #e2e8f0;">
+          <h2 style="color:#0f172a;margin-top:0">Đặt lại mật khẩu</h2>
+          <p>Xin chào <strong>${safeName}</strong>,</p>
+          <p style="color:#334155;">Bạn nhận được email này vì đã yêu cầu đặt lại mật khẩu tài khoản Content Studio.</p>
+          <p style="color:#334155;">Click vào nút bên dưới để đặt lại mật khẩu:</p>
+          <div style="text-align:center;margin:32px 0">
+            <a href="${safeUrl}"
+               style="background:#0f172a;color:#ffffff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:bold;display:inline-block;">
+              Đặt lại mật khẩu
+            </a>
+          </div>
+          <p style="color:#64748b;font-size:14px">
+            Link có hiệu lực trong <strong style="color:#0f172a;">30 phút</strong>.<br>
+            Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.
+          </p>
+          <hr style="border-color:#e2e8f0;margin:24px 0">
+          <p style="color:#64748b;font-size:12px;text-align:center">Content Studio — ${safeAppUrl}</p>
+        </div>
+      `,
   });
   if (result.status >= 400) {
     const message = resendMessage(result.body) || "Resend không gửi được email.";

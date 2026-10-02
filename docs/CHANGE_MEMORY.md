@@ -4,6 +4,7 @@
 
 - Form đăng nhập có Quên mật khẩu. Email gửi qua Resend, liên kết dùng một lần trong 30 phút, rồi đặt mật khẩu mới ở `/reset-password`. Email chưa có tài khoản nhận cùng một câu thông báo.
 - Gửi thư quên mật khẩu dùng cùng cách với view.longdc.click: `EMAIL_FROM=noreply@longdc.click` và gọi Resend bằng HTTPS. Lỗi từ Resend hiện thẳng trên form.
+- Thư đặt lại mật khẩu giữ bố cục Flix nhưng chỉ dùng trắng và đen: thẻ trắng, chữ đen, nút đen. Link ghi hiệu lực 30 phút.
 
 ## 2026-10-01
 

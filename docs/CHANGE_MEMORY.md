@@ -2,6 +2,7 @@
 
 ## 2026-10-02
 
+- KOL dựng sẵn trong `/admin/prompts` dùng ảnh `https://unavatar.io/x/{username}`. Ảnh tải lên vẫn được giữ.
 - Access code không còn lưu trên trình duyệt. Mã đúng được ghi nhận trên tài khoản, tài khoản khác phải nhập lại.
 - Tên dự án trên thẻ bài nằm ngay dưới username, một dòng, dài thì có dấu `...`.
 - Bài tìm ở tab Khám phá xếp 3 cột như Radar. Thẻ bài hiện khoảng 280 ký tự đầu, nút Xem thêm mở hết bài.

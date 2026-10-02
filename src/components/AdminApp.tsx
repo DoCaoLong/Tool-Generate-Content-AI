@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, ApiError } from "@/lib/http";
 import PromptAvatar from "@/components/PromptAvatar";
+import { kolAvatarSrc } from "@/lib/kol-styles";
 
 type Tab = "users" | "keys" | "prompts";
 interface AdminUser { id: string; name: string; email: string; disabled: boolean; createdAt: string | null }
@@ -251,7 +252,7 @@ function PromptsTab() {
                     onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) upload.mutate(file); }}
                   >
                     <div className="pointer-events-none flex h-full w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50">
-                      <PromptAvatar src={editing.profileImgUrl} name={editing.name || ""} className="grid h-full w-full place-items-center text-2xl font-bold tracking-wide text-slate-400" />
+                      <PromptAvatar src={kolAvatarSrc({ profileImgUrl: editing.profileImgUrl, text: editing.content })} name={editing.name || ""} className="grid h-full w-full place-items-center text-2xl font-bold tracking-wide text-slate-400" />
                       <span className={`absolute inset-0 grid place-items-center bg-slate-950/55 text-center text-[11px] font-medium text-white transition ${upload.isPending ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                         {upload.isPending ? "Đang tải..." : editing.profileImgUrl ? "Đổi ảnh" : "Tải ảnh lên"}
                       </span>
@@ -283,7 +284,7 @@ function PromptsTab() {
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {(query.data?.styles || []).map((style) => (
             <article key={style.id} className="flex gap-3 rounded-2xl border border-slate-200 p-4">
-              <PromptAvatar src={style.profileImgUrl} name={style.name} className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-emerald-100 text-xs font-bold text-emerald-800" />
+              <PromptAvatar src={kolAvatarSrc({ profileImgUrl: style.profileImgUrl, text: style.content })} name={style.name} className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-emerald-100 text-xs font-bold text-emerald-800" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <div>

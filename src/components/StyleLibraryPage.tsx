@@ -22,7 +22,7 @@ import { buildStyleAnalysisPrompt, parseStyleAnalysis } from "@/lib/style-analys
 import type { DiscoveredTweet, SavedStyle, UserProfile } from "@/lib/types";
 
 interface ManualStyleValues { name: string; description: string; instruction: string; sampleText: string }
-interface AnalyzedAuthor { username: string; projectName: string | null; samples: Array<{ id: string; text: string }> }
+interface AnalyzedAuthor { username: string; projectName: string | null; avatarUrl: string; samples: Array<{ id: string; text: string }> }
 function mergeSamples(fresh: Array<{ id: string; text: string }>, current: Array<{ id: string; text: string }>) {
   const seen = new Set<string>();
   const merged: Array<{ id: string; text: string }> = [];
@@ -51,7 +51,7 @@ function SavedStyleCard({ style, active, color, onChoose, onView, onEdit, onDele
   const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (style.projectName || (style.username ? `@${style.username}` : "Dự án")) : style.username && style.projectName ? `@${style.username} · @${style.projectName.replace(/^@/, "")}` : "Bài viết";
   const mark = getKOLInitials(style.username || style.projectName || style.name);
   const tone = category === "kol" ? "bg-violet-500" : category === "project" ? "bg-sky-500" : color;
-  const avatar = category === "kol" ? kolAvatarSrc({ username: style.username }) : "";
+  const avatar = category === "kol" ? kolAvatarSrc({ username: style.username, avatarUrl: style.avatarUrl }) : "";
   return <article className={`group relative rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${active ? "border-slate-950 shadow-sm" : "border-slate-200"}`}>
     <button className="w-full text-left" onClick={onChoose}>
       <div className="flex items-start gap-3">
@@ -129,17 +129,18 @@ export default function StyleLibraryPage() {
         .slice(0, 20)
         .map((tweet) => ({ id: tweet.id.slice(0, 100), text: tweet.text.slice(0, 4000) }));
       if (!samples.length) throw new Error(projectName ? `Không tìm thấy bài của @${author} về @${projectName}.` : `Không tìm thấy bài viết của @${author}.`);
+      const avatarUrl = (data.tweets || []).find((tweet) => tweet.avatarUrl)?.avatarUrl || "";
       setAnalyzePhase("analyze");
       const result = await generateWithProvider(provider, { apiKey, model, prompt: buildStyleAnalysisPrompt(author, samples.slice(0, 12), projectName || undefined) });
       if (!result.success || !result.content) throw new Error(result.error || "Không thể phân tích phong cách.");
-      return { author, projectName: projectName || null, samples, draft: parseStyleAnalysis(result.content, author, samples.length, projectName || undefined) };
+      return { author, projectName: projectName || null, avatarUrl, samples, draft: parseStyleAnalysis(result.content, author, samples.length, projectName || undefined) };
     },
-    onSuccess: ({ author, projectName, samples, draft }) => {
+    onSuccess: ({ author, projectName, avatarUrl, samples, draft }) => {
       form.setValue("name", draft.name, { shouldValidate: true });
       form.setValue("description", draft.description, { shouldValidate: true });
       form.setValue("instruction", draft.instruction, { shouldValidate: true });
       form.setValue("sampleText", "");
-      setAnalyzed({ username: author, projectName, samples });
+      setAnalyzed({ username: author, projectName, avatarUrl, samples });
       setLocalError("");
       pendingAnalyze.current = null;
     },
@@ -192,7 +193,7 @@ export default function StyleLibraryPage() {
     mutationFn: (values: ManualStyleValues) => {
       if (createCategory === "kol") {
         if (!kolMatch) throw new Error("Hãy phân tích username trước khi lưu phong cách KOL.");
-        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "kol", name: values.name, description: values.description, instruction: values.instruction, username: kolMatch.username, projectName: null, samples: kolMatch.samples }) });
+        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "kol", name: values.name, description: values.description, instruction: values.instruction, username: kolMatch.username, projectName: null, avatarUrl: kolMatch.avatarUrl || null, samples: kolMatch.samples }) });
       }
       if (writingKolHandle || writingProjectHandle) {
         if (!writingMatch) throw new Error("Hãy phân tích hai username trước khi lưu.");
@@ -328,7 +329,7 @@ export default function StyleLibraryPage() {
       </section>;
     })}
 
-    <section className="mt-10"><div className="mb-4"><h2 className="text-lg font-semibold">KOL dựng sẵn</h2><p className="mt-1 text-xs text-slate-500">Chọn nhanh một bộ đặc trưng văn phong đã được chuẩn bị.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredKOLs.map((author, index) => { const active = selectedKolId === author.id; return <article key={author.id} className={`group relative rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${active ? "border-slate-950 shadow-sm" : "border-slate-200"}`}><button className="w-full text-left" onClick={() => chooseKOL(author.id)}><div className="flex items-start gap-3"><PromptAvatar src={kolAvatarSrc({ profileImgUrl: author.profileImgUrl, text: author.content })} name={author.name} className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white ${colors[index % colors.length]}`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{author.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div><p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{compact(author.style_vi || author.style || author.content)}</p></div></div></button><button type="button" aria-label={`Xem ${author.name}`} className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-300 opacity-100 hover:bg-slate-100 hover:text-slate-700 md:opacity-0 md:group-hover:opacity-100" onClick={() => setDetail({ type: "kol", style: author })}><Eye className="h-4 w-4" /></button></article>; })}</div></section>
+    <section className="mt-10"><div className="mb-4"><h2 className="text-lg font-semibold">KOL dựng sẵn</h2><p className="mt-1 text-xs text-slate-500">Chọn nhanh một bộ đặc trưng văn phong đã được chuẩn bị.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredKOLs.map((author, index) => { const active = selectedKolId === author.id; return <article key={author.id} className={`group relative rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${active ? "border-slate-950 shadow-sm" : "border-slate-200"}`}><button className="w-full text-left" onClick={() => chooseKOL(author.id)}><div className="flex items-start gap-3"><PromptAvatar src={kolAvatarSrc({ profileImgUrl: author.profileImgUrl, username: author.username, text: author.content })} name={author.name} className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white ${colors[index % colors.length]}`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{author.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div><p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{compact(author.style_vi || author.style || author.content)}</p></div></div></button><button type="button" aria-label={`Xem ${author.name}`} className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-300 opacity-100 hover:bg-slate-100 hover:text-slate-700 md:opacity-0 md:group-hover:opacity-100" onClick={() => setDetail({ type: "kol", style: author })}><Eye className="h-4 w-4" /></button></article>; })}</div></section>
     <StyleDetailDialog
       open={Boolean(detail)}
       name={detail?.style.name || ""}
@@ -337,7 +338,7 @@ export default function StyleLibraryPage() {
       instruction={detail?.type === "saved" ? detail.style.instruction : detail?.type === "kol" ? detail.style.content : ""}
       username={detail?.type === "saved" ? detail.style.username : null}
       projectName={detail?.type === "saved" ? detail.style.projectName : null}
-      avatarUrl={detail?.type === "saved" ? (resolveStyleCategory(detail.style) === "kol" ? kolAvatarSrc({ username: detail.style.username }) : "") : detail?.type === "kol" ? kolAvatarSrc({ profileImgUrl: detail.style.profileImgUrl, text: detail.style.content }) : ""}
+      avatarUrl={detail?.type === "saved" ? (resolveStyleCategory(detail.style) === "kol" ? kolAvatarSrc({ username: detail.style.username, avatarUrl: detail.style.avatarUrl }) : "") : detail?.type === "kol" ? kolAvatarSrc({ profileImgUrl: detail.style.profileImgUrl, username: detail.style.username, text: detail.style.content }) : ""}
       active={detail?.type === "saved" ? selectedSavedStyleId === detail.style.id : selectedKolId === detail?.style.id}
       canEdit={detail?.type === "saved"}
       editing={editing && detail?.type === "saved"}

@@ -3,6 +3,7 @@ import authorData from "../../data/author.json";
 export interface KOLStyle {
   id: string;
   name: string;
+  username?: string;
   style?: string;
   style_vi?: string;
   content: string;
@@ -21,22 +22,45 @@ export function getKOLInitials(name: string) {
   return (words.length > 1 ? `${words[0][0]}${words[1][0]}` : words[0]?.slice(0, 2) || "K").toUpperCase();
 }
 
-const xHandlePattern = /^[A-Za-z0-9_]{1,15}$/;
-const profileHandleAliases: Record<string, string> = { "wale-moca": "waleswoosh" }; // file name in author.json; the X handle is waleswoosh
+const handleAliases: Record<string, string> = {
+  "wale-moca": "waleswoosh",
+  beast_ico: "icobeast",
+  defi0xjeff: "0xjeff",
+  "0xfastlife": "fastlife",
+};
 
-export function xAvatarUrl(username: string | null | undefined) {
-  const handle = (username || "").trim().replace(/^@/, "");
-  return xHandlePattern.test(handle) ? `https://unavatar.io/x/${handle}` : "";
+function usableAvatar(value?: string | null) {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("/uploads/")) return raw;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.hostname === "unavatar.io") return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
 }
 
-export function kolAvatarSrc(input: { username?: string | null; profileImgUrl?: string | null; text?: string | null }) {
-  const fromUsername = xAvatarUrl(input.username);
-  if (fromUsername) return fromUsername;
-  const profile = (input.profileImgUrl || "").trim();
-  if (/^https:\/\//i.test(profile) || profile.startsWith("/uploads/")) return profile;
-  const stem = profile.match(/^\/([^/]+)\.(?:jpe?g|png|webp|gif)$/i)?.[1] || "";
-  const fromFile = xAvatarUrl(profileHandleAliases[stem] || stem);
-  if (fromFile) return fromFile;
-  return xAvatarUrl((input.text || "").match(/\(@([A-Za-z0-9_]{1,15})\)/)?.[1]);
+function canonicalHandle(value?: string | null) {
+  const handle = (value || "").trim().replace(/^@/, "");
+  if (!handle) return "";
+  return handleAliases[handle.toLowerCase()] || handle;
+}
+
+function legacyHandle(value?: string | null) {
+  const raw = (value || "").trim();
+  return raw.match(/unavatar\.io\/(?:x|twitter)\/([A-Za-z0-9_]{1,15})/i)?.[1]
+    || raw.match(/^\/([A-Za-z0-9_-]{1,30})\.(?:jpe?g|png|webp|gif)$/i)?.[1]
+    || "";
+}
+
+export function kolAvatarSrc(input: { username?: string | null; avatarUrl?: string | null; profileImgUrl?: string | null; text?: string | null }) {
+  const direct = usableAvatar(input.avatarUrl) || usableAvatar(input.profileImgUrl);
+  if (direct) return direct;
+  const handle = canonicalHandle(input.username || legacyHandle(input.profileImgUrl) || (input.text || "").match(/\(@([A-Za-z0-9_]{1,15})\)/)?.[1]);
+  if (!handle) return "";
+  const match = kolStyles.find((style) => style.username?.toLowerCase() === handle.toLowerCase());
+  return usableAvatar(match?.profileImgUrl);
 }
 

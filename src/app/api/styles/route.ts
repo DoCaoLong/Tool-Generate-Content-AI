@@ -1,5 +1,7 @@
+import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
+import { fetchSorsaAvatars, normalizeSorsaAvatar } from "@/lib/sorsa-avatar";
 import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
 import { errorResponse, requireUser } from "@/lib/server-utils";
 
@@ -12,6 +14,7 @@ const createSchema = z.object({
   instruction: z.string().trim().min(10).max(5000),
   username: z.string().trim().max(30).nullable().default(null),
   projectName: z.string().trim().max(120).nullable().default(null),
+  avatarUrl: z.string().trim().max(500).nullable().optional().default(null),
   samples: z.array(sampleSchema).max(20).default([]),
 });
 
@@ -31,16 +34,45 @@ function serialize(style: Record<string, unknown> & { _id: { toHexString(): stri
     instruction: style.instruction,
     username: style.username || null,
     projectName: style.projectName || null,
+    avatarUrl: normalizeSorsaAvatar(style.avatarUrl) || null,
     samples: style.samples || [],
     createdAt: style.createdAt.toISOString(),
     updatedAt: style.updatedAt.toISOString(),
   };
 }
 
+async function fillKolAvatars(styles: Array<Record<string, unknown> & { _id: ObjectId }>) {
+  const missing = styles.filter((style) => {
+    const category = resolveStyleCategory({
+      category: typeof style.category === "string" ? style.category : null,
+      kind: typeof style.kind === "string" ? style.kind : null,
+      username: typeof style.username === "string" ? style.username : null,
+      projectName: typeof style.projectName === "string" ? style.projectName : null,
+    });
+    const username = typeof style.username === "string" ? style.username.replace(/^@/, "") : "";
+    return category === "kol" && /^[A-Za-z0-9_]{1,15}$/.test(username) && !normalizeSorsaAvatar(style.avatarUrl);
+  });
+  if (!missing.length) return;
+  const found = await fetchSorsaAvatars(missing.map((style) => String(style.username)));
+  const db = await getDb();
+  await Promise.all(missing.map(async (style) => {
+    const image = found.get(String(style.username).replace(/^@/, "").toLowerCase());
+    if (!image) return;
+    style.avatarUrl = image;
+    await db.collection("styles").updateOne({ _id: style._id }, { $set: { avatarUrl: image } });
+  }));
+}
+
 export async function GET() {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
-  const styles = await (await getDb()).collection("styles").find({ userId: auth.user.id }).sort({ updatedAt: -1 }).toArray();
+  const db = await getDb();
+  const styles = await db.collection("styles").find({ userId: auth.user.id }).sort({ updatedAt: -1 }).toArray();
+  try {
+    await fillKolAvatars(styles);
+  } catch {
+    // Giữ danh sách phong cách khi Sorsa không trả ảnh.
+  }
   return Response.json({ styles: styles.map((style) => serialize(style as never)) });
 }
 
@@ -71,6 +103,7 @@ export async function POST(request: Request) {
     kind: category === "writing" ? "manual" : "discovered",
     username: parsed.data.username,
     projectName: parsed.data.projectName,
+    avatarUrl: normalizeSorsaAvatar(parsed.data.avatarUrl) || null,
     createdAt: now,
     updatedAt: now,
   };

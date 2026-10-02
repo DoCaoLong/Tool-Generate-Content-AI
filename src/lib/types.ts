@@ -89,6 +89,7 @@ export interface SavedStyle {
   instruction: string;
   username: string | null;
   projectName: string | null;
+  avatarUrl: string | null;
   samples: Array<{ id: string; text: string }>;
   createdAt: string;
   updatedAt: string;

@@ -28,9 +28,10 @@ export async function POST(request: Request) {
   if (!token) return Response.json(sent);
   try {
     await sendPasswordResetEmail(parsed.data.email, `${appOrigin(request)}/reset-password?token=${encodeURIComponent(token)}`);
-  } catch {
+  } catch (error) {
     await db.collection("password_resets").deleteMany({ userId: account._id });
-    return errorResponse("Không gửi được email. Hãy thử lại.", 502);
+    const message = error instanceof Error && error.message ? error.message : "Không gửi được email. Hãy thử lại.";
+    return errorResponse(message, 502);
   }
   return Response.json(sent);
 }

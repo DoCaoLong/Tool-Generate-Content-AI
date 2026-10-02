@@ -33,7 +33,7 @@
 - `src/lib/mongodb.ts`: connection singleton và tạo index cho users, projects, generations, styles và `password_resets` (`tokenHash` unique, `userId` + `createdAt`, TTL `expiresAt`).
 - `src/lib/auth.ts`: JWT session 7 ngày trong cookie `httpOnly`, `sameSite=lax`, bật `secure` ở production.
 - `src/app/api/auth/*`: register, login, logout, current user, verify access code, forgot-password, reset-password.
-- Quên mật khẩu: `POST /api/auth/forgot-password` gửi email qua Resend (`src/lib/resend.ts`, không dùng package `resend`). Token ngẫu nhiên 32 byte, Mongo chỉ lưu SHA-256, hiệu lực 30 phút, một token đang dùng cho mỗi user, chờ 60 giây giữa hai lần gửi. `POST /api/auth/reset-password` đổi `passwordHash` bcrypt cost 12 và không tạo session. Email không tồn tại, tài khoản bị khoá, hoặc đang trong 60 giây đều trả cùng câu thành công. Thiếu `RESEND_API_KEY` hoặc `RESEND_FROM` trả 503 trước khi tra user.
+- Quên mật khẩu: `POST /api/auth/forgot-password` gửi email qua Resend bằng `node:https` tới `api.resend.com/emails`, IPv4, giống mailer của view.longdc.click. Không dùng package `resend`. `from` lấy `EMAIL_FROM`, rồi `RESEND_FROM`, mặc định `noreply@longdc.click`. Token ngẫu nhiên 32 byte, Mongo chỉ lưu SHA-256, hiệu lực 30 phút, một token đang dùng cho mỗi user, chờ 60 giây giữa hai lần gửi. `POST /api/auth/reset-password` đổi `passwordHash` bcrypt cost 12 và không tạo session. Email không tồn tại, tài khoản bị khoá, hoặc đang trong 60 giây đều trả cùng câu thành công. Thiếu `RESEND_API_KEY` hoặc địa chỉ gửi trả 503 trước khi tra user. Resend từ chối thì API trả đúng câu lỗi của Resend.
 - Tính năng Sorsa ngoài Radar yêu cầu `REGISTER_ACCESS_CODE`. Người dùng nhập mã một lần; mã lưu ở `localStorage` khoá `content-studio-discover-access` (`src/lib/sorsa-access.ts`) và dùng chung cho tìm bài, phân tích phong cách, cập nhật bài mẫu. API `/api/discover` kiểm tra lại mã, trừ khi body có `radar: true`.
 - `src/middleware.ts` chặn API: JWT user (`cw_session`) cho route nội bộ, JWT admin (`cw_admin`) cho `/api/admin/*` trừ login. Public gồm login, register, logout, me, access-code, forgot-password, reset-password, `/api/public/turnstile`, `/api/admin/login`.
 - Login, register, quên mật khẩu, đặt lại mật khẩu và `/admin` xác thực Cloudflare Turnstile (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`).
@@ -42,7 +42,7 @@
 - `src/app/api/projects/*`: tạo, đọc, sửa, xoá dự án và đọc/lưu lịch sử.
 - Mọi truy vấn project/generation đều lọc theo `userId` lấy từ session phía server.
 - Password được hash bằng bcryptjs cost 12.
-- `MONGODB_URI`, `MONGODB_DB`, `AUTH_SECRET`, `RESEND_API_KEY`, `RESEND_FROM`, `APP_URL` được mô tả trong `.env.example`. `APP_URL` là gốc của liên kết trong email, không có dấu `/` cuối.
+- `MONGODB_URI`, `MONGODB_DB`, `AUTH_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL` được mô tả trong `.env.example`. `EMAIL_FROM` mặc định `noreply@longdc.click`. `APP_URL` là gốc của liên kết trong email, không có dấu `/` cuối.
 
 ## Frontend Modules
 

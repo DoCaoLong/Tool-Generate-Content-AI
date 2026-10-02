@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Eye, LoaderCircle, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import PromptAvatar from "@/components/PromptAvatar";
 import { StyleDetailDialog } from "@/components/StyleDetailDialog";
@@ -15,12 +15,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { generateWithProvider } from "@/lib/api-client";
 import { useAppStore } from "@/lib/app-store";
 import { ApiError, apiRequest } from "@/lib/http";
-import { getKOLInitials, kolStyles, type KOLStyle } from "@/lib/kol-styles";
+import { getKOLInitials, kolAvatarSrc, kolStyles, type KOLStyle } from "@/lib/kol-styles";
 import { providerLabels } from "@/lib/providers";
 import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
 import { buildStyleAnalysisPrompt, parseStyleAnalysis } from "@/lib/style-analysis";
-import { clearSorsaAccessCode, getSorsaAccessServerSnapshot, getSorsaAccessSnapshot, saveSorsaAccessCode, subscribeSorsaAccess } from "@/lib/sorsa-access";
-import type { DiscoveredTweet, SavedStyle } from "@/lib/types";
+import type { DiscoveredTweet, SavedStyle, UserProfile } from "@/lib/types";
 
 interface ManualStyleValues { name: string; description: string; instruction: string; sampleText: string }
 interface AnalyzedAuthor { username: string; projectName: string | null; samples: Array<{ id: string; text: string }> }
@@ -52,10 +51,11 @@ function SavedStyleCard({ style, active, color, onChoose, onView, onEdit, onDele
   const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (style.projectName || (style.username ? `@${style.username}` : "Dự án")) : style.username && style.projectName ? `@${style.username} · @${style.projectName.replace(/^@/, "")}` : "Bài viết";
   const mark = getKOLInitials(style.username || style.projectName || style.name);
   const tone = category === "kol" ? "bg-violet-500" : category === "project" ? "bg-sky-500" : color;
+  const avatar = category === "kol" ? kolAvatarSrc({ username: style.username }) : "";
   return <article className={`group relative rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${active ? "border-slate-950 shadow-sm" : "border-slate-200"}`}>
     <button className="w-full text-left" onClick={onChoose}>
       <div className="flex items-start gap-3">
-        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-bold text-white ${tone}`}>{mark}</span>
+        {avatar ? <PromptAvatar src={avatar} name={style.username || style.name} className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white ${tone}`} /> : <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-bold text-white ${tone}`}>{mark}</span>}
         <div className="min-w-0 flex-1 pr-20">
           <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{style.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div>
           <p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{style.description || compact(style.instruction)}</p>
@@ -86,7 +86,8 @@ export default function StyleLibraryPage() {
   const [localError, setLocalError] = useState("");
   const [accessOpen, setAccessOpen] = useState(false);
   const [accessCode, setAccessCode] = useState("");
-  const verifiedCode = useSyncExternalStore(subscribeSorsaAccess, getSorsaAccessSnapshot, getSorsaAccessServerSnapshot);
+  const me = useQuery({ queryKey: ["me"], queryFn: () => apiRequest<{ user: UserProfile }>("/api/auth/me") });
+  const hasAccess = me.data?.user.sorsaAccess === true;
   const [detail, setDetail] = useState<{ type: "saved"; style: SavedStyle } | { type: "kol"; style: KOLStyle } | null>(null);
   const [editing, setEditing] = useState(false);
   const [styleToDelete, setStyleToDelete] = useState<SavedStyle | null>(null);
@@ -118,11 +119,11 @@ export default function StyleLibraryPage() {
   const writingHandlesFilled = Boolean(writingKolHandle || writingProjectHandle);
 
   const analyzeAuthor = useMutation({
-    mutationFn: async ({ code, username: author, projectName }: AnalyzeTarget & { code: string }) => {
+    mutationFn: async ({ username: author, projectName }: AnalyzeTarget) => {
       if (!handlePattern.test(author) || (projectName && !handlePattern.test(projectName))) throw new Error("Username X chưa hợp lệ.");
       if (!apiKey.trim()) throw new Error("Hãy lưu API key trong Cài đặt trước khi phân tích.");
       setAnalyzePhase("fetch");
-      const data = await apiRequest<{ tweets?: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ username: author, projectName: projectName ? `@${projectName}` : "", accessCode: code }) });
+      const data = await apiRequest<{ tweets?: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ username: author, projectName: projectName ? `@${projectName}` : "" }) });
       const samples = (data.tweets || [])
         .filter((tweet) => tweet.text.trim().length >= 20 && !/^RT @/i.test(tweet.text.trim()))
         .slice(0, 20)
@@ -143,28 +144,25 @@ export default function StyleLibraryPage() {
       pendingAnalyze.current = null;
     },
     onError: (error) => {
-      if (error instanceof ApiError && error.message === "Access code không đúng.") {
-        clearSorsaAccessCode();
-        setAccessOpen(true);
-      }
+      if (error instanceof ApiError && error.message === "Hãy nhập access code.") setAccessOpen(true);
     },
     onSettled: () => setAnalyzePhase("idle"),
   });
 
   const verifyAccess = useMutation({
     mutationFn: (code: string) => apiRequest<{ ok: true }>("/api/auth/access-code", { method: "POST", body: JSON.stringify({ accessCode: code }) }),
-    onSuccess: (_, code) => {
-      saveSorsaAccessCode(code);
+    onSuccess: () => {
+      queryClient.setQueryData<{ user: UserProfile }>(["me"], (current) => current ? { user: { ...current.user, sorsaAccess: true } } : current);
       setAccessOpen(false);
       setAccessCode("");
       const refreshStyle = pendingRefresh.current;
       pendingRefresh.current = null;
       if (refreshStyle) {
-        refreshSamples.mutate({ style: refreshStyle, code });
+        refreshSamples.mutate(refreshStyle);
         return;
       }
       const pending = pendingAnalyze.current;
-      if (pending) analyzeAuthor.mutate({ code, ...pending });
+      if (pending) analyzeAuthor.mutate(pending);
     },
   });
 
@@ -183,11 +181,11 @@ export default function StyleLibraryPage() {
     setLocalError("");
     pendingRefresh.current = null;
     pendingAnalyze.current = target;
-    if (!verifiedCode) {
+    if (!hasAccess) {
       setAccessOpen(true);
       return;
     }
-    analyzeAuthor.mutate({ code: verifiedCode, ...target });
+    analyzeAuthor.mutate(target);
   };
 
   const createStyle = useMutation({
@@ -219,11 +217,11 @@ export default function StyleLibraryPage() {
     },
   });
   const refreshSamples = useMutation({
-    mutationFn: async ({ style, code }: { style: SavedStyle; code: string }) => {
+    mutationFn: async (style: SavedStyle) => {
       const username = (style.username || "").replace(/^@/, "");
       const projectName = (style.projectName || "").slice(0, 100);
       if (!username && !projectName) throw new Error("Phong cách này chưa có username hoặc dự án để lấy bài mới.");
-      const data = await apiRequest<{ tweets?: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ username, projectName, accessCode: code }) });
+      const data = await apiRequest<{ tweets?: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ username, projectName }) });
       const fresh = (data.tweets || []).filter((tweet) => tweet.text.trim().length >= 20).slice(0, 20).map((tweet) => ({ id: tweet.id.slice(0, 100), text: tweet.text.slice(0, 4000) }));
       if (!fresh.length) throw new Error("Không tìm thấy bài mới.");
       const merged = mergeSamples(fresh, style.samples);
@@ -239,21 +237,18 @@ export default function StyleLibraryPage() {
       setDetail({ type: "saved", style });
     },
     onError: (error) => {
-      if (error instanceof ApiError && error.message === "Access code không đúng.") {
-        clearSorsaAccessCode();
-        setAccessOpen(true);
-      }
+      if (error instanceof ApiError && error.message === "Hãy nhập access code.") setAccessOpen(true);
     },
   });
   const requestRefresh = (style: SavedStyle) => {
     pendingAnalyze.current = null;
     pendingRefresh.current = style;
     refreshSamples.reset();
-    if (!verifiedCode) {
+    if (!hasAccess) {
       setAccessOpen(true);
       return;
     }
-    refreshSamples.mutate({ style, code: verifiedCode });
+    refreshSamples.mutate(style);
   };
   const updateStyle = useMutation({
     mutationFn: (values: { name: string; description: string; instruction: string }) => {
@@ -333,7 +328,7 @@ export default function StyleLibraryPage() {
       </section>;
     })}
 
-    <section className="mt-10"><div className="mb-4"><h2 className="text-lg font-semibold">KOL dựng sẵn</h2><p className="mt-1 text-xs text-slate-500">Chọn nhanh một bộ đặc trưng văn phong đã được chuẩn bị.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredKOLs.map((author, index) => { const active = selectedKolId === author.id; return <article key={author.id} className={`group relative rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${active ? "border-slate-950 shadow-sm" : "border-slate-200"}`}><button className="w-full text-left" onClick={() => chooseKOL(author.id)}><div className="flex items-start gap-3"><PromptAvatar src={author.profileImgUrl} name={author.name} className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white ${colors[index % colors.length]}`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{author.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div><p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{compact(author.style_vi || author.style || author.content)}</p></div></div></button><button type="button" aria-label={`Xem ${author.name}`} className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-300 opacity-100 hover:bg-slate-100 hover:text-slate-700 md:opacity-0 md:group-hover:opacity-100" onClick={() => setDetail({ type: "kol", style: author })}><Eye className="h-4 w-4" /></button></article>; })}</div></section>
+    <section className="mt-10"><div className="mb-4"><h2 className="text-lg font-semibold">KOL dựng sẵn</h2><p className="mt-1 text-xs text-slate-500">Chọn nhanh một bộ đặc trưng văn phong đã được chuẩn bị.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredKOLs.map((author, index) => { const active = selectedKolId === author.id; return <article key={author.id} className={`group relative rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${active ? "border-slate-950 shadow-sm" : "border-slate-200"}`}><button className="w-full text-left" onClick={() => chooseKOL(author.id)}><div className="flex items-start gap-3"><PromptAvatar src={kolAvatarSrc({ profileImgUrl: author.profileImgUrl, text: author.content })} name={author.name} className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white ${colors[index % colors.length]}`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{author.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div><p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{compact(author.style_vi || author.style || author.content)}</p></div></div></button><button type="button" aria-label={`Xem ${author.name}`} className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-300 opacity-100 hover:bg-slate-100 hover:text-slate-700 md:opacity-0 md:group-hover:opacity-100" onClick={() => setDetail({ type: "kol", style: author })}><Eye className="h-4 w-4" /></button></article>; })}</div></section>
     <StyleDetailDialog
       open={Boolean(detail)}
       name={detail?.style.name || ""}
@@ -342,6 +337,7 @@ export default function StyleLibraryPage() {
       instruction={detail?.type === "saved" ? detail.style.instruction : detail?.type === "kol" ? detail.style.content : ""}
       username={detail?.type === "saved" ? detail.style.username : null}
       projectName={detail?.type === "saved" ? detail.style.projectName : null}
+      avatarUrl={detail?.type === "saved" ? (resolveStyleCategory(detail.style) === "kol" ? kolAvatarSrc({ username: detail.style.username }) : "") : detail?.type === "kol" ? kolAvatarSrc({ profileImgUrl: detail.style.profileImgUrl, text: detail.style.content }) : ""}
       active={detail?.type === "saved" ? selectedSavedStyleId === detail.style.id : selectedKolId === detail?.style.id}
       canEdit={detail?.type === "saved"}
       editing={editing && detail?.type === "saved"}
@@ -371,7 +367,7 @@ export default function StyleLibraryPage() {
       <DialogContent className="rounded-2xl sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Access code</DialogTitle>
-          <DialogDescription>Nhập mã truy cập để lấy bài viết trên X.</DialogDescription>
+          <DialogDescription>Nhập mã truy cập cho tài khoản này. Lần sau không cần nhập lại.</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); verifyAccess.mutate(accessCode.trim()); }}>
           <label className="block text-sm font-medium">Mã truy cập

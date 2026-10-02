@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     { _id: userId },
     { $set: { passwordHash: await hash(parsed.data.password, 12), updatedAt: new Date() } },
   );
-  const user = { id: userId.toHexString(), name: String(account.name), email: String(account.email) };
+  const user = { id: userId.toHexString(), name: String(account.name), email: String(account.email), sorsaAccess: account.sorsaAccess === true };
   await createSession(user);
   return Response.json({ user });
 }

@@ -31,6 +31,7 @@ import { buildContentPrompt } from "@/lib/prompt-builder";
 import { getKOLStyle } from "@/lib/kol-styles";
 import { resolveStyleCategory } from "@/lib/style-category";
 import { findStyleForProject, projectHasNucleusBrief } from "@/lib/style-match";
+import { forgetBrowserAccessCode } from "@/lib/sorsa-access";
 import { providerLabels, providerModels, providers } from "@/lib/providers";
 import { prefetchNucleusList } from "@/lib/nucleus-query";
 import type { Generation, Project, ProjectContentOptions, Provider, SavedStyle, UserProfile } from "@/lib/types";
@@ -118,6 +119,7 @@ export default function ContentStudio() {
 
 function Workspace({ user }: { user: UserProfile }) {
   const queryClient = useQueryClient();
+  useEffect(() => { forgetBrowserAccessCode(); }, []);
   const pathname = usePathname();
   const router = useRouter();
   const storedProjectId = useAppStore((state) => state.selectedProjectId);

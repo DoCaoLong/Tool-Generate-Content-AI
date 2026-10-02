@@ -2,6 +2,10 @@
 
 ## 2026-10-02
 
+- Access code không còn lưu trên trình duyệt. Mã đúng được ghi nhận trên tài khoản, tài khoản khác phải nhập lại.
+- Tên dự án trên thẻ bài nằm ngay dưới username, một dòng, dài thì có dấu `...`.
+- Bài tìm ở tab Khám phá xếp 3 cột như Radar. Thẻ bài hiện khoảng 280 ký tự đầu, nút Xem thêm mở hết bài.
+- Phong cách KOL và KOL dựng sẵn hiện ảnh đại diện trên X. Ảnh lỗi thì vẫn hiện chữ cái.
 - Radar ở tab Khám phá chỉ hiện 30 bài, ưu tiên lượt xem rồi bình luận.
 - Form đăng nhập có Quên mật khẩu. Email gửi qua Resend, liên kết dùng một lần trong 30 phút, rồi đặt mật khẩu mới ở `/reset-password`. Email chưa có tài khoản nhận cùng một câu thông báo.
 - Gửi thư quên mật khẩu dùng cùng cách với view.longdc.click: `EMAIL_FROM=noreply@longdc.click` và gọi Resend bằng HTTPS. Lỗi từ Resend hiện thẳng trên form.

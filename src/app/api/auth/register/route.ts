@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  const user = { id: result.insertedId.toHexString(), name: parsed.data.name, email: parsed.data.email };
+  const user = { id: result.insertedId.toHexString(), name: parsed.data.name, email: parsed.data.email, sorsaAccess: false };
   await createSession(user);
   return Response.json({ user }, { status: 201 });
 }

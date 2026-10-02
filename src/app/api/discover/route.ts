@@ -1,7 +1,7 @@
 import dns from "node:dns";
 import https from "node:https";
 import { z } from "zod";
-import { requireAccessCode } from "@/lib/access-code";
+import { readSorsaAccess } from "@/lib/account-access";
 import { buildRadarQuery } from "@/lib/radar-query";
 import { errorResponse, requireUser } from "@/lib/server-utils";
 import { getSorsaApiKey } from "@/lib/sorsa-key";
@@ -14,12 +14,8 @@ const requestSchema = z.object({
   username: z.string().trim().transform((value) => value.replace(/^@/, "")).optional().default(""),
   projectName: z.string().trim().max(100).optional().default(""),
   nextCursor: z.string().max(1000).optional(),
-  accessCode: z.string().trim().max(128).optional().default(""),
   radar: z.boolean().optional().default(false),
 }).superRefine((data, context) => {
-  if (!data.radar && !data.accessCode) {
-    context.addIssue({ code: "custom", message: "Hãy nhập access code." });
-  }
   if (!data.username && !data.projectName) {
     context.addIssue({ code: "custom", message: "Hãy nhập username hoặc tên dự án." });
   }
@@ -231,9 +227,8 @@ export async function POST(request: Request) {
     const message = parsed.error.issues[0]?.message || "Username hoặc tên dự án chưa hợp lệ.";
     return errorResponse(message);
   }
-  if (!parsed.data.radar) {
-    const access = requireAccessCode(parsed.data.accessCode);
-    if (!access.ok) return errorResponse(access.message, access.status);
+  if (!parsed.data.radar && !(await readSorsaAccess(auth.user.id))) {
+    return errorResponse("Hãy nhập access code.", 403);
   }
 
   const apiKey = await getSorsaApiKey();

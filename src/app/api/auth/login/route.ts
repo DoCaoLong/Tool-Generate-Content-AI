@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   }
   if (account.disabled) return errorResponse("Tài khoản đã bị vô hiệu hoá.", 403);
 
-  const user = { id: account._id.toHexString(), name: String(account.name), email: String(account.email) };
+  const user = { id: account._id.toHexString(), name: String(account.name), email: String(account.email), sorsaAccess: account.sorsaAccess === true };
   await createSession(user);
   return Response.json({ user });
 }

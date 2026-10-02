@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PromptAvatar from "@/components/PromptAvatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ interface StyleDetailDialogProps {
   instruction: string;
   username?: string | null;
   projectName?: string | null;
+  avatarUrl?: string | null;
   active?: boolean;
   canEdit?: boolean;
   editing?: boolean;
@@ -44,6 +46,7 @@ export function StyleDetailDialog({
   instruction,
   username,
   projectName,
+  avatarUrl,
   active = false,
   canEdit = false,
   editing = false,
@@ -70,6 +73,7 @@ export function StyleDetailDialog({
           instruction={instruction}
           username={username}
           projectName={projectName}
+          avatarUrl={avatarUrl}
           active={active}
           canEdit={canEdit}
           editing={editing}
@@ -97,6 +101,7 @@ function StyleDetailBody({
   instruction,
   username,
   projectName,
+  avatarUrl,
   active,
   canEdit,
   editing,
@@ -144,9 +149,12 @@ function StyleDetailBody({
     <>
       <DialogHeader className="shrink-0 space-y-1 border-b border-slate-100 px-6 py-4 pr-12 text-left">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <DialogTitle>{editing ? "Sửa phong cách" : name}</DialogTitle>
-            <DialogDescription className="mt-1">{meta}</DialogDescription>
+          <div className="flex min-w-0 items-start gap-3">
+            {avatarUrl ? <PromptAvatar src={avatarUrl} name={username || name} className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-violet-500 text-xs font-bold text-white" /> : null}
+            <div className="min-w-0">
+              <DialogTitle>{editing ? "Sửa phong cách" : name}</DialogTitle>
+              <DialogDescription className="mt-1">{meta}</DialogDescription>
+            </div>
           </div>
           {canEdit && !editing && <Button type="button" variant="outline" className="h-8 shrink-0 rounded-lg px-3" onClick={() => onEditingChange?.(true)}>Sửa</Button>}
         </div>

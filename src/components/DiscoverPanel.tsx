@@ -15,8 +15,7 @@ import { useAppStore } from "@/lib/app-store";
 import { ApiError, apiRequest } from "@/lib/http";
 import { getRadarCacheReadyServerSnapshot, getRadarCacheReadySnapshot, getRadarCacheServerSnapshot, getRadarCacheSnapshot, listRadarEntries, radarCacheFresh, readRadarEntry, saveRadarEntry, shareRadarRequest, subscribeRadarCache } from "@/lib/radar-cache";
 import { buildRadarQuery, projectXHandle } from "@/lib/radar-query";
-import { clearSorsaAccessCode, getSorsaAccessServerSnapshot, getSorsaAccessSnapshot, saveSorsaAccessCode, subscribeSorsaAccess } from "@/lib/sorsa-access";
-import type { DiscoveredTweet, Project, SavedStyle } from "@/lib/types";
+import type { DiscoveredTweet, Project, SavedStyle, UserProfile } from "@/lib/types";
 
 const schema = z.object({
   username: z.string().trim().transform((value) => value.replace(/^@/, "")).refine((value) => !value || /^[A-Za-z0-9_]{1,15}$/.test(value), "Username X chưa hợp lệ."),
@@ -45,7 +44,8 @@ export default function DiscoverPanel() {
   const [accessOpen, setAccessOpen] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const [pendingSearch, setPendingSearch] = useState<{ values: DiscoverValues; cursor?: string } | null>(null);
-  const verifiedCode = useSyncExternalStore(subscribeSorsaAccess, getSorsaAccessSnapshot, getSorsaAccessServerSnapshot);
+  const me = useQuery({ queryKey: ["me"], queryFn: () => apiRequest<{ user: UserProfile }>("/api/auth/me") });
+  const hasAccess = me.data?.user.sorsaAccess === true;
   const radarRaw = useSyncExternalStore(subscribeRadarCache, getRadarCacheSnapshot, getRadarCacheServerSnapshot);
   const radarCacheReady = useSyncExternalStore(subscribeRadarCache, getRadarCacheReadySnapshot, getRadarCacheReadyServerSnapshot) === "ready";
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiRequest<{ projects: Project[] }>("/api/projects") });
@@ -95,7 +95,7 @@ export default function DiscoverPanel() {
   });
 
   const search = useMutation({
-    mutationFn: ({ values, cursor, accessCode: code }: { values: DiscoverValues; cursor?: string; accessCode: string }) => apiRequest<DiscoverResponse>("/api/discover", { method: "POST", body: JSON.stringify({ ...values, nextCursor: cursor, accessCode: code }) }),
+    mutationFn: ({ values, cursor }: { values: DiscoverValues; cursor?: string }) => apiRequest<DiscoverResponse>("/api/discover", { method: "POST", body: JSON.stringify({ ...values, nextCursor: cursor }) }),
     onSuccess: (data, variables) => {
       setTweets((current) => variables.cursor ? [...current, ...data.tweets.filter((tweet) => !current.some((item) => item.id === tweet.id))] : data.tweets);
       setNextCursor(data.nextCursor);
@@ -104,8 +104,7 @@ export default function DiscoverPanel() {
       setPendingSearch(null);
     },
     onError: (error, variables) => {
-      if (error instanceof ApiError && error.message === "Access code không đúng.") {
-        clearSorsaAccessCode();
+      if (error instanceof ApiError && error.message === "Hãy nhập access code.") {
         setPendingSearch({ values: variables.values, cursor: variables.cursor });
         setAccessOpen(true);
       }
@@ -147,23 +146,23 @@ export default function DiscoverPanel() {
   };
 
   const runSearch = (payload: { values: DiscoverValues; cursor?: string }) => {
-    if (!verifiedCode) {
+    if (!hasAccess) {
       setPendingSearch(payload);
       setAccessOpen(true);
       return;
     }
-    search.mutate({ ...payload, accessCode: verifiedCode });
+    search.mutate(payload);
   };
 
   const verifyAccess = useMutation({
     mutationFn: (code: string) => apiRequest<{ ok: true }>("/api/auth/access-code", { method: "POST", body: JSON.stringify({ accessCode: code }) }),
-    onSuccess: (_, code) => {
-      saveSorsaAccessCode(code);
+    onSuccess: () => {
+      queryClient.setQueryData<{ user: UserProfile }>(["me"], (current) => current ? { user: { ...current.user, sorsaAccess: true } } : current);
       setAccessOpen(false);
       setAccessCode("");
       const pending = pendingSearch;
       setPendingSearch(null);
-      if (pending) search.mutate({ ...pending, accessCode: code });
+      if (pending) search.mutate(pending);
     },
   });
 
@@ -215,7 +214,7 @@ export default function DiscoverPanel() {
         {tweets.length > 0 && <section className="mt-7">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">{lastSearch?.source === "mentions" ? `Mentions nhiều bình luận nhất về @${lastSearch.handle || lastSearch.projectName}` : lastSearch?.username ? `Bài viết từ @${lastSearch.username}` : `Bài viết về ${lastSearch?.projectName}`}</h3><p className="mt-1 text-xs text-slate-500">Đã tìm thấy {tweets.length} bài · Chọn tối đa {MAX_SAMPLES} bài mẫu</p></div><div className="flex flex-wrap gap-1.5"><Button type="button" variant="outline" className="rounded-xl" onClick={() => { const visibleIds = tweets.map((tweet) => tweet.id); const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id)); setSelectedIds(allSelected ? [] : visibleIds.slice(0, MAX_SAMPLES)); }}>{tweets.length > 0 && tweets.every((tweet) => selectedIds.includes(tweet.id)) ? "Bỏ chọn tất cả" : "Chọn tất cả bài hiện có"}</Button><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!selectedIds.length || saveStyle.isPending} onClick={applySamples}><Sparkles className="mr-2 h-4 w-4" />{saveStyle.isPending ? "Đang lưu..." : `Lưu & dùng ${Math.min(selectedIds.length, MAX_SAMPLES)} bài`}</Button></div></div>
           {saveStyle.error && <p className="mb-4 text-sm text-red-600">{saveStyle.error.message}</p>}
-          <div className="columns-1 gap-3 md:columns-2">
+          <div className="columns-1 gap-3 md:columns-2 xl:columns-3">
             {tweets.map((tweet) => {
               const selected = selectedIds.includes(tweet.id);
               return <TweetCard key={tweet.id} className="mb-3 break-inside-avoid" tweet={tweet} selected={selected} onSelect={() => setSelectedIds((ids) => selected ? ids.filter((id) => id !== tweet.id) : ids.length < MAX_SAMPLES ? [...ids, tweet.id] : ids)} />;
@@ -239,7 +238,7 @@ export default function DiscoverPanel() {
         <DialogContent className="rounded-2xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Access code</DialogTitle>
-            <DialogDescription>Nhập mã truy cập để tìm bài mẫu trên X.</DialogDescription>
+            <DialogDescription>Nhập mã truy cập cho tài khoản này. Lần sau không cần nhập lại.</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); verifyAccess.mutate(accessCode.trim()); }}>
             <label className="block text-sm font-medium">Mã truy cập

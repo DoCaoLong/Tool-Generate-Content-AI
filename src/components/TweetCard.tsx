@@ -37,6 +37,37 @@ function openX(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+const PREVIEW_LIMIT = 280;
+
+function previewText(text: string) {
+  const chars = Array.from(text);
+  if (chars.length <= PREVIEW_LIMIT) return text;
+  const slice = chars.slice(0, PREVIEW_LIMIT).join("");
+  const boundary = slice.search(/\s+\S*$/);
+  return (boundary >= 80 ? slice.slice(0, boundary) : slice).trimEnd();
+}
+
+function TweetText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const preview = previewText(text);
+  const truncated = preview !== text;
+  return (
+    <div className="mt-3">
+      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 [overflow-wrap:anywhere]">{expanded || !truncated ? text : preview}</p>
+      {truncated && (
+        <button
+          type="button"
+          className="mt-1 text-sm font-medium text-sky-600 hover:underline"
+          onClick={(event) => { event.stopPropagation(); setExpanded((open) => !open); }}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          {expanded ? "Thu gọn" : "Xem thêm"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function TweetStats({ tweet }: { tweet: DiscoveredTweet }) {
   const created = Number.isNaN(new Date(tweet.createdAt).getTime()) ? "" : new Date(tweet.createdAt).toLocaleDateString("vi-VN");
   return (
@@ -60,12 +91,16 @@ export default function TweetCard({ tweet, projectName, selected = false, onSele
       onKeyDown={(event) => { if (event.key !== "Enter") return; event.preventDefault(); if (onSelect) onSelect(); else openPost(); }}
     >
       {onSelect ? <span className={`absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full border ${selected ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-transparent"}`}><Check className="h-3.5 w-3.5" /></span> : null}
-      <a href={profileUrl} target="_blank" rel="noopener noreferrer" className={`flex min-w-0 items-center gap-3 ${onSelect ? "pr-8" : ""}`} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-        <TweetAvatar tweet={tweet} />
-        <span className="min-w-0 truncate text-sm font-semibold text-slate-900 hover:underline">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></span>
-      </a>
-      {projectName ? <p className="mt-1 truncate pl-[3.25rem] text-xs text-slate-400">{projectName}</p> : null}
-      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 [overflow-wrap:anywhere]">{tweet.text}</p>
+      <div className={`flex min-w-0 items-center gap-3 ${onSelect ? "pr-8" : ""}`}>
+        <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+          <TweetAvatar tweet={tweet} />
+        </a>
+        <div className="min-w-0">
+          <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="block truncate text-sm font-semibold text-slate-900 hover:underline" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></a>
+          {projectName ? <p className="truncate text-xs leading-4 text-slate-400" title={projectName}>{projectName}</p> : null}
+        </div>
+      </div>
+      <TweetText text={tweet.text} />
       {tweet.images.length > 0 && <div className="mt-3 space-y-2">{tweet.images.map((src) => <TweetPhoto key={src} src={src} />)}</div>}
       <TweetStats tweet={tweet} />
     </article>

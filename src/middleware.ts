@@ -9,7 +9,6 @@ const publicApiExact = new Set([
   "/api/auth/register",
   "/api/auth/logout",
   "/api/auth/me",
-  "/api/auth/access-code",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/public/turnstile",

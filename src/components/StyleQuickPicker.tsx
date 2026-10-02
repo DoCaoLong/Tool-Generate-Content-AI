@@ -7,7 +7,7 @@ import PromptAvatar from "@/components/PromptAvatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
-import { kolStyles, type KOLStyle } from "@/lib/kol-styles";
+import { kolAvatarSrc, kolStyles, type KOLStyle } from "@/lib/kol-styles";
 import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
 import type { SavedStyle } from "@/lib/types";
 
@@ -59,13 +59,13 @@ export default function StyleQuickPicker() {
                   <div className="mt-2 space-y-2">
                     {items.map((style) => (
                       <button key={style.id} type="button" className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-slate-400" onClick={() => { pickSaved(style); setOpen(false); }}>
-                        <PromptAvatar name={style.username || style.projectName || style.name} className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />
+                        <PromptAvatar src={resolveStyleCategory(style) === "kol" ? kolAvatarSrc({ username: style.username }) : undefined} name={style.username || style.projectName || style.name} className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />
                         <span className="min-w-0"><span className="block truncate text-sm font-medium text-slate-900">{style.name}</span>{(style.username || style.projectName) && <span className="block truncate text-xs text-slate-400">{[style.username ? `@${style.username.replace(/^@/, "")}` : "", style.projectName || ""].filter(Boolean).join(" · ")}</span>}</span>
                       </button>
                     ))}
                     {preset.map((style) => (
                       <button key={style.id} type="button" className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-slate-400" onClick={() => { pickKol(style.id); setOpen(false); }}>
-                        <PromptAvatar src={style.profileImgUrl} name={style.name} className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />
+                        <PromptAvatar src={kolAvatarSrc({ profileImgUrl: style.profileImgUrl, text: style.content })} name={style.name} className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />
                         <span className="min-w-0"><span className="block truncate text-sm font-medium text-slate-900">{style.name}</span><span className="block truncate text-xs text-slate-400">KOL dựng sẵn</span></span>
                       </button>
                     ))}

@@ -14,7 +14,7 @@ function PromptAvatarInner({ src, name, className }: { src?: string | null; name
   const showImage = Boolean(src) && !failed;
   return (
     <span className={className}>
-      {showImage ? <img src={src || ""} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} /> : getKOLInitials(name)}
+      {showImage ? <img src={src || ""} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" onError={() => setFailed(true)} /> : getKOLInitials(name)}
     </span>
   );
 }

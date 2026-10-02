@@ -98,6 +98,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  sorsaAccess?: boolean;
 }
 
 export interface ProjectContentOptions {

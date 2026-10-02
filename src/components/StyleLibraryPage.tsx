@@ -207,6 +207,7 @@ export default function StyleLibraryPage() {
       setSelectedSavedStyleId(style.id);
       setSelectedKolId(null);
       setDiscoveredStyle(null);
+      useAppStore.setState({ styleSource: "manual" });
       form.reset();
       setUsername("");
       setWritingKol("");
@@ -267,12 +268,12 @@ export default function StyleLibraryPage() {
   });
   const removeStyle = useMutation({
     mutationFn: (id: string) => apiRequest<{ ok: true }>(`/api/styles/${id}`, { method: "DELETE" }),
-    onSuccess: async (_, id) => { if (selectedSavedStyleId === id) setSelectedSavedStyleId(null); setStyleToDelete(null); await queryClient.invalidateQueries({ queryKey: ["styles"] }); },
+    onSuccess: async (_, id) => { if (selectedSavedStyleId === id) { setSelectedSavedStyleId(null); useAppStore.setState({ styleSource: null }); } setStyleToDelete(null); await queryClient.invalidateQueries({ queryKey: ["styles"] }); },
   });
 
-  const chooseSaved = (style: SavedStyle) => { setSelectedSavedStyleId(style.id); setSelectedKolId(null); setDiscoveredStyle(null); };
-  const chooseKOL = (id: string) => { setSelectedKolId(id); setSelectedSavedStyleId(null); setDiscoveredStyle(null); };
-  const clearStyle = () => { setSelectedKolId(null); setSelectedSavedStyleId(null); setDiscoveredStyle(null); };
+  const chooseSaved = (style: SavedStyle) => { setSelectedSavedStyleId(style.id); setSelectedKolId(null); setDiscoveredStyle(null); useAppStore.setState({ styleSource: "manual" }); };
+  const chooseKOL = (id: string) => { setSelectedKolId(id); setSelectedSavedStyleId(null); setDiscoveredStyle(null); useAppStore.setState({ styleSource: "manual" }); };
+  const clearStyle = () => { setSelectedKolId(null); setSelectedSavedStyleId(null); setDiscoveredStyle(null); useAppStore.setState({ styleSource: null }); };
 
   return <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-6xl">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Cá nhân hoá</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Thư viện phong cách</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Phong cách KOL lấy từ username trên X. Phong cách bài viết có thể tự mô tả, hoặc phân tích bài của một KOL về một dự án. Phong cách dự án đến từ tab Khám phá.</p></div><div className="flex gap-2"><Button variant="outline" className="gap-1 rounded-xl" onClick={clearStyle}><X className="h-4 w-4" />Dùng mặc định</Button><Button className="gap-1 rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCreating(!creating)}><Plus className="h-4 w-4" />Tạo phong cách</Button></div></div>

@@ -16,6 +16,7 @@ interface AppState {
   selectedKolId: string | null;
   discoveredStyle: DiscoveredStyle | null;
   selectedSavedStyleId: string | null;
+  styleSource: "manual" | "auto" | null;
   setSelectedProjectId: (id: string | null) => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -25,6 +26,7 @@ interface AppState {
   setSelectedKolId: (id: string | null) => void;
   setDiscoveredStyle: (style: DiscoveredStyle | null) => void;
   setSelectedSavedStyleId: (id: string | null) => void;
+  setStyleSource: (source: "manual" | "auto" | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -41,6 +43,7 @@ export const useAppStore = create<AppState>()(
       selectedKolId: null,
       discoveredStyle: null,
       selectedSavedStyleId: null,
+      styleSource: null,
       setSelectedProjectId: (selectedProjectId) => set({ selectedProjectId, sidebarOpen: false }),
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
@@ -50,10 +53,11 @@ export const useAppStore = create<AppState>()(
       setSelectedKolId: (selectedKolId) => set({ selectedKolId }),
       setDiscoveredStyle: (discoveredStyle) => set({ discoveredStyle }),
       setSelectedSavedStyleId: (selectedSavedStyleId) => set({ selectedSavedStyleId }),
+      setStyleSource: (styleSource) => set({ styleSource }),
     }),
     {
       name: "content-studio-preferences",
-      partialize: (state) => ({ provider: state.provider, model: state.model, apiKey: state.apiKey, selectedKolId: state.selectedKolId, discoveredStyle: state.discoveredStyle, selectedSavedStyleId: state.selectedSavedStyleId, sidebarCollapsed: state.sidebarCollapsed }),
+      partialize: (state) => ({ provider: state.provider, model: state.model, apiKey: state.apiKey, selectedKolId: state.selectedKolId, discoveredStyle: state.discoveredStyle, selectedSavedStyleId: state.selectedSavedStyleId, styleSource: state.styleSource, sidebarCollapsed: state.sidebarCollapsed }),
     },
   ),
 );

@@ -2,16 +2,16 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Eye, Heart, LoaderCircle, MessageCircle, Search, Sparkles, UserRoundSearch } from "lucide-react";
+import { LoaderCircle, Search, Sparkles, UserRoundSearch } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
+import TweetCard from "@/components/TweetCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/lib/app-store";
-import { getKOLInitials } from "@/lib/kol-styles";
 import { ApiError, apiRequest } from "@/lib/http";
 import { getRadarCacheReadyServerSnapshot, getRadarCacheReadySnapshot, getRadarCacheServerSnapshot, getRadarCacheSnapshot, listRadarEntries, radarCacheFresh, readRadarEntry, saveRadarEntry, shareRadarRequest, subscribeRadarCache } from "@/lib/radar-cache";
 import { buildRadarQuery, projectXHandle } from "@/lib/radar-query";
@@ -30,71 +30,7 @@ const schema = z.object({
 type DiscoverValues = z.infer<typeof schema>;
 type DiscoverResponse = { tweets: DiscoveredTweet[]; nextCursor: string | null; query: string; source: "author" | "mentions" | "topic" | "radar"; handle: string };
 const MAX_SAMPLES = 20;
-
-function shortNumber(value: number) {
-  return new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
-}
-
-function RadarAvatar({ tweet }: { tweet: DiscoveredTweet }) {
-  const [failed, setFailed] = useState(false);
-  if (!tweet.avatarUrl || failed) {
-    return <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{getKOLInitials(tweet.displayName || tweet.username)}</span>;
-  }
-  return <img src={tweet.avatarUrl} alt="" referrerPolicy="no-referrer" className="h-10 w-10 shrink-0 rounded-full object-cover" onError={() => setFailed(true)} />; // eslint-disable-line @next/next/no-img-element
-}
-
-function RadarPhoto({ src }: { src: string }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return null;
-  return <img src={src} alt="" referrerPolicy="no-referrer" className="w-full rounded-xl" onError={() => setFailed(true)} />; // eslint-disable-line @next/next/no-img-element
-}
-
-function xProfileUrl(username: string) {
-  const handle = username.replace(/^@/, "").trim();
-  return handle ? `https://x.com/${encodeURIComponent(handle)}` : "https://x.com";
-}
-
-function xStatusUrl(username: string, id: string) {
-  const handle = username.replace(/^@/, "").trim();
-  return handle ? `https://x.com/${encodeURIComponent(handle)}/status/${encodeURIComponent(id)}` : `https://x.com/i/status/${encodeURIComponent(id)}`;
-}
-
-function openX(url: string) {
-  window.open(url, "_blank", "noopener,noreferrer");
-}
-
-function RadarTweetCard({ tweet, projectName }: { tweet: DiscoveredTweet; projectName: string }) {
-  const profileUrl = xProfileUrl(tweet.username);
-  return (
-    <article
-      className="mb-3 min-w-0 max-w-full cursor-pointer break-inside-avoid overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300"
-      tabIndex={0}
-      onClick={() => openX(xStatusUrl(tweet.username, tweet.id))}
-      onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); openX(xStatusUrl(tweet.username, tweet.id)); } }}
-    >
-      <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-        <RadarAvatar tweet={tweet} />
-        <span className="min-w-0 truncate text-sm font-semibold text-slate-900 hover:underline">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></span>
-      </a>
-      {projectName ? <p className="mt-1 truncate pl-[3.25rem] text-xs text-slate-400">{projectName}</p> : null}
-      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700 [overflow-wrap:anywhere]">{tweet.text}</p>
-      {tweet.images.length > 0 && <div className="mt-3 space-y-2">{tweet.images.map((src) => <RadarPhoto key={src} src={src} />)}</div>}
-      <TweetStats tweet={tweet} />
-    </article>
-  );
-}
-
-function TweetStats({ tweet }: { tweet: DiscoveredTweet }) {
-  const created = Number.isNaN(new Date(tweet.createdAt).getTime()) ? "" : new Date(tweet.createdAt).toLocaleDateString("vi-VN");
-  return (
-    <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3 text-[11px] text-slate-400">
-      {created ? <span>{created}</span> : null}
-      <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{shortNumber(tweet.likes)}</span>
-      <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{shortNumber(tweet.replies)}</span>
-      <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{shortNumber(tweet.views)}</span>
-    </div>
-  );
-}
+const RADAR_VISIBLE = 30;
 
 export default function DiscoverPanel() {
   const queryClient = useQueryClient();
@@ -183,6 +119,7 @@ export default function DiscoverPanel() {
       setSelectedKolId(null);
       setDiscoveredStyle(null);
       setSelectedSavedStyleId(style.id);
+      useAppStore.setState({ styleSource: "manual" });
       router.push("/projects");
     },
   });
@@ -240,7 +177,7 @@ export default function DiscoverPanel() {
         posts.push({ tweet, projectName: item.name });
       }
     }
-    return posts.sort((left, right) => right.tweet.views - left.tweet.views || right.tweet.replies - left.tweet.replies || right.tweet.likes - left.tweet.likes);
+    return posts.sort((left, right) => right.tweet.views - left.tweet.views || right.tweet.replies - left.tweet.replies || right.tweet.likes - left.tweet.likes).slice(0, RADAR_VISIBLE);
   }, [radarPlan]);
   const radarLoading = projectsQuery.isPending || radar.isFetching;
   const radarUpdatedLabel = radarPlan.length && radarPlan.every((item) => item.fresh)
@@ -253,8 +190,8 @@ export default function DiscoverPanel() {
       : radarTargets.length === 0
         ? "Các dự án chưa có tên để tìm radar."
         : radarUpdatedLabel
-        ? `Bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Đã cập nhật lúc ${radarUpdatedLabel}.`
-        : `Bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Làm mới sau 30 phút khi mở lại tab.`;
+        ? `Tối đa ${RADAR_VISIBLE} bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Đã cập nhật lúc ${radarUpdatedLabel}.`
+        : `Tối đa ${RADAR_VISIBLE} bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Làm mới sau 30 phút khi mở lại tab.`;
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">
@@ -273,6 +210,20 @@ export default function DiscoverPanel() {
           {(form.formState.errors.username || form.formState.errors.projectName || search.error) && <p className="mt-3 text-sm text-red-600">{search.error?.message || form.formState.errors.username?.message || form.formState.errors.projectName?.message}</p>}
         </section>
 
+        {lastSearch && !search.isPending && tweets.length === 0 && <div className="py-16 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa tìm thấy bài phù hợp</h3><p className="mt-1 text-sm text-slate-500">Thử username tác giả hoặc @mention dự án.</p></div>}
+
+        {tweets.length > 0 && <section className="mt-7">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">{lastSearch?.source === "mentions" ? `Mentions nhiều bình luận nhất về @${lastSearch.handle || lastSearch.projectName}` : lastSearch?.username ? `Bài viết từ @${lastSearch.username}` : `Bài viết về ${lastSearch?.projectName}`}</h3><p className="mt-1 text-xs text-slate-500">Đã tìm thấy {tweets.length} bài · Chọn tối đa {MAX_SAMPLES} bài mẫu</p></div><div className="flex flex-wrap gap-1.5"><Button type="button" variant="outline" className="rounded-xl" onClick={() => { const visibleIds = tweets.map((tweet) => tweet.id); const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id)); setSelectedIds(allSelected ? [] : visibleIds.slice(0, MAX_SAMPLES)); }}>{tweets.length > 0 && tweets.every((tweet) => selectedIds.includes(tweet.id)) ? "Bỏ chọn tất cả" : "Chọn tất cả bài hiện có"}</Button><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!selectedIds.length || saveStyle.isPending} onClick={applySamples}><Sparkles className="mr-2 h-4 w-4" />{saveStyle.isPending ? "Đang lưu..." : `Lưu & dùng ${Math.min(selectedIds.length, MAX_SAMPLES)} bài`}</Button></div></div>
+          {saveStyle.error && <p className="mb-4 text-sm text-red-600">{saveStyle.error.message}</p>}
+          <div className="columns-1 gap-3 md:columns-2">
+            {tweets.map((tweet) => {
+              const selected = selectedIds.includes(tweet.id);
+              return <TweetCard key={tweet.id} className="mb-3 break-inside-avoid" tweet={tweet} selected={selected} onSelect={() => setSelectedIds((ids) => selected ? ids.filter((id) => id !== tweet.id) : ids.length < MAX_SAMPLES ? [...ids, tweet.id] : ids)} />;
+            })}
+          </div>
+          {nextCursor && <div className="mt-6 text-center"><Button variant="outline" className="rounded-xl" disabled={search.isPending} onClick={() => lastSearch && runSearch({ values: lastSearch, cursor: nextCursor })}>{search.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}Tải thêm bài viết</Button></div>}
+        </section>}
+
         <section className="mt-7">
           <div className="mb-4">
             <h3 className="font-semibold">Radar</h3>
@@ -280,27 +231,9 @@ export default function DiscoverPanel() {
           </div>
           {radar.error && <p className="mb-3 text-sm text-red-600">{radar.error.message}</p>}
           {radarLoading && <div className="flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải radar...</div>}
-          {radarPosts.length > 0 && <div className="mt-4 columns-1 gap-3 md:columns-2 xl:columns-3">{radarPosts.map((item) => <RadarTweetCard key={item.tweet.id} tweet={item.tweet} projectName={item.projectName} />)}</div>}
+          {radarPosts.length > 0 && <div className="mt-4 columns-1 gap-3 md:columns-2 xl:columns-3">{radarPosts.map((item) => <TweetCard key={`${item.projectName}-${item.tweet.id}`} className="mb-3 break-inside-avoid" tweet={item.tweet} projectName={item.projectName} />)}</div>}
           {!radarLoading && !radar.error && radarPosts.length === 0 && radarTargets.length > 0 && <p className="text-sm text-slate-500">Chưa có bài mới.</p>}
         </section>
-
-        {lastSearch && !search.isPending && tweets.length === 0 && <div className="py-20 text-center"><Search className="mx-auto h-8 w-8 text-slate-300" /><h3 className="mt-4 font-semibold">Chưa tìm thấy bài phù hợp</h3><p className="mt-1 text-sm text-slate-500">Thử username tác giả hoặc @mention dự án.</p></div>}
-
-        {tweets.length > 0 && <section className="mt-7">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">{lastSearch?.source === "mentions" ? `Mentions nhiều bình luận nhất về @${lastSearch.handle || lastSearch.projectName}` : lastSearch?.username ? `Bài viết từ @${lastSearch.username}` : `Bài viết về ${lastSearch?.projectName}`}</h3><p className="mt-1 text-xs text-slate-500">Đã tìm thấy {tweets.length} bài · Chọn tối đa {MAX_SAMPLES} bài mẫu</p></div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="rounded-xl" onClick={() => { const visibleIds = tweets.map((tweet) => tweet.id); const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id)); setSelectedIds(allSelected ? [] : visibleIds.slice(0, MAX_SAMPLES)); }}>{tweets.length > 0 && tweets.every((tweet) => selectedIds.includes(tweet.id)) ? "Bỏ chọn tất cả" : "Chọn tất cả bài hiện có"}</Button><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!selectedIds.length || saveStyle.isPending} onClick={applySamples}><Sparkles className="mr-2 h-4 w-4" />{saveStyle.isPending ? "Đang lưu..." : `Lưu & dùng ${Math.min(selectedIds.length, MAX_SAMPLES)} bài`}</Button></div></div>
-          {saveStyle.error && <p className="mb-4 text-sm text-red-600">{saveStyle.error.message}</p>}
-          <div className="grid gap-3 md:grid-cols-2">
-            {tweets.map((tweet) => {
-              const selected = selectedIds.includes(tweet.id);
-              return <button key={tweet.id} className={`relative rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${selected ? "border-emerald-400 bg-emerald-50/70 ring-1 ring-emerald-200" : "border-slate-200 bg-white"}`} onClick={() => setSelectedIds((ids) => selected ? ids.filter((id) => id !== tweet.id) : ids.length < MAX_SAMPLES ? [...ids, tweet.id] : ids)}>
-                <span className={`absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full border ${selected ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white text-transparent"}`}><Check className="h-3.5 w-3.5" /></span>
-                <div className="pr-8"><p className="text-sm font-semibold text-slate-900">{tweet.displayName} <span className="font-normal text-slate-400">@{tweet.username}</span></p><p className="mt-3 line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-slate-700">{tweet.text}</p></div>
-                <TweetStats tweet={tweet} />
-              </button>;
-            })}
-          </div>
-          {nextCursor && <div className="mt-6 text-center"><Button variant="outline" className="rounded-xl" disabled={search.isPending} onClick={() => lastSearch && runSearch({ values: lastSearch, cursor: nextCursor })}>{search.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}Tải thêm bài viết</Button></div>}
-        </section>}
       </div>
       <Dialog open={accessOpen} onOpenChange={(open) => { if (!verifyAccess.isPending) { setAccessOpen(open); if (!open) { setAccessCode(""); verifyAccess.reset(); } } }}>
         <DialogContent className="rounded-2xl sm:max-w-md">

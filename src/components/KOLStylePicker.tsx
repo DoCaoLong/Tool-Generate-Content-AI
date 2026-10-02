@@ -26,6 +26,6 @@ export default function KOLStylePicker({ selectedId, customStyle, selectedSavedS
       <Palette className="h-4 w-4 shrink-0 text-violet-400" />
       <span className={`min-w-0 flex-1 truncate ${collapsed ? "md:hidden" : ""}`}>{label}</span>
     </button>
-    {activeName && <button type="button" aria-label="Bỏ phong cách" title="Bỏ phong cách" className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white ${collapsed ? "md:hidden" : ""}`} onClick={() => { setSelectedKolId(null); setDiscoveredStyle(null); setSelectedSavedStyleId(null); }}><X className="h-3.5 w-3.5" /></button>}
+    {activeName && <button type="button" aria-label="Bỏ phong cách" title="Bỏ phong cách" className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white ${collapsed ? "md:hidden" : ""}`} onClick={() => { setSelectedKolId(null); setDiscoveredStyle(null); setSelectedSavedStyleId(null); useAppStore.setState({ styleSource: null }); }}><X className="h-3.5 w-3.5" /></button>}
   </div>;
 }

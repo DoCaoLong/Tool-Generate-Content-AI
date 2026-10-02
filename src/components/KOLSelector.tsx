@@ -323,7 +323,7 @@ export default function KOLSelector({ authors, selectedId, onSelect }: KOLSelect
                   </p>
                 )}
               </div>
-              <div className="shrink-0 flex gap-2 justify-end pt-3 border-t mt-2">
+              <div className="mt-2 flex shrink-0 flex-wrap items-center justify-end gap-1.5 border-t pt-3">
                 <Button
                   variant="outline"
                   className="rounded-2xl border-0 bg-red-600 hover:bg-red-700 text-white"

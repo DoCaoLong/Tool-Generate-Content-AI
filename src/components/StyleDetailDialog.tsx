@@ -180,7 +180,7 @@ function StyleDetailBody({
             </section>
             {samples && (
               <section>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <Button type="button" variant="outline" className="h-8 rounded-lg px-3" onClick={() => setShowSamples((open) => !open)}>{showSamples ? "Ẩn bài mẫu" : "Xem bài mẫu"}</Button>
                   {onRefreshSamples && <Button type="button" variant="outline" className="h-8 rounded-lg px-3" disabled={refreshing} onClick={() => { setShowSamples(true); onRefreshSamples(); }}>{refreshing ? "Đang lấy bài mới..." : "Cập nhật bài mẫu mới"}</Button>}
                 </div>

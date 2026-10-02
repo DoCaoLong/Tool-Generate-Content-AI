@@ -2,9 +2,15 @@
 
 ## 2026-10-02
 
+- Radar ở tab Khám phá chỉ hiện 30 bài, ưu tiên lượt xem rồi bình luận.
 - Form đăng nhập có Quên mật khẩu. Email gửi qua Resend, liên kết dùng một lần trong 30 phút, rồi đặt mật khẩu mới ở `/reset-password`. Email chưa có tài khoản nhận cùng một câu thông báo.
 - Gửi thư quên mật khẩu dùng cùng cách với view.longdc.click: `EMAIL_FROM=noreply@longdc.click` và gọi Resend bằng HTTPS. Lỗi từ Resend hiện thẳng trên form.
 - Thư đặt lại mật khẩu giữ bố cục Flix nhưng chỉ dùng trắng và đen: thẻ trắng, chữ đen, nút đen. Link ghi hiệu lực 30 phút.
+- Đổi mật khẩu xong thì đăng nhập luôn và mở `/projects`.
+- Hai nút ở chân mọi popup nằm cùng một hàng, cách nhau 6px. Popup phong cách và xem trước KOL cũng dùng khoảng cách đó.
+- Tab Khám phá đưa bài vừa tìm lên trên Radar. Bài tìm và Radar dùng chung `TweetCard`, có avatar và ảnh.
+- Phong cách chọn tay giữ nguyên khi mở dự án mới. Chỉ tự áp phong cách khi phong cách đó khớp dự án và người dùng chưa chọn tay.
+- Ô chat có nút Chọn phong cách khi chưa có style, mở popup các phong cách đã lưu và KOL dựng sẵn.
 
 ## 2026-10-01
 

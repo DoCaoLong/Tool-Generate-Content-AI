@@ -1,18 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/http";
+import type { UserProfile } from "@/lib/types";
 
 const schema = z.object({
   password: z.string().min(8, "Mật khẩu cần ít nhất 8 ký tự.").max(128),
@@ -23,15 +24,21 @@ type ResetValues = z.infer<typeof schema>;
 
 export default function ResetPasswordScreen() {
   const token = useSearchParams().get("token") || "";
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReset, setTurnstileReset] = useState(0);
   const form = useForm<ResetValues>({ resolver: zodResolver(schema), defaultValues: { password: "", confirm: "" } });
   const resetPassword = useMutation({
-    mutationFn: (values: ResetValues) => apiRequest<{ ok: true }>("/api/auth/reset-password", {
+    mutationFn: (values: ResetValues) => apiRequest<{ user: UserProfile }>("/api/auth/reset-password", {
       method: "POST",
       body: JSON.stringify({ token, password: values.password, turnstileToken }),
     }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["me"], data);
+      router.replace("/projects");
+    },
   });
 
   return (
@@ -43,7 +50,7 @@ export default function ResetPasswordScreen() {
         </div>
         <h2 className="text-3xl font-semibold tracking-tight">Đặt mật khẩu mới</h2>
         <p className="mt-3 text-sm leading-6 text-slate-500">Chọn mật khẩu mới cho tài khoản. Liên kết chỉ dùng được một lần.</p>
-        {!token ? <p className="mt-8 text-sm text-red-600">Liên kết không hợp lệ. Hãy yêu cầu email đặt lại mật khẩu mới.</p> : resetPassword.isSuccess ? <p className="mt-8 text-sm text-slate-600">Đã đổi mật khẩu. Bạn có thể đăng nhập bằng mật khẩu mới.</p> : (
+        {!token ? <p className="mt-8 text-sm text-red-600">Liên kết không hợp lệ. Hãy yêu cầu email đặt lại mật khẩu mới.</p> : (
           <form className="mt-8 space-y-4" onSubmit={form.handleSubmit((values) => resetPassword.mutate(values, { onSettled: () => { setTurnstileToken(""); setTurnstileReset((value) => value + 1); } }))}>
             <div className="block text-sm font-medium">
               <label htmlFor="reset-password">Mật khẩu mới</label>

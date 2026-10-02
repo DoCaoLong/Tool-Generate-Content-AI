@@ -1,5 +1,6 @@
 import { hash } from "bcryptjs";
 import { z } from "zod";
+import { createSession } from "@/lib/auth";
 import { getDb } from "@/lib/mongodb";
 import { consumePasswordReset } from "@/lib/password-reset";
 import { errorResponse } from "@/lib/server-utils";
@@ -29,5 +30,7 @@ export async function POST(request: Request) {
     { _id: userId },
     { $set: { passwordHash: await hash(parsed.data.password, 12), updatedAt: new Date() } },
   );
-  return Response.json({ ok: true });
+  const user = { id: userId.toHexString(), name: String(account.name), email: String(account.email) };
+  await createSession(user);
+  return Response.json({ user });
 }

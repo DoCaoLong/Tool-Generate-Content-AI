@@ -216,11 +216,14 @@ function NucleusDetail({ slug }: { slug: string }) {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
       if (created) {
         const store = useAppStore.getState();
-        store.setSelectedKolId(null);
-        store.setDiscoveredStyle(null);
-        const styles = queryClient.getQueryData<{ styles: SavedStyle[] }>(["styles"]);
-        const current = styles?.styles.find((style) => style.id === store.selectedSavedStyleId);
-        if (current && resolveStyleCategory(current) === "kol") store.setSelectedSavedStyleId(null);
+        const keepManual = store.styleSource !== "auto" && Boolean(store.selectedKolId || store.selectedSavedStyleId || store.discoveredStyle);
+        if (!keepManual) {
+          store.setSelectedKolId(null);
+          store.setDiscoveredStyle(null);
+          const styles = queryClient.getQueryData<{ styles: SavedStyle[] }>(["styles"]);
+          const current = styles?.styles.find((style) => style.id === store.selectedSavedStyleId);
+          if (current && resolveStyleCategory(current) === "kol") store.setSelectedSavedStyleId(null);
+        }
       }
       setSelectedProjectId(projectId);
       setOptionsOpen(true);

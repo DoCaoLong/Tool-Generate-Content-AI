@@ -13,6 +13,7 @@ import DiscoverPanel from "@/components/DiscoverPanel";
 import NucleusPanel from "@/components/NucleusPanel";
 import HelpPage from "@/components/HelpPage";
 import KOLStylePicker from "@/components/KOLStylePicker";
+import StyleQuickPicker from "@/components/StyleQuickPicker";
 import ProfileMenu from "@/components/ProfileMenu";
 import ProfilePage from "@/components/ProfilePage";
 import SettingsPage from "@/components/SettingsPage";
@@ -135,6 +136,8 @@ function Workspace({ user }: { user: UserProfile }) {
   const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
   const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
   const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
+  const styleSource = useAppStore((state) => state.styleSource);
+  const setStyleSource = useAppStore((state) => state.setStyleSource);
   const autoStyledProjectId = useRef<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -176,27 +179,39 @@ function Workspace({ user }: { user: UserProfile }) {
   }, [activeProject, composerMode, isProjectRoute, routeMode, router, setComposerMode]);
 
   useEffect(() => {
-    if (selectedSavedStyleId && stylesQuery.data && !selectedSavedStyle) setSelectedSavedStyleId(null);
-  }, [selectedSavedStyle, selectedSavedStyleId, setSelectedSavedStyleId, stylesQuery.data]);
+    if (selectedSavedStyleId && stylesQuery.data && !selectedSavedStyle) {
+      setSelectedSavedStyleId(null);
+      setStyleSource(null);
+    }
+  }, [selectedSavedStyle, selectedSavedStyleId, setSelectedSavedStyleId, setStyleSource, stylesQuery.data]);
 
   useEffect(() => {
     if (!isProjectRoute || !activeProject || !stylesQuery.data) return;
     if (autoStyledProjectId.current === activeProject.id) return;
+    autoStyledProjectId.current = activeProject.id;
+    const hasSelection = Boolean(selectedKolId || selectedSavedStyleId || discoveredStyle);
+    if (styleSource !== "auto" && hasSelection) return;
     const fromNucleusBrief = projectHasNucleusBrief(activeProject);
     const match = findStyleForProject(savedStyles, activeProject);
-    autoStyledProjectId.current = activeProject.id;
-    if (match) {
+    if (match && !(fromNucleusBrief && resolveStyleCategory(match) === "kol")) {
       setSelectedSavedStyleId(match.id);
       setSelectedKolId(null);
       setDiscoveredStyle(null);
+      setStyleSource("auto");
       return;
+    }
+    if (styleSource === "auto") {
+      setSelectedKolId(null);
+      setDiscoveredStyle(null);
+      setSelectedSavedStyleId(null);
+      setStyleSource(null);
     }
     if (!fromNucleusBrief) return;
     setSelectedKolId(null);
     setDiscoveredStyle(null);
     const current = savedStyles.find((style) => style.id === selectedSavedStyleId);
     if (current && resolveStyleCategory(current) === "kol") setSelectedSavedStyleId(null);
-  }, [activeProject, isProjectRoute, savedStyles, selectedSavedStyleId, setDiscoveredStyle, setSelectedKolId, setSelectedSavedStyleId, stylesQuery.data]);
+  }, [activeProject, discoveredStyle, isProjectRoute, savedStyles, selectedKolId, selectedSavedStyleId, setDiscoveredStyle, setSelectedKolId, setSelectedSavedStyleId, setStyleSource, styleSource, stylesQuery.data]);
 
   const logout = useMutation({
     mutationFn: () => apiRequest<{ ok: true }>("/api/auth/logout", { method: "POST" }),
@@ -313,6 +328,7 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
   const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
   const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
   const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
+  const setStyleSource = useAppStore((state) => state.setStyleSource);
   const setProviderConfig = useAppStore((state) => state.setProviderConfig);
   const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: Array<{ id: string; name: string; style?: string; content: string }> }>("/api/prompt-styles") });
   const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedKolId) || getKOLStyle(selectedKolId);
@@ -440,11 +456,12 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
     </div></div>
     <div className="shrink-0 px-4 pb-5 sm:px-8"><div className="mx-auto max-w-3xl">
       <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
-        {(selectedKOL || discoveredStyle || savedStyle || keywordChips.length > 0) && <div className="mx-2 mb-1 flex flex-wrap items-center gap-1.5">
-          {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {savedStyle?.name || selectedKOL?.name || `@${discoveredStyle?.username}`}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { setSelectedKolId(null); setDiscoveredStyle(null); setSelectedSavedStyleId(null); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
+        <div className="mx-2 mb-1 flex flex-wrap items-center gap-1.5">
+          <StyleQuickPicker />
+          {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {savedStyle?.name || selectedKOL?.name || `@${discoveredStyle?.username}`}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { setSelectedKolId(null); setDiscoveredStyle(null); setSelectedSavedStyleId(null); setStyleSource(null); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
           {keywordChips.slice(0, 6).map((keyword) => <span key={keyword} className="inline-flex max-w-48 items-center truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700" title={keyword}>Từ khóa: {keyword}</span>)}
           {keywordChips.length > 6 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">+{keywordChips.length - 6}</span>}
-        </div>}
+        </div>
         <Textarea className="min-h-[76px] resize-none border-0 bg-transparent p-2 text-[15px] shadow-none focus-visible:ring-0" placeholder={composerMode === "rewrite" ? "Mô tả cách viết lại. Để trống nếu muốn dùng rule, tài liệu và style." : "Nhập chủ đề hoặc ý tưởng. Để trống nếu muốn dùng rule, tài liệu và style."} {...topicField} onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void submitCompose(); } }} />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 flex-wrap items-center gap-2">
           <NativeSelect aria-label="Provider" className={`${quickSelectClass} font-medium`} {...form.register("provider", { onChange: (event) => { const provider = event.target.value as Provider; const model = providerModels[provider][0]; form.setValue("model", model); setProviderConfig(provider, model, form.getValues("apiKey")); } })}>{providers.map((item) => <option key={item} value={item}>{providerLabels[item]}</option>)}</NativeSelect>

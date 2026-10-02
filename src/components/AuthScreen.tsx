@@ -22,10 +22,11 @@ const schema = z.object({
 type AuthValues = z.infer<typeof schema>;
 
 export default function AuthScreen() {
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReset, setTurnstileReset] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const queryClient = useQueryClient();
   const form = useForm<AuthValues>({
     resolver: zodResolver(schema),
@@ -39,13 +40,22 @@ export default function AuthScreen() {
       }),
     onSuccess: (data) => queryClient.setQueryData(["me"], data),
   });
+  const forgot = useMutation({
+    mutationFn: (email: string) => apiRequest<{ ok: true }>("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email, turnstileToken }),
+    }),
+    onSuccess: () => setForgotSent(true),
+  });
 
-  const switchMode = () => {
-    setMode(mode === "login" ? "register" : "login");
+  const switchMode = (next: "login" | "register" | "forgot" = mode === "login" ? "register" : "login") => {
+    setMode(next);
+    setForgotSent(false);
     setTurnstileToken("");
     setShowPassword(false);
     setTurnstileReset((value) => value + 1);
     mutation.reset();
+    forgot.reset();
     form.clearErrors();
   };
 
@@ -75,10 +85,22 @@ export default function AuthScreen() {
             <Image src="/icon.png" alt="Content Studio" width={40} height={40} priority className="h-10 w-10 rounded-xl object-cover" />
             <span className="font-semibold">Content Studio</span>
           </div>
-          <p className="text-sm font-semibold text-emerald-700">{mode === "login" ? "Chào mừng trở lại" : "Bắt đầu workspace mới"}</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight">{mode === "login" ? "Đăng nhập vào tài khoản" : "Tạo tài khoản của bạn"}</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-500">{mode === "login" ? "Tiếp tục quản lý dự án và lịch sử nội dung." : "Mọi dự án và lịch sử sẽ được đồng bộ an toàn."}</p>
+          <p className="text-sm font-semibold text-emerald-700">{mode === "forgot" ? "Khôi phục tài khoản" : mode === "login" ? "Chào mừng trở lại" : "Bắt đầu workspace mới"}</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight">{mode === "forgot" ? "Quên mật khẩu" : mode === "login" ? "Đăng nhập vào tài khoản" : "Tạo tài khoản của bạn"}</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-500">{mode === "forgot" ? "Nhập email tài khoản. Chúng tôi gửi liên kết đặt lại mật khẩu." : mode === "login" ? "Tiếp tục quản lý dự án và lịch sử nội dung." : "Mọi dự án và lịch sử sẽ được đồng bộ an toàn."}</p>
 
+          {mode === "forgot" ? (
+            forgotSent ? <p className="mt-8 text-sm leading-6 text-slate-600">Nếu email đã có tài khoản, hãy kiểm tra hộp thư. Liên kết có hiệu lực 30 phút.</p> : (
+              <form className="mt-8 space-y-4" onSubmit={(event) => { event.preventDefault(); const email = form.getValues("email").trim(); const parsed = schema.shape.email.safeParse(email); if (!parsed.success) { form.setError("email", { message: "Email chưa đúng định dạng." }); return; } form.clearErrors("email"); forgot.mutate(parsed.data, { onSettled: () => { setTurnstileToken(""); setTurnstileReset((value) => value + 1); } }); }}>
+                <label className="block text-sm font-medium">Email
+                  <Input className="mt-2 h-12 rounded-xl bg-white" type="email" placeholder="ban@example.com" {...form.register("email")} />
+                </label>
+                <TurnstileWidget onToken={setTurnstileToken} resetKey={turnstileReset} />
+                {(form.formState.errors.email || forgot.error) && <p className="text-sm text-red-600">{forgot.error?.message || form.formState.errors.email?.message}</p>}
+                <Button className="h-12 w-full rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={forgot.isPending}>{forgot.isPending ? "Đang gửi..." : "Gửi email đặt lại"}</Button>
+              </form>
+            )
+          ) : (
           <form className="mt-8 space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values, { onSettled: () => { setTurnstileToken(""); setTurnstileReset((value) => value + 1); } }))}>
             {mode === "register" && (
               <label className="block text-sm font-medium">Tên hiển thị
@@ -89,7 +111,7 @@ export default function AuthScreen() {
               <Input className="mt-2 h-12 rounded-xl bg-white" type="email" placeholder="ban@example.com" {...form.register("email")} />
             </label>
             <div className="block text-sm font-medium">
-              <label htmlFor="auth-password">Mật khẩu</label>
+              <span className="flex items-center justify-between gap-3"><label htmlFor="auth-password">Mật khẩu</label>{mode === "login" && <button type="button" className="text-sm font-normal text-slate-500 hover:text-slate-950" onClick={() => switchMode("forgot")}>Quên mật khẩu?</button>}</span>
               <span className="relative mt-2 block">
                 <Input id="auth-password" className="h-12 rounded-xl bg-white pr-12" type={showPassword ? "text" : "password"} placeholder="Tối thiểu 8 ký tự" {...form.register("password")} />
                 <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
@@ -104,9 +126,10 @@ export default function AuthScreen() {
               {!mutation.isPending && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </form>
+          )}
 
-          <button type="button" className="mt-6 block w-full text-center text-sm text-slate-500 hover:text-slate-950" onClick={switchMode}>
-            {mode === "login" ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}
+          <button type="button" className="mt-6 block w-full text-center text-sm text-slate-500 hover:text-slate-950" onClick={() => switchMode(mode === "login" ? "register" : "login")}>
+            {mode === "register" ? "Đã có tài khoản? Đăng nhập" : mode === "forgot" ? "Quay lại đăng nhập" : "Chưa có tài khoản? Đăng ký"}
           </button>
         </div>
       </section>

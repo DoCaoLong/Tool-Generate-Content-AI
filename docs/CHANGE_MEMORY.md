@@ -1,5 +1,9 @@
 # CHANGE_MEMORY
 
+## 2026-10-02
+
+- Form đăng nhập có Quên mật khẩu. Email gửi qua Resend, liên kết dùng một lần trong 30 phút, rồi đặt mật khẩu mới ở `/reset-password`. Email chưa có tài khoản nhận cùng một câu thông báo.
+
 ## 2026-10-01
 
 - Chữ Radar không có dấu cách được xuống dòng, không đẩy rộng cột.

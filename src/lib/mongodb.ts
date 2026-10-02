@@ -27,6 +27,9 @@ async function ensureIndexes(db: Db) {
       db.collection("projects").createIndex({ userId: 1, updatedAt: -1 }),
       db.collection("generations").createIndex({ userId: 1, projectId: 1, createdAt: -1 }),
       db.collection("styles").createIndex({ userId: 1, updatedAt: -1 }),
+      db.collection("password_resets").createIndex({ tokenHash: 1 }, { unique: true }),
+      db.collection("password_resets").createIndex({ userId: 1, createdAt: -1 }),
+      db.collection("password_resets").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     ]).then(() => undefined);
   }
 

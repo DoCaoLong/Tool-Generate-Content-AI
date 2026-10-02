@@ -23,29 +23,30 @@
 ## Runtime Flow
 
 - Root layout khởi tạo `AppProviders`; `src/app/page.tsx` redirect sang `/projects`.
-- Các page route `/projects`, `/projects/[projectId]/new`, `/projects/[projectId]/rewrite`, `/discover`, `/nucleus`, `/nucleus/[slug]`, `/styles`, `/settings`, `/profile`, `/help` dùng chung authenticated `ContentStudio` shell.
+- Các page route `/projects`, `/projects/[projectId]/new`, `/projects/[projectId]/rewrite`, `/discover`, `/nucleus`, `/nucleus/[slug]`, `/styles`, `/settings`, `/profile`, `/help` dùng chung authenticated `ContentStudio` shell. `/reset-password` là trang riêng, mở được khi chưa đăng nhập.
 - `ContentStudio` gọi `/api/auth/me`; người chưa đăng nhập thấy form login/register, người đã đăng nhập vào workspace.
 - Workspace tải dự án bằng `/api/projects`; project id và mode lấy từ URL, Zustand chỉ giữ preference hỗ trợ.
 - Khi tạo content, client gọi provider AI bằng API key trên thiết bị, sau đó lưu mode, input, tuỳ chọn và output đã thành công vào lịch sử MongoDB của dự án đang chọn.
 
 ## Backend And Data
 
-- `src/lib/mongodb.ts`: connection singleton và tạo index cho users, projects, generations.
+- `src/lib/mongodb.ts`: connection singleton và tạo index cho users, projects, generations, styles và `password_resets` (`tokenHash` unique, `userId` + `createdAt`, TTL `expiresAt`).
 - `src/lib/auth.ts`: JWT session 7 ngày trong cookie `httpOnly`, `sameSite=lax`, bật `secure` ở production.
-- `src/app/api/auth/*`: register, login, logout, current user, verify access code.
+- `src/app/api/auth/*`: register, login, logout, current user, verify access code, forgot-password, reset-password.
+- Quên mật khẩu: `POST /api/auth/forgot-password` gửi email qua Resend (`src/lib/resend.ts`, không dùng package `resend`). Token ngẫu nhiên 32 byte, Mongo chỉ lưu SHA-256, hiệu lực 30 phút, một token đang dùng cho mỗi user, chờ 60 giây giữa hai lần gửi. `POST /api/auth/reset-password` đổi `passwordHash` bcrypt cost 12 và không tạo session. Email không tồn tại, tài khoản bị khoá, hoặc đang trong 60 giây đều trả cùng câu thành công. Thiếu `RESEND_API_KEY` hoặc `RESEND_FROM` trả 503 trước khi tra user.
 - Tính năng Sorsa ngoài Radar yêu cầu `REGISTER_ACCESS_CODE`. Người dùng nhập mã một lần; mã lưu ở `localStorage` khoá `content-studio-discover-access` (`src/lib/sorsa-access.ts`) và dùng chung cho tìm bài, phân tích phong cách, cập nhật bài mẫu. API `/api/discover` kiểm tra lại mã, trừ khi body có `radar: true`.
-- `src/middleware.ts` chặn API: JWT user (`cw_session`) cho route nội bộ, JWT admin (`cw_admin`) cho `/api/admin/*` trừ login. Auth/public/turnstile để public.
-- Login, register và `/admin` xác thực Cloudflare Turnstile (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`).
+- `src/middleware.ts` chặn API: JWT user (`cw_session`) cho route nội bộ, JWT admin (`cw_admin`) cho `/api/admin/*` trừ login. Public gồm login, register, logout, me, access-code, forgot-password, reset-password, `/api/public/turnstile`, `/api/admin/login`.
+- Login, register, quên mật khẩu, đặt lại mật khẩu và `/admin` xác thực Cloudflare Turnstile (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`).
 - Admin session cookie `cw_admin` 12 giờ; credential `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Dashboard quản lý users, API keys (`settings.api_keys`) và `prompt_styles` theo route `/admin/user`, `/admin/prompts`, `/admin/keys`. `/admin` chuyển về `/admin/user`.
 - Ảnh prompt dựng sẵn ghi vào `data/uploads/prompts` và được phục vụ bởi `GET /uploads/prompts/[file]`. `next start` không nhận file thêm vào `public/` sau khi process đã boot, nên không lưu ảnh mới ở `public/uploads`.
 - `src/app/api/projects/*`: tạo, đọc, sửa, xoá dự án và đọc/lưu lịch sử.
 - Mọi truy vấn project/generation đều lọc theo `userId` lấy từ session phía server.
 - Password được hash bằng bcryptjs cost 12.
-- `MONGODB_URI`, `MONGODB_DB`, `AUTH_SECRET` được mô tả trong `.env.example`.
+- `MONGODB_URI`, `MONGODB_DB`, `AUTH_SECRET`, `RESEND_API_KEY`, `RESEND_FROM`, `APP_URL` được mô tả trong `.env.example`. `APP_URL` là gốc của liên kết trong email, không có dấu `/` cuối.
 
 ## Frontend Modules
 
-- `src/components/AuthScreen.tsx`: form đăng nhập/đăng ký. Ô mật khẩu có nút hiện hoặc ẩn.
+- `src/components/AuthScreen.tsx`: form đăng nhập/đăng ký và Quên mật khẩu. Ô mật khẩu có nút hiện hoặc ẩn. `src/components/ResetPasswordScreen.tsx` ở `/reset-password` nhận token trên URL, nhập mật khẩu mới hai lần, rồi quay về đăng nhập.
 - `src/components/ContentStudio.tsx`: sidebar dự án, conversation history, composer và bảng tuỳ chọn.
 - Bảng tuỳ chọn có trường `Rule bắt buộc` và `Tài liệu tham khảo`; nội dung gốc chỉ hiện trong chế độ Viết lại.
 - Từ khoá bắt buộc được theo dõi bằng React Hook Form và hiển thị tức thời thành chip `Từ khóa: ...` cạnh chip phong cách trong composer; chip được tách theo dấu phẩy hoặc xuống dòng và loại trùng.

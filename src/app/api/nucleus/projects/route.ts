@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const skip = Number(url.searchParams.get("skip") || 0);
   const limit = Number(url.searchParams.get("limit") || 10);
   if (!Number.isInteger(skip) || skip < 0) return errorResponse("Tham số skip chưa hợp lệ.");
-  if (!Number.isInteger(limit) || limit < 1 || limit > 20) return errorResponse("Tham số limit chưa hợp lệ.");
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) return errorResponse("Tham số limit chưa hợp lệ.");
 
   try {
     const data = await fetchNucleusProjects(skip, limit);

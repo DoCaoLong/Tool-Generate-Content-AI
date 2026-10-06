@@ -1,5 +1,9 @@
 # CHANGE_MEMORY
 
+## 2026-10-06
+
+- Tab Nucleus có ô tìm theo tên, lọc Tất cả / Đang mở / Đã đóng, và sắp xếp bằng cách bấm cột Tên, Trạng thái, Bắt đầu (UTC), Kết thúc (UTC). Mặc định là danh sách: ảnh, tên, trạng thái, ngày UTC. Nút lưới vẫn mở dạng thẻ cũ.
+
 ## 2026-10-02
 
 - Ảnh KOL lấy từ Sorsa (`pbs.twimg.com`), không còn gọi unavatar.io. KOL dựng sẵn và `/admin/prompts` dùng link đó. Ảnh tải lên vẫn được giữ. Phong cách KOL đã lưu nhận `avatarUrl` khi phân tích; lần mở thư viện sau điền ảnh còn thiếu.

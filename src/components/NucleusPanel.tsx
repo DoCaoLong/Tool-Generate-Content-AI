@@ -3,17 +3,35 @@
 /* eslint-disable @next/next/no-img-element -- Nucleus S3 URLs load more reliably as native img than via the Next optimizer. */
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarRange, ChevronDown, ExternalLink, FileText, Globe, LoaderCircle, Lock, Plus, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarRange, ChevronDown, ExternalLink, FileText, Globe, LayoutGrid, List, LoaderCircle, Lock, Plus, Search, Users } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
 import { applyNucleusOptions, findExistingStudioProject, nucleusFieldLabels, nucleusXUsername } from "@/lib/nucleus-brief";
 import { fetchNucleusDetail, fetchNucleusList, nucleusCacheOptions, nucleusDetailParam, nucleusKeys, nucleusListNextPageParam, prefetchNucleusDetail } from "@/lib/nucleus-query";
 import { resolveStyleCategory } from "@/lib/style-category";
-import type { Project, SavedStyle } from "@/lib/types";
+import type { NucleusProject, Project, SavedStyle } from "@/lib/types";
+
+type NucleusStatusFilter = "ALL" | "OPEN" | "CLOSED";
+type NucleusSortKey = "name" | "status" | "start" | "end";
+type NucleusListView = "list" | "grid";
+
+const statusFilters: Array<{ id: NucleusStatusFilter; label: string }> = [
+  { id: "ALL", label: "Tất cả" },
+  { id: "OPEN", label: "Đang mở" },
+  { id: "CLOSED", label: "Đã đóng" },
+];
+
+const sortColumns: Array<{ key: NucleusSortKey; label: string }> = [
+  { key: "name", label: "Tên" },
+  { key: "status", label: "Trạng thái" },
+  { key: "start", label: "Bắt đầu (UTC)" },
+  { key: "end", label: "Kết thúc (UTC)" },
+];
 
 const NUCLEUS_FALLBACK_SRC = "/nucleus-fallback.svg";
 const platformLabels: Record<string, string> = {
@@ -31,6 +49,24 @@ function formatDate(value: string | null) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+const utcMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function parseNucleusTime(value: string | null) {
+  if (!value) return null;
+  const iso = /Z|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`;
+  const time = new Date(iso).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+function formatUtc(value: string | null) {
+  const time = parseNucleusTime(value);
+  if (time === null) return "—";
+  const date = new Date(time);
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${utcMonths[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}, ${hours}:${minutes} UTC`;
 }
 
 function formatRange(start: string | null, end: string | null) {
@@ -56,6 +92,34 @@ function statusClass(status: string) {
 
 function fieldLabel(key: string) {
   return nucleusFieldLabels[key] || key.replace(/_/g, " ");
+}
+
+function filterNucleusProjects(projects: NucleusProject[], search: string, status: NucleusStatusFilter) {
+  const query = search.trim().toLowerCase();
+  return projects.filter((project) => {
+    if (status !== "ALL" && project.status !== status) return false;
+    if (!query) return true;
+    return project.name.toLowerCase().includes(query);
+  });
+}
+
+function sortNucleusProjects(projects: NucleusProject[], sort: { key: NucleusSortKey; dir: "asc" | "desc" } | null) {
+  if (!sort) return projects;
+  const sign = sort.dir === "asc" ? 1 : -1;
+  const statusRank = (status: string) => (status === "OPEN" ? 0 : status === "CLOSED" ? 1 : 2);
+  return projects
+    .map((project, index) => ({ project, index }))
+    .sort((left, right) => {
+      if (sort.key === "name") return left.project.name.localeCompare(right.project.name) * sign || left.index - right.index;
+      if (sort.key === "status") return (statusRank(left.project.status) - statusRank(right.project.status)) * sign || left.index - right.index;
+      const leftTime = parseNucleusTime(sort.key === "start" ? left.project.startTime : left.project.endTime);
+      const rightTime = parseNucleusTime(sort.key === "start" ? right.project.startTime : right.project.endTime);
+      if (leftTime === null && rightTime === null) return left.index - right.index;
+      if (leftTime === null) return 1;
+      if (rightTime === null) return -1;
+      return (leftTime - rightTime) * sign || left.index - right.index;
+    })
+    .map((item) => item.project);
 }
 
 function rewardPreview(fields: Record<string, string>) {
@@ -100,6 +164,10 @@ export default function NucleusPanel() {
 function NucleusList() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<NucleusStatusFilter>("ALL");
+  const [view, setView] = useState<NucleusListView>("list");
+  const [sort, setSort] = useState<{ key: NucleusSortKey; dir: "asc" | "desc" } | null>(null);
   const query = useInfiniteQuery({
     queryKey: nucleusKeys.list(),
     queryFn: ({ pageParam }) => fetchNucleusList(pageParam),
@@ -107,8 +175,26 @@ function NucleusList() {
     getNextPageParam: nucleusListNextPageParam,
     ...nucleusCacheOptions,
   });
-  const projects = query.data?.pages.flatMap((page) => page.projects) || [];
+  const projects = useMemo(() => query.data?.pages.flatMap((page) => page.projects) || [], [query.data?.pages]);
   const total = query.data?.pages[0]?.count ?? 0;
+  const visible = useMemo(() => sortNucleusProjects(filterNucleusProjects(projects, search, statusFilter), sort), [projects, search, sort, statusFilter]);
+  const lastPageCount = query.data?.pages.at(-1)?.projects.length ?? 0;
+  const hasNextPage = query.hasNextPage;
+  const isFetchingNextPage = query.isFetchingNextPage;
+  const isFetchNextPageError = query.isFetchNextPageError;
+  const fetchNextPage = query.fetchNextPage;
+
+  useEffect(() => {
+    if (!hasNextPage || lastPageCount === 0 || isFetchingNextPage || isFetchNextPageError) return;
+    void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchNextPageError, isFetchingNextPage, lastPageCount]);
+
+  const toggleSort = (key: NucleusSortKey) => {
+    setSort((current) => {
+      if (current?.key !== key) return { key, dir: key === "name" || key === "status" ? "asc" : "desc" };
+      return { key, dir: current.dir === "asc" ? "desc" : "asc" };
+    });
+  };
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">
@@ -122,36 +208,92 @@ function NucleusList() {
           <section>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold tracking-tight text-slate-900">Chiến dịch InfoFi</h2>
-              <span className="text-xs font-medium text-slate-500">{projects.length}/{total} dự án</span>
+              <span className="text-xs font-medium text-slate-500">{visible.length}/{total || projects.length} dự án</span>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {projects.map((project) => {
-                const reward = rewardPreview(project.additionalFields);
-                const campaign = project.additionalFields.campaign_type;
-                const detailParam = nucleusDetailParam(project);
-                return (
-                  <button key={project.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-md" onMouseEnter={() => prefetchNucleusDetail(queryClient, detailParam)} onFocus={() => prefetchNucleusDetail(queryClient, detailParam)} onClick={() => router.push(`/nucleus/${detailParam}`)}>
-                    <div className="relative h-36 overflow-hidden bg-slate-100">
-                      <NucleusImg src={project.bannerImageUrl} alt="" className="h-full w-full object-cover" />
-                      <NucleusImg src={project.thumbnailUrl} alt="" className="absolute bottom-3 left-3 z-10 h-12 w-12 rounded-xl border-2 border-white object-cover shadow-sm" />
-                      <span className={`absolute right-3 top-3 z-10 rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusClass(project.status)}`}>{statusLabel(project.status)}</span>
-                    </div>
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-sm font-semibold text-slate-900">{project.name}</h4>
-                        {project.isPrivate && <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />}
-                      </div>
-                      <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500"><CalendarRange className="h-3.5 w-3.5 shrink-0" />{formatRange(project.startTime, project.endTime)}</p>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {campaign && <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-cyan-700">{campaign}</span>}
-                        {reward && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">{reward}</span>}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative min-w-0 lg:max-w-sm lg:flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm chiến dịch..." aria-label="Tìm chiến dịch" className="h-10 rounded-xl border-slate-200 pl-9" />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5">
+                  {statusFilters.map((item) => (
+                    <button key={item.id} type="button" aria-pressed={statusFilter === item.id} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${statusFilter === item.id ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"}`} onClick={() => setStatusFilter(item.id)}>{item.label}</button>
+                  ))}
+                </div>
+                <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5">
+                  <button type="button" aria-label="Dạng lưới" aria-pressed={view === "grid"} className={`grid h-8 w-8 place-items-center rounded-lg ${view === "grid" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"}`} onClick={() => setView("grid")}><LayoutGrid className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Dạng danh sách" aria-pressed={view === "list"} className={`grid h-8 w-8 place-items-center rounded-lg ${view === "list" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"}`} onClick={() => setView("list")}><List className="h-4 w-4" /></button>
+                </div>
+              </div>
             </div>
-            {query.hasNextPage && <div className="mt-6 text-center"><Button variant="outline" className="rounded-xl" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>{query.isFetchingNextPage ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}Tải thêm dự án</Button></div>}
+
+            {visible.length === 0 && <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">Không có chiến dịch khớp.</div>}
+
+            {visible.length > 0 && view === "list" && (
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <div className="min-w-[760px]">
+                  <div className="grid grid-cols-[minmax(16rem,1.6fr)_7.5rem_14rem_14rem] border-b border-slate-100 px-4 py-2.5">
+                    {sortColumns.map((column) => {
+                      const active = sort?.key === column.key;
+                      return (
+                        <button key={column.key} type="button" className="inline-flex w-full items-center gap-1 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-700" aria-label={active ? `${column.label}, ${sort.dir === "asc" ? "tăng dần" : "giảm dần"}` : `Sắp xếp theo ${column.label}`} onClick={() => toggleSort(column.key)}>
+                          {column.label}
+                          {active ? (sort.dir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {visible.map((project) => {
+                    const detailParam = nucleusDetailParam(project);
+                    return (
+                      <button key={project.id} type="button" className="grid w-full grid-cols-[minmax(16rem,1.6fr)_7.5rem_14rem_14rem] items-center border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50" onMouseEnter={() => prefetchNucleusDetail(queryClient, detailParam)} onFocus={() => prefetchNucleusDetail(queryClient, detailParam)} onClick={() => router.push(`/nucleus/${detailParam}`)}>
+                        <span className="flex min-w-0 items-center gap-3 pr-3">
+                          <NucleusImg src={project.thumbnailUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate text-sm font-semibold text-slate-900">{project.name}</span>
+                            {project.isPrivate && <Lock className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
+                          </span>
+                        </span>
+                        <span><span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${statusClass(project.status)}`}>{statusLabel(project.status)}</span></span>
+                        <span className="text-sm text-slate-600">{formatUtc(project.startTime)}</span>
+                        <span className="text-sm text-slate-600">{formatUtc(project.endTime)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {visible.length > 0 && view === "grid" && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {visible.map((project) => {
+                  const reward = rewardPreview(project.additionalFields);
+                  const campaign = project.additionalFields.campaign_type;
+                  const detailParam = nucleusDetailParam(project);
+                  return (
+                    <button key={project.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-md" onMouseEnter={() => prefetchNucleusDetail(queryClient, detailParam)} onFocus={() => prefetchNucleusDetail(queryClient, detailParam)} onClick={() => router.push(`/nucleus/${detailParam}`)}>
+                      <div className="relative h-36 overflow-hidden bg-slate-100">
+                        <NucleusImg src={project.bannerImageUrl} alt="" className="h-full w-full object-cover" />
+                        <NucleusImg src={project.thumbnailUrl} alt="" className="absolute bottom-3 left-3 z-10 h-12 w-12 rounded-xl border-2 border-white object-cover shadow-sm" />
+                        <span className={`absolute right-3 top-3 z-10 rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusClass(project.status)}`}>{statusLabel(project.status)}</span>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-sm font-semibold text-slate-900">{project.name}</h4>
+                          {project.isPrivate && <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />}
+                        </div>
+                        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500"><CalendarRange className="h-3.5 w-3.5 shrink-0" />{formatRange(project.startTime, project.endTime)}</p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {campaign && <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-cyan-700">{campaign}</span>}
+                          {reward && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">{reward}</span>}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
       </div>

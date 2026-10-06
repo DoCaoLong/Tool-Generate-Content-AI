@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/http";
 import type { NucleusProject, NucleusProjectDetail } from "@/lib/types";
 
-export const NUCLEUS_PAGE_SIZE = 10;
+export const NUCLEUS_PAGE_SIZE = 100;
 export const NUCLEUS_STALE_TIME = 5 * 60_000;
 export const NUCLEUS_GC_TIME = 30 * 60_000;
 

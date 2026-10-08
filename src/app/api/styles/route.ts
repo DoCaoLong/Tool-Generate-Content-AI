@@ -1,9 +1,11 @@
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
-import { fetchSorsaAvatars, normalizeSorsaAvatar } from "@/lib/sorsa-avatar";
+import { fetchKolAvatars } from "@/lib/kol-avatars";
+import { normalizeSorsaAvatar } from "@/lib/sorsa-avatar";
 import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
 import { errorResponse, requireUser } from "@/lib/server-utils";
+import { assertAppRequest, consumeAvatarQuota } from "@/lib/x-api-guard";
 
 const sampleSchema = z.object({ id: z.string().max(100), text: z.string().trim().min(1).max(5000) });
 const createSchema = z.object({
@@ -41,7 +43,7 @@ function serialize(style: Record<string, unknown> & { _id: { toHexString(): stri
   };
 }
 
-async function fillKolAvatars(styles: Array<Record<string, unknown> & { _id: ObjectId }>) {
+async function fillKolAvatars(userId: string, styles: Array<Record<string, unknown> & { _id: ObjectId }>) {
   const missing = styles.filter((style) => {
     const category = resolveStyleCategory({
       category: typeof style.category === "string" ? style.category : null,
@@ -53,7 +55,9 @@ async function fillKolAvatars(styles: Array<Record<string, unknown> & { _id: Obj
     return category === "kol" && /^[A-Za-z0-9_]{1,15}$/.test(username) && !normalizeSorsaAvatar(style.avatarUrl);
   });
   if (!missing.length) return;
-  const found = await fetchSorsaAvatars(missing.map((style) => String(style.username)));
+  const limited = await consumeAvatarQuota(userId);
+  if (limited) return;
+  const found = await fetchKolAvatars(missing.map((style) => String(style.username)));
   const db = await getDb();
   await Promise.all(missing.map(async (style) => {
     const image = found.get(String(style.username).replace(/^@/, "").toLowerCase());
@@ -63,15 +67,17 @@ async function fillKolAvatars(styles: Array<Record<string, unknown> & { _id: Obj
   }));
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  const blocked = assertAppRequest(request);
+  if (blocked) return blocked;
   const db = await getDb();
   const styles = await db.collection("styles").find({ userId: auth.user.id }).sort({ updatedAt: -1 }).toArray();
   try {
-    await fillKolAvatars(styles);
+    await fillKolAvatars(auth.user.id, styles);
   } catch {
-    // Giữ danh sách phong cách khi Sorsa không trả ảnh.
+    // Giữ danh sách phong cách khi API ảnh không trả về.
   }
   return Response.json({ styles: styles.map((style) => serialize(style as never)) });
 }

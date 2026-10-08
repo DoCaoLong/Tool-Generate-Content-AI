@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { XProviderId } from "@/lib/api-keys";
 import { apiRequest, ApiError } from "@/lib/http";
 import PromptAvatar from "@/components/PromptAvatar";
 import { kolAvatarSrc } from "@/lib/kol-styles";
@@ -174,24 +175,52 @@ function UsersTab() {
 
 function KeysTab() {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ["admin-keys"], queryFn: () => apiRequest<{ sorsa: { set: boolean; hint: string } }>("/api/admin/api-keys") });
+  const query = useQuery({ queryKey: ["admin-keys"], queryFn: () => apiRequest<{ provider: XProviderId; sorsa: { set: boolean; fromEnv: boolean; hint: string }; twitterapis: { set: boolean; fromEnv: boolean; hint: string } }>("/api/admin/api-keys") });
+  const [provider, setProvider] = useState<XProviderId | null>(null);
+  const selected = provider ?? query.data?.provider ?? "sorsa";
   const [sorsa, setSorsa] = useState("");
+  const [twitterapis, setTwitterapis] = useState("");
   const save = useMutation({
-    mutationFn: () => apiRequest("/api/admin/api-keys", { method: "PUT", body: JSON.stringify({ sorsa }) }),
-    onSuccess: () => { setSorsa(""); queryClient.invalidateQueries({ queryKey: ["admin-keys"] }); },
+    mutationFn: () => apiRequest("/api/admin/api-keys", {
+      method: "PUT",
+      body: JSON.stringify({
+        provider: selected,
+        ...(sorsa.trim() ? { sorsa: sorsa.trim() } : {}),
+        ...(twitterapis.trim() ? { twitterapis: twitterapis.trim() } : {}),
+      }),
+    }),
+    onSuccess: () => {
+      setSorsa("");
+      setTwitterapis("");
+      queryClient.invalidateQueries({ queryKey: ["admin-keys"] });
+    },
   });
+  const options: Array<{ id: XProviderId; title: string; host: string; value: string; setValue: (value: string) => void; placeholder: string; fromEnv: boolean }> = [
+    { id: "sorsa", title: "Sorsa", host: "api.sorsa.io", value: sorsa, setValue: setSorsa, placeholder: query.data?.sorsa.hint || "Nhập Sorsa API key", fromEnv: query.data?.sorsa.fromEnv === true },
+    { id: "twitterapis", title: "TwitterAPIs", host: "api.twitterapis.com", value: twitterapis, setValue: setTwitterapis, placeholder: query.data?.twitterapis.hint || "Nhập TwitterAPIs API key", fromEnv: query.data?.twitterapis.fromEnv === true },
+  ];
 
   return (
     <section className="max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="font-semibold">Sorsa API key</h2>
-      <p className="mt-1 text-xs text-slate-500">Key dùng cho tab Khám phá. Key AI của user vẫn nhập ở Cài đặt trên trình duyệt.</p>
-      <label className="mt-5 block text-sm font-medium">
-        Sorsa
-        <Input className="mt-2 h-11 rounded-xl font-mono" type="password" placeholder={query.data?.sorsa.set ? query.data.sorsa.hint : "Nhập Sorsa API key"} value={sorsa} onChange={(event) => setSorsa(event.target.value)} autoComplete="off" />
-      </label>
+      <h2 className="font-semibold">API đọc bài trên X</h2>
+      <p className="mt-1 text-xs text-slate-500">Chọn một API cho Khám phá, Radar và ảnh KOL. Ô key để trống thì giữ key đã lưu. Key AI của user vẫn nhập ở Cài đặt.</p>
+      <div className="mt-5 space-y-3">
+        {options.map((option) => (
+          <label key={option.id} className={`block rounded-2xl border p-4 ${selected === option.id ? "border-slate-950" : "border-slate-200"}`}>
+            <span className="flex items-start gap-3">
+              <input type="checkbox" className="mt-1 h-4 w-4 accent-slate-950" checked={selected === option.id} onChange={() => setProvider(option.id)} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{option.title}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{option.host}{option.fromEnv ? " · đang ưu tiên key môi trường" : ""}</span>
+                <Input className="mt-3 h-11 rounded-xl font-mono" type="password" placeholder={option.placeholder} value={option.value} onChange={(event) => option.setValue(event.target.value)} autoComplete="off" />
+              </span>
+            </span>
+          </label>
+        ))}
+      </div>
       {save.error && <p className="mt-4 text-sm text-red-600">{save.error.message}</p>}
-      {save.isSuccess && <p className="mt-4 text-sm text-emerald-600">Đã lưu Sorsa API key.</p>}
-      <div className="mt-5 flex justify-end"><Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={save.isPending || !sorsa.trim()} onClick={() => save.mutate()}>{save.isPending ? "Đang lưu..." : "Lưu key"}</Button></div>
+      {save.isSuccess && <p className="mt-4 text-sm text-emerald-600">Đã lưu. Khám phá sẽ dùng API đang chọn.</p>}
+      <div className="mt-5 flex justify-end"><Button className="rounded-xl bg-slate-950 text-white hover:bg-slate-800" disabled={save.isPending || !query.data} onClick={() => save.mutate()}>{save.isPending ? "Đang lưu..." : "Lưu"}</Button></div>
     </section>
   );
 }

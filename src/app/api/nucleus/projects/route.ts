@@ -1,9 +1,14 @@
 import { fetchNucleusProjects, NucleusApiError } from "@/lib/nucleus";
 import { errorResponse, requireUser } from "@/lib/server-utils";
+import { assertAppRequest, consumeNucleusQuota } from "@/lib/x-api-guard";
 
 export async function GET(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  const blocked = assertAppRequest(request);
+  if (blocked) return blocked;
+  const limited = await consumeNucleusQuota(auth.user.id);
+  if (limited) return limited;
 
   const url = new URL(request.url);
   const skip = Number(url.searchParams.get("skip") || 0);

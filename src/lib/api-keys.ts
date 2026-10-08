@@ -1,9 +1,17 @@
-export const managedApiKeyIds = ["sorsa"] as const;
-export type ManagedApiKeyId = (typeof managedApiKeyIds)[number];
+export const xProviderIds = ["sorsa", "twitterapis"] as const;
+export type XProviderId = (typeof xProviderIds)[number];
+
+export const managedApiKeyIds = xProviderIds;
+export type ManagedApiKeyId = XProviderId;
 
 export const managedApiKeyLabels: Record<ManagedApiKeyId, string> = {
   sorsa: "Sorsa",
+  twitterapis: "TwitterAPIs",
 };
+
+export function isXProviderId(value: unknown): value is XProviderId {
+  return value === "sorsa" || value === "twitterapis";
+}
 
 export const SETTINGS_API_KEYS_ID = "api_keys";
 

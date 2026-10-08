@@ -4,7 +4,9 @@ import { z } from "zod";
 import { readSorsaAccess } from "@/lib/account-access";
 import { buildRadarQuery } from "@/lib/radar-query";
 import { errorResponse, requireUser } from "@/lib/server-utils";
-import { getSorsaApiKey } from "@/lib/sorsa-key";
+import { assertAppRequest, consumeDiscoverQuota, consumeRadarQuota, releaseRadar, reserveRadar, userOwnsRadarQuery } from "@/lib/x-api-guard";
+import { TwitterApisHttpError, searchTwitterApisWithRetry } from "@/lib/twitterapis";
+import { getXApiConfig } from "@/lib/x-provider";
 
 dns.setDefaultResultOrder("ipv4first");
 
@@ -13,7 +15,7 @@ const handleSchema = z.string().regex(/^[A-Za-z0-9_]{1,15}$/);
 const requestSchema = z.object({
   username: z.string().trim().transform((value) => value.replace(/^@/, "")).optional().default(""),
   projectName: z.string().trim().max(100).optional().default(""),
-  nextCursor: z.string().max(1000).optional(),
+  nextCursor: z.string().max(4000).optional(),
   radar: z.boolean().optional().default(false),
 }).superRefine((data, context) => {
   if (!data.username && !data.projectName) {
@@ -212,15 +214,39 @@ async function sorsaPostWithRetry(path: string, body: Record<string, unknown>, a
   throw last;
 }
 
+function twitterApisError(status: number) {
+  const fallback = status === 400
+    ? "Tham số gửi tới TwitterAPIs không hợp lệ."
+    : status === 401
+      ? "TwitterAPIs API key không hợp lệ."
+      : status === 402
+        ? "TwitterAPIs đã hết credit."
+        : status === 403
+          ? "TwitterAPIs từ chối yêu cầu này."
+          : status === 404
+            ? "Không tìm thấy tài khoản hoặc bài viết công khai trên X."
+            : status === 429
+              ? "Đang vượt giới hạn TwitterAPIs. Hãy thử lại sau ít phút."
+              : status >= 500
+                ? "TwitterAPIs đang lỗi. Hãy thử lại sau."
+                : "Không thể lấy dữ liệu từ TwitterAPIs.";
+  return errorResponse(fallback, status >= 400 && status < 600 ? status : 502);
+}
+
 function discoverError(error: unknown) {
+  if (error instanceof TwitterApisHttpError) return twitterApisError(error.status);
+  if (error instanceof Error && error.message === "connect-twitterapis") return errorResponse("Không thể kết nối đến TwitterAPIs. Hãy thử lại sau.", 502);
   if (error instanceof SorsaHttpError) return sorsaError(error.status, error.data);
   if (error instanceof Error && error.message === "connect") return errorResponse("Không thể kết nối đến Sorsa API. Hãy thử lại sau.", 502);
-  return errorResponse("Không thể lấy dữ liệu từ Sorsa API.", 502);
+  return errorResponse("Không thể lấy dữ liệu từ API bài viết trên X.", 502);
 }
 
 export async function POST(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+
+  const blocked = assertAppRequest(request);
+  if (blocked) return blocked;
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -231,8 +257,10 @@ export async function POST(request: Request) {
     return errorResponse("Hãy nhập access code.", 403);
   }
 
-  const apiKey = await getSorsaApiKey();
-  if (!apiKey) return errorResponse("Sorsa API key chưa được cấu hình (env hoặc Admin).", 503);
+  const xApi = await getXApiConfig();
+  if (!xApi.apiKey) {
+    return errorResponse(xApi.provider === "twitterapis" ? "TwitterAPIs API key chưa được cấu hình (env hoặc Admin)." : "Sorsa API key chưa được cấu hình (env hoặc Admin).", 503);
+  }
 
   const username = parsed.data.username;
   const projectName = parsed.data.projectName;
@@ -240,6 +268,26 @@ export async function POST(request: Request) {
   const radar = parsed.data.radar;
   const radarQuery = radar ? buildRadarQuery(projectName, username) : "";
   if (radar && !radarQuery) return errorResponse("Dự án đang viết chưa có tên để tìm radar.");
+  if (radar && parsed.data.nextCursor) return errorResponse("Radar không hỗ trợ phân trang.");
+  if (radar && !(await userOwnsRadarQuery(auth.user.id, projectName, username))) {
+    return errorResponse("Radar chỉ tìm các dự án trong tài khoản của bạn.", 403);
+  }
+  if (radar && !(await reserveRadar(auth.user.id, radarQuery))) {
+    const response = errorResponse("Radar của dự án này vừa được tải. Hãy đợi khoảng 30 phút.", 429);
+    response.headers.set("Retry-After", "1800");
+    return response;
+  }
+  if (radar) {
+    const limited = await consumeRadarQuota(auth.user.id);
+    if (limited) {
+      await releaseRadar(auth.user.id, radarQuery).catch(() => undefined);
+      return limited;
+    }
+  }
+  if (!radar) {
+    const limited = await consumeDiscoverQuota(auth.user.id);
+    if (limited) return limited;
+  }
   const useMentions = !radar && Boolean(projectName) && !username && Boolean(projectHandle);
   const source = radar ? "radar" : useMentions ? "mentions" : username ? "author" : "topic";
   const fallbackUsername = username || projectHandle || "unknown";
@@ -267,16 +315,23 @@ export async function POST(request: Request) {
 
   let data: SorsaResponse;
   try {
-    data = await sorsaPostWithRetry(endpoint, body, apiKey);
-  } catch (error) {
-    const mentionsDown = error instanceof Error && error.message === "connect" || error instanceof SorsaHttpError && (error.status === 404 || error.status >= 500);
-    const fallback = endpoint === "mentions" && projectHandle && mentionsDown;
-    if (!fallback) return discoverError(error);
-    try {
-      data = await sorsaPostWithRetry("search-tweets", { query: `@${projectHandle} -filter:retweets`, order: "popular", ...cursor }, apiKey);
-    } catch (fallbackError) {
-      return discoverError(fallbackError);
+    if (xApi.provider === "twitterapis") {
+      const searchQuery = endpoint === "mentions" && projectHandle ? `@${projectHandle} -filter:retweets` : String(body.query);
+      const order = endpoint === "mentions" ? "popular" : String(body.order || "latest");
+      data = await searchTwitterApisWithRetry(searchQuery, order, parsed.data.nextCursor, xApi.apiKey);
+    } else {
+      try {
+        data = await sorsaPostWithRetry(endpoint, body, xApi.apiKey);
+      } catch (error) {
+        const mentionsDown = error instanceof Error && error.message === "connect" || error instanceof SorsaHttpError && (error.status === 404 || error.status >= 500);
+        const fallback = endpoint === "mentions" && projectHandle && mentionsDown;
+        if (!fallback) throw error;
+        data = await sorsaPostWithRetry("search-tweets", { query: `@${projectHandle} -filter:retweets`, order: "popular", ...cursor }, xApi.apiKey);
+      }
     }
+  } catch (error) {
+    if (radar) await releaseRadar(auth.user.id, radarQuery).catch(() => undefined);
+    return discoverError(error);
   }
 
   let tweets = mapTweets(data.tweets || [], fallbackUsername);

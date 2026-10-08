@@ -2,6 +2,8 @@
 
 ## 2026-10-06
 
+- Khám phá, Radar, ảnh KOL và Nucleus chỉ nhận request từ chính ứng dụng. Radar chỉ chạy cho dự án của tài khoản đó, mỗi câu tìm một lần trong 30 phút, không phân trang, tối đa 60 lần mỗi 10 phút và 240 lần mỗi ngày. Tìm bài tối đa 20 lần mỗi 10 phút và 80 lần mỗi ngày. Ảnh KOL còn thiếu tối đa 6 lần mỗi ngày. Nucleus tối đa 80 lần mỗi 10 phút.
+- Admin `/admin/keys` chọn một API đọc bài trên X: Sorsa hoặc TwitterAPIs. Checkbox chỉ bật một nguồn. Key để trống thì giữ key cũ. Khám phá, Radar và ảnh KOL dùng nguồn đang chọn.
 - Tab Nucleus có ô tìm theo tên, lọc Tất cả / Đang mở / Đã đóng, và sắp xếp bằng cách bấm cột Tên, Trạng thái, Bắt đầu (UTC), Kết thúc (UTC). Mặc định là danh sách: ảnh, tên, trạng thái, ngày UTC. Nút lưới vẫn mở dạng thẻ cũ.
 
 ## 2026-10-02

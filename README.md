@@ -15,7 +15,8 @@ Open http://localhost:3000
 - `MONGODB_URI`: connection string MongoDB.
 - `MONGODB_DB`: tên database, mặc định `content_writer`.
 - `AUTH_SECRET`: chuỗi bí mật ngẫu nhiên tối thiểu 32 ký tự dùng để ký session.
-- `SORSA_API_KEY`: API key server-side dùng cho tab Khám phá để tìm bài viết công khai trên X qua Sorsa.
+- `SORSA_API_KEY`: API key server-side của Sorsa. Dùng khi Admin chọn Sorsa. Biến này được ưu tiên hơn key lưu trong Admin.
+- `TWITTERAPIS_API_KEY`: API key server-side của TwitterAPIs (`api.twitterapis.com`). Dùng khi Admin chọn TwitterAPIs. Biến này được ưu tiên hơn key lưu trong Admin.
 - `REGISTER_ACCESS_CODE`: mã truy cập bắt buộc khi tìm bài mẫu ở tab Khám phá. Mặc định `content-studio`.
 - `PORT`: cổng production (`next start` / PM2). Mặc định `3004`. Dev vẫn dùng `next dev -p 3000`.
 - `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`: Cloudflare Turnstile cho login, đăng ký và `/admin`. Production bắt buộc. Local có thể để trống.

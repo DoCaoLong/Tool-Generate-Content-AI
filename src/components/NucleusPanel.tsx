@@ -12,7 +12,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
 import { applyNucleusOptions, findExistingStudioProject, nucleusFieldLabels, nucleusXUsername } from "@/lib/nucleus-brief";
-import { ABOUT_REWARDS_TITLE, fetchNucleusDetail, fetchNucleusDetailDescription, fetchNucleusList, isAboutRewardsTitle, nucleusCacheOptions, nucleusDetailParam, nucleusKeys, nucleusListNextPageParam, prefetchNucleusDetail } from "@/lib/nucleus-query";
+import { fetchNucleusDetail, fetchNucleusDetailDescription, fetchNucleusList, isAboutRewardsTitle, nucleusCacheOptions, nucleusDetailParam, nucleusKeys, nucleusListNextPageParam, prefetchNucleusDetail } from "@/lib/nucleus-query";
 import { resolveStyleCategory } from "@/lib/style-category";
 import type { NucleusProject, Project, SavedStyle } from "@/lib/types";
 
@@ -135,7 +135,9 @@ function NucleusImgInner({ src, alt, className }: { src?: string | null; alt: st
   return <img src={!src || failed ? NUCLEUS_FALLBACK_SRC : src} alt={alt} referrerPolicy="no-referrer" className={className} onError={() => setFailed(true)} />;
 }
 
-const NUCLEUS_DETAIL_HTML_CLASS = "border-t border-slate-100 px-4 py-4 text-sm leading-6 text-slate-700 [&_a]:text-cyan-700 [&_a]:underline [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:font-semibold [&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-xl [&_li]:my-1 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-3 [&_strong]:font-semibold [&_table]:mb-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-200 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-slate-200 [&_th]:px-2 [&_th]:py-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5";
+const NUCLEUS_DETAIL_HTML_CLASS = "border-t border-slate-100 px-4 py-4 text-sm leading-6 text-slate-700 [&_a]:text-cyan-700 [&_a]:underline [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:font-semibold [&_li]:my-1 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-3 [&_strong]:font-semibold [&_table]:mb-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-200 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-slate-200 [&_th]:px-2 [&_th]:py-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5";
+const NUCLEUS_DETAIL_IMG_CLASS = "[&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-xl";
+const NUCLEUS_REWARD_IMG_CLASS = "[&_img]:my-3 [&_img]:mx-auto [&_img]:block [&_img]:h-auto [&_img]:w-1/2 [&_img]:rounded-xl";
 
 function NucleusHtml({ html, className }: { html: string; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -170,13 +172,13 @@ function NucleusCampaignSection({
 }) {
   const aboutRewards = isAboutRewardsTitle(title);
   const extra = useQuery({
-    queryKey: nucleusKeys.detailDescription(projectId, ABOUT_REWARDS_TITLE),
-    queryFn: () => fetchNucleusDetailDescription(projectId, ABOUT_REWARDS_TITLE),
+    queryKey: nucleusKeys.detailDescription(projectId, title),
+    queryFn: () => fetchNucleusDetailDescription(projectId, title),
     enabled: open && aboutRewards,
     ...nucleusCacheOptions,
   });
   if (!open) return null;
-  const extraHtml = extra.data?.section.html;
+  const extraHtml = aboutRewards ? extra.data?.section.html : "";
   const body = extraHtml || html;
   if (aboutRewards && extra.isPending) {
     return (
@@ -186,7 +188,14 @@ function NucleusCampaignSection({
       </div>
     );
   }
-  if (body) return <NucleusHtml html={body} className={NUCLEUS_DETAIL_HTML_CLASS} />;
+  if (body) {
+    return (
+      <NucleusHtml
+        html={body}
+        className={`${NUCLEUS_DETAIL_HTML_CLASS} ${aboutRewards ? NUCLEUS_REWARD_IMG_CLASS : NUCLEUS_DETAIL_IMG_CLASS}`}
+      />
+    );
+  }
   if (aboutRewards && extra.error) {
     return <p className="border-t border-slate-100 px-4 py-4 text-sm text-red-600">{extra.error.message}</p>;
   }

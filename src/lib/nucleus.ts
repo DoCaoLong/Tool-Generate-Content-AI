@@ -3,6 +3,8 @@ import type { NucleusProject, NucleusProjectDetail } from "@/lib/types";
 const NUCLEUS_API = "https://api.nucleus.codes/v1";
 const LIST_FIELDS = "id,slug,name,sponsored_by,status,banner_image_url,thumbnail_url,start_time,end_time,additional_fields,is_private";
 const ALLOWED_HTML_TAGS = new Set(["p", "br", "strong", "b", "u", "em", "i", "ul", "ol", "li", "a", "span", "h1", "h2", "h3", "h4", "blockquote", "div", "img", "table", "thead", "tbody", "tr", "th", "td", "hr"]);
+const DATA_IMAGE_SRC = /^data:image\/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/_-]+=*$/i;
+const MAX_DATA_IMAGE_CHARS = 6_000_000;
 
 interface NucleusListRaw {
   projects?: NucleusListItemRaw[];
@@ -28,6 +30,14 @@ interface NucleusListItemRaw {
 interface NucleusDetailRaw {
   success?: boolean;
   project_detail?: NucleusDetailBodyRaw;
+  message?: string;
+  error?: string;
+}
+
+interface NucleusDetailDescriptionRaw {
+  success?: boolean;
+  project_detail_title?: string;
+  project_detail_description?: string;
   message?: string;
   error?: string;
 }
@@ -77,7 +87,16 @@ function attr(value: string, name: string) {
   return new RegExp(`${name}\\s*=\\s*(["'])([\\s\\S]*?)\\1`, "i").exec(value)?.[2]?.trim() || "";
 }
 
-export function sanitizeNucleusHtml(html: string) {
+function safeImgSrc(src: string, allowDataImages: boolean) {
+  if (/^https?:\/\//i.test(src)) return src;
+  if (!allowDataImages) return "";
+  const compact = src.replace(/\s+/g, "");
+  if (compact.length > MAX_DATA_IMAGE_CHARS || !DATA_IMAGE_SRC.test(compact)) return "";
+  return compact;
+}
+
+export function sanitizeNucleusHtml(html: string, options?: { allowDataImages?: boolean }) {
+  const allowDataImages = Boolean(options?.allowDataImages);
   const stripped = html
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/<\/(?:script|style|iframe|object|embed|link|svg|video|audio)[^>]*>/gi, "")
@@ -96,9 +115,9 @@ export function sanitizeNucleusHtml(html: string) {
       return "<a>";
     }
     if (name === "img") {
-      const src = attr(attrs, "src");
+      const src = safeImgSrc(attr(attrs, "src"), allowDataImages);
       const alt = attr(attrs, "alt");
-      if (!/^https?:\/\//i.test(src)) return "";
+      if (!src) return "";
       return `<img src="${src.replace(/"/g, "&quot;")}" alt="${alt.replace(/"/g, "&quot;")}" loading="lazy" referrerpolicy="no-referrer" />`;
     }
     return `<${name}>`;
@@ -193,12 +212,12 @@ function mapDetail(item: NucleusDetailBodyRaw): NucleusProjectDetail | null {
   };
 }
 
-async function nucleusFetch(path: string) {
+async function nucleusFetch(path: string, timeoutMs = 30_000) {
   try {
     return await fetch(`${NUCLEUS_API}${path}`, {
       cache: "no-store",
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     throw new NucleusApiError("Không thể kết nối đến Nucleus API. Hãy thử lại sau.", 502);
@@ -233,4 +252,15 @@ export async function fetchNucleusProject(slug: string) {
   const project = data.project_detail ? mapDetail(data.project_detail) : null;
   if (!project) throw new NucleusApiError("Không tìm thấy dự án Nucleus này.", 404);
   return project;
+}
+
+export async function fetchNucleusProjectDetailDescription(projectKey: string, title: string) {
+  const params = new URLSearchParams({ title });
+  const response = await nucleusFetch(`/projects/${encodeURIComponent(projectKey)}/detail-description?${params}`, 45_000);
+  const data = (await response.json().catch(() => ({}))) as NucleusDetailDescriptionRaw;
+  if (!response.ok) throw new NucleusApiError(fallbackMessage(response.status, data), response.status);
+  const html = sanitizeNucleusHtml(data.project_detail_description || "", { allowDataImages: true });
+  const heading = data.project_detail_title ? String(data.project_detail_title) : title;
+  if (!html) throw new NucleusApiError("Không tìm thấy chi tiết mục này.", 404);
+  return { title: heading, html };
 }

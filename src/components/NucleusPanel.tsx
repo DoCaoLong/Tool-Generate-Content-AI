@@ -12,7 +12,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
 import { applyNucleusOptions, findExistingStudioProject, nucleusFieldLabels, nucleusXUsername } from "@/lib/nucleus-brief";
-import { fetchNucleusDetail, fetchNucleusList, nucleusCacheOptions, nucleusDetailParam, nucleusKeys, nucleusListNextPageParam, prefetchNucleusDetail } from "@/lib/nucleus-query";
+import { ABOUT_REWARDS_TITLE, fetchNucleusDetail, fetchNucleusDetailDescription, fetchNucleusList, isAboutRewardsTitle, nucleusCacheOptions, nucleusDetailParam, nucleusKeys, nucleusListNextPageParam, prefetchNucleusDetail } from "@/lib/nucleus-query";
 import { resolveStyleCategory } from "@/lib/style-category";
 import type { NucleusProject, Project, SavedStyle } from "@/lib/types";
 
@@ -135,6 +135,8 @@ function NucleusImgInner({ src, alt, className }: { src?: string | null; alt: st
   return <img src={!src || failed ? NUCLEUS_FALLBACK_SRC : src} alt={alt} referrerPolicy="no-referrer" className={className} onError={() => setFailed(true)} />;
 }
 
+const NUCLEUS_DETAIL_HTML_CLASS = "border-t border-slate-100 px-4 py-4 text-sm leading-6 text-slate-700 [&_a]:text-cyan-700 [&_a]:underline [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:font-semibold [&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-xl [&_li]:my-1 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-3 [&_strong]:font-semibold [&_table]:mb-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-200 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-slate-200 [&_th]:px-2 [&_th]:py-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5";
+
 function NucleusHtml({ html, className }: { html: string; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -153,6 +155,42 @@ function NucleusHtml({ html, className }: { html: string; className?: string }) 
     };
   }, [html]);
   return <div ref={ref} className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function NucleusCampaignSection({
+  projectId,
+  title,
+  html,
+  open,
+}: {
+  projectId: string;
+  title: string;
+  html: string;
+  open: boolean;
+}) {
+  const aboutRewards = isAboutRewardsTitle(title);
+  const extra = useQuery({
+    queryKey: nucleusKeys.detailDescription(projectId, ABOUT_REWARDS_TITLE),
+    queryFn: () => fetchNucleusDetailDescription(projectId, ABOUT_REWARDS_TITLE),
+    enabled: open && aboutRewards,
+    ...nucleusCacheOptions,
+  });
+  if (!open) return null;
+  const extraHtml = extra.data?.section.html;
+  const body = extraHtml || html;
+  if (aboutRewards && extra.isPending) {
+    return (
+      <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-4 text-sm text-slate-500">
+        <LoaderCircle className="h-4 w-4 animate-spin" />
+        Đang tải chi tiết thưởng...
+      </div>
+    );
+  }
+  if (body) return <NucleusHtml html={body} className={NUCLEUS_DETAIL_HTML_CLASS} />;
+  if (aboutRewards && extra.error) {
+    return <p className="border-t border-slate-100 px-4 py-4 text-sm text-red-600">{extra.error.message}</p>;
+  }
+  return null;
 }
 
 export default function NucleusPanel() {
@@ -507,9 +545,7 @@ function NucleusDetail({ slug }: { slug: string }) {
                             <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
                             <span className="flex-1 text-sm font-medium text-slate-800">{section.title}</span>
                           </button>
-                          {open && (
-                            <NucleusHtml html={section.html} className="border-t border-slate-100 px-4 py-4 text-sm leading-6 text-slate-700 [&_a]:text-cyan-700 [&_a]:underline [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:font-semibold [&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-xl [&_li]:my-1 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-3 [&_strong]:font-semibold [&_table]:mb-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-200 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-slate-200 [&_th]:px-2 [&_th]:py-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5" />
-                          )}
+                          <NucleusCampaignSection projectId={project.id} title={section.title} html={section.html} open={open} />
                         </div>
                       );
                     })}

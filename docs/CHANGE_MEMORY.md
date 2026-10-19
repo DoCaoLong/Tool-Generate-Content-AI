@@ -4,6 +4,7 @@
 
 - Phong cách đang dùng được lưu trên từng dự án. Qua lại giữa các dự án thì mỗi dự án mở lại đúng phong cách đã chọn, không phải chọn lại. Dự án chưa từng chọn vẫn tự khớp phong cách nếu tên hoặc @handle trùng, trừ phong cách KOL trên brief Nucleus. Bỏ phong cách thì dự án đó để trống.
 - Radar ở tab Khám phá chỉ gọi API bài viết một lần cho mỗi dự án, rồi giữ đến 7 giờ sáng hôm sau theo giờ Việt Nam. Lần mở trước 7 giờ sáng không gọi thêm khi đúng 7 giờ cùng ngày.
+- Popup Chọn phong cách trong ô chat xếp thẻ theo lưới, 2 cột trên điện thoại và 3 cột trên màn hình rộng.
 
 ## 2026-10-06
 

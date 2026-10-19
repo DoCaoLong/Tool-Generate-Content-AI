@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Palette } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import PromptAvatar from "@/components/PromptAvatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/http";
@@ -25,6 +25,18 @@ function pickKol(queryClient: ReturnType<typeof useQueryClient>, id: string) {
   commitWritingStyle(queryClient, { kolId: id, savedStyleId: null, discovered: null, source: "manual" });
 }
 
+function StyleChoice({ name, meta, avatar, onPick }: { name: string; meta: string; avatar: ReactNode; onPick: () => void }) {
+  return (
+    <button type="button" title={name} className="flex min-w-0 flex-col gap-2 rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50" onClick={onPick}>
+      {avatar}
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-slate-900">{name}</span>
+        <span className="mt-0.5 block h-4 truncate text-xs text-slate-400">{meta || "\u00a0"}</span>
+      </span>
+    </button>
+  );
+}
+
 export default function StyleQuickPicker({ hidden = false }: { hidden?: boolean }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -41,7 +53,7 @@ export default function StyleQuickPicker({ hidden = false }: { hidden?: boolean 
         <Palette className="h-3 w-3" />Chọn phong cách
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[min(80vh,640px)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-lg">
+        <DialogContent className="flex max-h-[min(85vh,760px)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-2xl">
           <DialogHeader className="space-y-1 border-b border-slate-100 px-6 py-4 pr-12 text-left">
             <DialogTitle>Chọn phong cách</DialogTitle>
             <DialogDescription>Chọn một phong cách đã có để dùng cho bài viết này.</DialogDescription>
@@ -54,18 +66,12 @@ export default function StyleQuickPicker({ hidden = false }: { hidden?: boolean 
               return (
                 <section key={group.id}>
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{group.title}</h3>
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {items.map((style) => (
-                      <button key={style.id} type="button" className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-slate-400" onClick={() => { pickSaved(queryClient, style); setOpen(false); }}>
-                        <PromptAvatar src={resolveStyleCategory(style) === "kol" ? kolAvatarSrc({ username: style.username, avatarUrl: style.avatarUrl }) : undefined} name={style.username || style.projectName || style.name} className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />
-                        <span className="min-w-0"><span className="block truncate text-sm font-medium text-slate-900">{style.name}</span>{(style.username || style.projectName) && <span className="block truncate text-xs text-slate-400">{[style.username ? `@${style.username.replace(/^@/, "")}` : "", style.projectName || ""].filter(Boolean).join(" · ")}</span>}</span>
-                      </button>
+                      <StyleChoice key={style.id} name={style.name} meta={[style.username ? `@${style.username.replace(/^@/, "")}` : "", style.projectName || ""].filter(Boolean).join(" · ")} avatar={<PromptAvatar src={resolveStyleCategory(style) === "kol" ? kolAvatarSrc({ username: style.username, avatarUrl: style.avatarUrl }) : undefined} name={style.username || style.projectName || style.name} className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />} onPick={() => { pickSaved(queryClient, style); setOpen(false); }} />
                     ))}
                     {preset.map((style) => (
-                      <button key={style.id} type="button" className="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-slate-400" onClick={() => { pickKol(queryClient, style.id); setOpen(false); }}>
-                        <PromptAvatar src={kolAvatarSrc({ profileImgUrl: style.profileImgUrl, username: style.username, text: style.content })} name={style.name} className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />
-                        <span className="min-w-0"><span className="block truncate text-sm font-medium text-slate-900">{style.name}</span><span className="block truncate text-xs text-slate-400">KOL dựng sẵn</span></span>
-                      </button>
+                      <StyleChoice key={style.id} name={style.name} meta="KOL dựng sẵn" avatar={<PromptAvatar src={kolAvatarSrc({ profileImgUrl: style.profileImgUrl, username: style.username, text: style.content })} name={style.name} className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />} onPick={() => { pickKol(queryClient, style.id); setOpen(false); }} />
                     ))}
                   </div>
                 </section>

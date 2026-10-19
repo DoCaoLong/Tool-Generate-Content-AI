@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
 import { errorResponse, requireUser } from "@/lib/server-utils";
-import { defaultProjectContentOptions, normalizeProjectContentOptions } from "@/lib/project-options";
+import { serializeProject } from "@/lib/project-json";
+import { defaultProjectContentOptions } from "@/lib/project-options";
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -20,15 +21,7 @@ export async function GET() {
     .toArray();
 
   return Response.json({
-    projects: projects.map((project) => ({
-      id: project._id.toHexString(),
-      name: project.name,
-      description: project.description || "",
-      imageUrl: project.imageUrl || null,
-      contentOptions: normalizeProjectContentOptions(project.contentOptions),
-      createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString(),
-    })),
+    projects: projects.map((project) => serializeProject(project)),
   });
 }
 
@@ -57,15 +50,16 @@ export async function POST(request: Request) {
 
   return Response.json(
     {
-      project: {
-        id: result.insertedId.toHexString(),
+      project: serializeProject({
+        _id: result.insertedId,
         name: parsed.data.name,
         description: parsed.data.description,
         imageUrl: parsed.data.imageUrl || null,
         contentOptions: defaultProjectContentOptions,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-      },
+        writingStyle: null,
+        createdAt: now,
+        updatedAt: now,
+      }),
     },
     { status: 201 },
   );

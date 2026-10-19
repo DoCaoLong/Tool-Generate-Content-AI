@@ -29,12 +29,12 @@ import { useAppStore } from "@/lib/app-store";
 import { apiRequest, ApiError } from "@/lib/http";
 import { buildContentPrompt } from "@/lib/prompt-builder";
 import { getKOLStyle } from "@/lib/kol-styles";
-import { resolveStyleCategory } from "@/lib/style-category";
-import { findStyleForProject, projectHasNucleusBrief } from "@/lib/style-match";
 import { forgetBrowserAccessCode } from "@/lib/sorsa-access";
+import { displayWritingStyle, emptyWritingStyle, writingStyleChosen, writingStyleEqual } from "@/lib/writing-style";
+import { applyWritingStyle, bindWritingProject, commitWritingStyle, saveProjectWritingStyle } from "@/lib/writing-style-client";
 import { providerLabels, providerModels, providers } from "@/lib/providers";
 import { prefetchNucleusList } from "@/lib/nucleus-query";
-import type { Generation, Project, ProjectContentOptions, Provider, SavedStyle, UserProfile } from "@/lib/types";
+import type { Generation, Project, ProjectContentOptions, ProjectWritingStyle, Provider, SavedStyle, UserProfile } from "@/lib/types";
 
 const formSchema = z.object({
   mode: z.enum(["new", "rewrite"]),
@@ -135,12 +135,17 @@ function Workspace({ user }: { user: UserProfile }) {
   const selectedKolId = useAppStore((state) => state.selectedKolId);
   const discoveredStyle = useAppStore((state) => state.discoveredStyle);
   const selectedSavedStyleId = useAppStore((state) => state.selectedSavedStyleId);
-  const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
-  const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
-  const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
-  const styleSource = useAppStore((state) => state.styleSource);
-  const setStyleSource = useAppStore((state) => state.setStyleSource);
-  const autoStyledProjectId = useRef<string | null>(null);
+  const [homeWriting] = useState(() => {
+    const state = useAppStore.getState();
+    const chosen = Boolean(state.selectedKolId || state.selectedSavedStyleId || state.discoveredStyle);
+    const style: ProjectWritingStyle | null = chosen && state.styleSource !== "auto" ? {
+      kolId: state.selectedKolId,
+      savedStyleId: state.selectedSavedStyleId,
+      discovered: state.discoveredStyle,
+      source: "manual",
+    } : null;
+    return { projectId: state.selectedProjectId, style };
+  });
   const [createOpen, setCreateOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -153,7 +158,6 @@ function Workspace({ user }: { user: UserProfile }) {
   const routeMode = projectRoute?.[2] as "new" | "rewrite" | undefined;
   const selectedProjectId = routeProjectId || storedProjectId;
   const activeProject = projects.find((project) => project.id === selectedProjectId) || null;
-  const selectedSavedStyle = savedStyles.find((style) => style.id === selectedSavedStyleId) || null;
   const isProjectRoute = pathname.startsWith("/projects");
   const isDiscoverRoute = pathname === "/discover";
   const isNucleusRoute = pathname === "/nucleus" || pathname.startsWith("/nucleus/");
@@ -161,6 +165,12 @@ function Workspace({ user }: { user: UserProfile }) {
   const isSettingsRoute = pathname === "/settings";
   const isProfileRoute = pathname === "/profile";
   const isHelpRoute = pathname === "/help";
+  const stylesReady = Boolean(stylesQuery.data);
+  const migrateStyle = activeProject && !activeProject.writingStyle && activeProject.id === homeWriting.projectId ? homeWriting.style : null;
+  const activeWritingStyle = activeProject ? displayWritingStyle(activeProject, savedStyles, migrateStyle, stylesReady) : null;
+  const selectedSavedStyle = savedStyles.find((style) => style.id === (isProjectRoute && activeProject ? activeWritingStyle?.savedStyleId : selectedSavedStyleId)) || null;
+  const sidebarKolId = isProjectRoute && activeProject ? activeWritingStyle?.kolId || null : selectedKolId;
+  const sidebarDiscovered = isProjectRoute && activeProject ? activeWritingStyle?.discovered || null : discoveredStyle;
 
   useEffect(() => {
     if (!isProjectRoute || projectsQuery.isPending || !projectsQuery.data) return;
@@ -181,39 +191,28 @@ function Workspace({ user }: { user: UserProfile }) {
   }, [activeProject, composerMode, isProjectRoute, routeMode, router, setComposerMode]);
 
   useEffect(() => {
-    if (selectedSavedStyleId && stylesQuery.data && !selectedSavedStyle) {
-      setSelectedSavedStyleId(null);
-      setStyleSource(null);
-    }
-  }, [selectedSavedStyle, selectedSavedStyleId, setSelectedSavedStyleId, setStyleSource, stylesQuery.data]);
+    bindWritingProject(isProjectRoute ? activeProject?.id || storedProjectId : storedProjectId);
+  }, [activeProject?.id, isProjectRoute, storedProjectId]);
 
   useEffect(() => {
     if (!isProjectRoute || !activeProject || !stylesQuery.data) return;
-    if (autoStyledProjectId.current === activeProject.id) return;
-    autoStyledProjectId.current = activeProject.id;
-    const hasSelection = Boolean(selectedKolId || selectedSavedStyleId || discoveredStyle);
-    if (styleSource !== "auto" && hasSelection) return;
-    const fromNucleusBrief = projectHasNucleusBrief(activeProject);
-    const match = findStyleForProject(savedStyles, activeProject);
-    if (match && !(fromNucleusBrief && resolveStyleCategory(match) === "kol")) {
-      setSelectedSavedStyleId(match.id);
-      setSelectedKolId(null);
-      setDiscoveredStyle(null);
-      setStyleSource("auto");
-      return;
+    const migrate = !activeProject.writingStyle && activeProject.id === homeWriting.projectId ? homeWriting.style : null;
+    const desired = displayWritingStyle(activeProject, savedStyles, migrate, true);
+    const stored = activeProject.writingStyle ?? null;
+    if (desired && !writingStyleEqual(stored, desired)) {
+      void saveProjectWritingStyle(queryClient, activeProject.id, desired);
+    } else if (!desired && writingStyleChosen(stored)) {
+      void saveProjectWritingStyle(queryClient, activeProject.id, emptyWritingStyle());
     }
-    if (styleSource === "auto") {
-      setSelectedKolId(null);
-      setDiscoveredStyle(null);
-      setSelectedSavedStyleId(null);
-      setStyleSource(null);
-    }
-    if (!fromNucleusBrief) return;
-    setSelectedKolId(null);
-    setDiscoveredStyle(null);
-    const current = savedStyles.find((style) => style.id === selectedSavedStyleId);
-    if (current && resolveStyleCategory(current) === "kol") setSelectedSavedStyleId(null);
-  }, [activeProject, discoveredStyle, isProjectRoute, savedStyles, selectedKolId, selectedSavedStyleId, setDiscoveredStyle, setSelectedKolId, setSelectedSavedStyleId, setStyleSource, styleSource, stylesQuery.data]);
+    const state = useAppStore.getState();
+    const applied: ProjectWritingStyle | null = state.selectedKolId || state.selectedSavedStyleId || state.discoveredStyle ? {
+      kolId: state.selectedKolId,
+      savedStyleId: state.selectedSavedStyleId,
+      discovered: state.discoveredStyle,
+      source: state.styleSource === "auto" ? "auto" : "manual",
+    } : null;
+    if (!writingStyleEqual(applied, desired)) applyWritingStyle(desired);
+  }, [activeProject, homeWriting, isProjectRoute, queryClient, savedStyles, stylesQuery.data]);
 
   const logout = useMutation({
     mutationFn: () => apiRequest<{ ok: true }>("/api/auth/logout", { method: "POST" }),
@@ -236,7 +235,7 @@ function Workspace({ user }: { user: UserProfile }) {
         <div className={`pb-4 ${sidebarCollapsed ? "px-3 md:px-2" : "px-3"}`}>
           <div className="space-y-1">
             <button type="button" aria-label="Dự án mới" title={sidebarCollapsed ? "Dự án mới" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} text-slate-300 hover:bg-white/5 hover:text-white`} onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 shrink-0" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Dự án mới</span></button>
-            <KOLStylePicker selectedId={selectedKolId} customStyle={discoveredStyle} selectedSavedStyle={selectedSavedStyle} collapsed={sidebarCollapsed} />
+            <KOLStylePicker selectedId={sidebarKolId} customStyle={sidebarDiscovered} selectedSavedStyle={selectedSavedStyle} collapsed={sidebarCollapsed} />
             <button title={sidebarCollapsed ? "Khám phá" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} ${isDiscoverRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onClick={() => { router.push("/discover"); setSidebarOpen(false); }}><Compass className="h-4 w-4 shrink-0 text-violet-400" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Khám phá</span>{!sidebarCollapsed && <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold text-violet-300">Sorsa</span>}</button>
             <button title={sidebarCollapsed ? "Nucleus" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} ${isNucleusRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onMouseEnter={() => prefetchNucleusList(queryClient)} onFocus={() => prefetchNucleusList(queryClient)} onClick={() => { router.push("/nucleus"); setSidebarOpen(false); }}><Image src="/nucleus-logo.png" alt="Nucleus" width={18} height={18} className="h-4 w-4 shrink-0 rounded-sm object-contain" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Nucleus</span>{!sidebarCollapsed && <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">InfoFi</span>}</button>
           </div>
@@ -270,7 +269,7 @@ function Workspace({ user }: { user: UserProfile }) {
           </div>}
           {isProjectRoute && activeProject ? <button className="rounded-lg p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900" aria-label="Bật tắt bảng tuỳ chọn" onClick={() => setOptionsOpen(!optionsOpen)}>{optionsOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}</button> : <span />}
         </header>
-        {isDiscoverRoute ? <DiscoverPanel /> : isNucleusRoute ? <NucleusPanel /> : isStylesRoute ? <StyleLibraryPage /> : isSettingsRoute ? <SettingsPage /> : isProfileRoute ? <ProfilePage user={user} /> : isHelpRoute ? <HelpPage /> : projectsQuery.isPending || (isProjectRoute && !activeProject && Boolean(selectedProjectId)) ? <div className="grid flex-1 place-items-center"><Sparkles className="h-7 w-7 animate-pulse text-emerald-600" /></div> : activeProject ? <ComposerWorkspace key={activeProject.id} project={activeProject} optionsOpen={optionsOpen} savedStyle={selectedSavedStyle} /> : <EmptyProjects onCreate={() => setCreateOpen(true)} />}
+        {isDiscoverRoute ? <DiscoverPanel /> : isNucleusRoute ? <NucleusPanel /> : isStylesRoute ? <StyleLibraryPage /> : isSettingsRoute ? <SettingsPage /> : isProfileRoute ? <ProfilePage user={user} /> : isHelpRoute ? <HelpPage /> : projectsQuery.isPending || (isProjectRoute && !activeProject && Boolean(selectedProjectId)) ? <div className="grid flex-1 place-items-center"><Sparkles className="h-7 w-7 animate-pulse text-emerald-600" /></div> : activeProject ? <ComposerWorkspace key={activeProject.id} project={activeProject} optionsOpen={optionsOpen} savedStyle={selectedSavedStyle} writingStyle={activeWritingStyle} /> : <EmptyProjects onCreate={() => setCreateOpen(true)} />}
       </div>
       <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
       <RenameProjectDialog project={editingProject} onClose={() => setEditingProject(null)} />
@@ -319,18 +318,14 @@ function RenameProjectDialog({ project, onClose }: { project: Project | null; on
   return <Dialog open={Boolean(project)} onOpenChange={(open) => { if (!open) close(); }}><DialogContent className="rounded-2xl sm:max-w-md"><DialogHeader><DialogTitle>Đổi tên dự án</DialogTitle><DialogDescription>Tên mới sẽ được cập nhật trong danh sách dự án và thanh tiêu đề.</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={form.handleSubmit(({ name }) => project && mutation.mutate({ id: project.id, name: name.trim(), description: project.description }))}><label className="block text-sm font-medium">Tên dự án<Input autoFocus className="mt-2 rounded-xl" {...form.register("name", { required: "Hãy nhập tên dự án.", maxLength: { value: 80, message: "Tên dự án tối đa 80 ký tự." }, validate: (value) => Boolean(value.trim()) || "Hãy nhập tên dự án." })} /></label>{(form.formState.errors.name || mutation.error) && <p className="text-sm text-red-600">{mutation.error?.message || form.formState.errors.name?.message}</p>}<DialogFooter><Button type="button" variant="outline" disabled={mutation.isPending} onClick={close}>Huỷ</Button><Button className="bg-slate-950 text-white hover:bg-slate-800" disabled={mutation.isPending}>{mutation.isPending ? "Đang lưu..." : "Lưu tên mới"}</Button></DialogFooter></form></DialogContent></Dialog>;
 }
 
-function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Project; optionsOpen: boolean; savedStyle: SavedStyle | null }) {
+function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: { project: Project; optionsOpen: boolean; savedStyle: SavedStyle | null; writingStyle: ProjectWritingStyle | null }) {
   const queryClient = useQueryClient();
   const savedProvider = useAppStore((state) => state.provider);
   const savedModel = useAppStore((state) => state.model);
   const savedApiKey = useAppStore((state) => state.apiKey);
   const composerMode = useAppStore((state) => state.composerMode);
-  const selectedKolId = useAppStore((state) => state.selectedKolId);
-  const discoveredStyle = useAppStore((state) => state.discoveredStyle);
-  const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
-  const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
-  const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
-  const setStyleSource = useAppStore((state) => state.setStyleSource);
+  const selectedKolId = writingStyle?.kolId || null;
+  const discoveredStyle = writingStyle?.discovered || null;
   const setProviderConfig = useAppStore((state) => state.setProviderConfig);
   const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: Array<{ id: string; name: string; style?: string; content: string }> }>("/api/prompt-styles") });
   const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedKolId) || getKOLStyle(selectedKolId);
@@ -459,8 +454,8 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle }: { project: Proj
     <div className="shrink-0 px-4 pb-5 sm:px-8"><div className="mx-auto max-w-3xl">
       <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
         <div className="mx-2 mb-1 flex flex-wrap items-center gap-1.5">
-          <StyleQuickPicker />
-          {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {savedStyle?.name || selectedKOL?.name || `@${discoveredStyle?.username}`}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { setSelectedKolId(null); setDiscoveredStyle(null); setSelectedSavedStyleId(null); setStyleSource(null); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
+          <StyleQuickPicker hidden={Boolean(selectedKOL || discoveredStyle || savedStyle)} />
+          {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {savedStyle?.name || selectedKOL?.name || `@${discoveredStyle?.username}`}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { commitWritingStyle(queryClient, null, project.id); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
           {keywordChips.slice(0, 6).map((keyword) => <span key={keyword} className="inline-flex max-w-48 items-center truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700" title={keyword}>Từ khóa: {keyword}</span>)}
           {keywordChips.length > 6 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">+{keywordChips.length - 6}</span>}
         </div>

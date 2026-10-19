@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
 import { errorResponse, parseObjectId, requireUser } from "@/lib/server-utils";
-import { normalizeProjectContentOptions } from "@/lib/project-options";
+import { serializeProject } from "@/lib/project-json";
 
 type RouteContext = { params: Promise<{ projectId: string }> };
 
@@ -31,17 +31,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   );
   if (!result) return errorResponse("Không tìm thấy dự án.", 404);
 
-  return Response.json({
-    project: {
-      id: result._id.toHexString(),
-      name: result.name,
-      description: result.description || "",
-      imageUrl: result.imageUrl || null,
-      contentOptions: normalizeProjectContentOptions(result.contentOptions),
-      createdAt: result.createdAt.toISOString(),
-      updatedAt: result.updatedAt.toISOString(),
-    },
-  });
+  return Response.json({ project: serializeProject(result) });
 }
 
 export async function DELETE(_: Request, context: RouteContext) {

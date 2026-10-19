@@ -1,6 +1,5 @@
+import { radarStillFresh } from "@/lib/radar-schedule";
 import type { DiscoveredTweet } from "@/lib/types";
-
-export const RADAR_TTL_MS = 30 * 60 * 1000;
 
 const CACHE_KEY = "content-studio-radar-v2";
 
@@ -112,7 +111,7 @@ export function listRadarEntries(raw: string) {
 }
 
 export function radarCacheFresh(entry: RadarCacheEntry | null, now = Date.now()) {
-  return Boolean(entry && now - entry.fetchedAt < RADAR_TTL_MS);
+  return Boolean(entry && radarStillFresh(entry.fetchedAt, now));
 }
 
 export function saveRadarEntry(projectId: string, entry: RadarCacheEntry) {

@@ -272,10 +272,13 @@ export async function POST(request: Request) {
   if (radar && !(await userOwnsRadarQuery(auth.user.id, projectName, username))) {
     return errorResponse("Radar chỉ tìm các dự án trong tài khoản của bạn.", 403);
   }
-  if (radar && !(await reserveRadar(auth.user.id, radarQuery))) {
-    const response = errorResponse("Radar của dự án này vừa được tải. Hãy đợi khoảng 30 phút.", 429);
-    response.headers.set("Retry-After", "1800");
-    return response;
+  if (radar) {
+    const reserved = await reserveRadar(auth.user.id, radarQuery);
+    if (!reserved.ok) {
+      const response = errorResponse("Radar của dự án này đã được tải. Lần tải tiếp theo sau 7 giờ sáng.", 429);
+      response.headers.set("Retry-After", String(reserved.retryAfter));
+      return response;
+    }
   }
   if (radar) {
     const limited = await consumeRadarQuota(auth.user.id);

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/lib/app-store";
 import { ApiError, apiRequest } from "@/lib/http";
+import { commitWritingStyle } from "@/lib/writing-style-client";
 import { getRadarCacheReadyServerSnapshot, getRadarCacheReadySnapshot, getRadarCacheServerSnapshot, getRadarCacheSnapshot, listRadarEntries, radarCacheFresh, readRadarEntry, saveRadarEntry, shareRadarRequest, subscribeRadarCache } from "@/lib/radar-cache";
 import { buildRadarQuery, projectXHandle } from "@/lib/radar-query";
 import type { DiscoveredTweet, Project, SavedStyle, UserProfile } from "@/lib/types";
@@ -34,9 +35,7 @@ const RADAR_VISIBLE = 30;
 export default function DiscoverPanel() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const setDiscoveredStyle = useAppStore((state) => state.setDiscoveredStyle);
-  const setSelectedKolId = useAppStore((state) => state.setSelectedKolId);
-  const setSelectedSavedStyleId = useAppStore((state) => state.setSelectedSavedStyleId);
+
   const [tweets, setTweets] = useState<DiscoveredTweet[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -115,11 +114,10 @@ export default function DiscoverPanel() {
     mutationFn: (payload: { name: string; description: string; instruction: string; username: string; projectName: string | null; samples: Array<{ id: string; text: string }> }) => apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "project", ...payload }) }),
     onSuccess: async ({ style }) => {
       await queryClient.invalidateQueries({ queryKey: ["styles"] });
-      setSelectedKolId(null);
-      setDiscoveredStyle(null);
-      setSelectedSavedStyleId(style.id);
-      useAppStore.setState({ styleSource: "manual" });
-      router.push("/projects");
+      const projects = queryClient.getQueryData<{ projects: Project[] }>(["projects"])?.projects || [];
+      const projectId = useAppStore.getState().selectedProjectId || projects[0]?.id || null;
+      if (projectId) commitWritingStyle(queryClient, { kolId: null, savedStyleId: style.id, discovered: null, source: "manual" }, projectId);
+      router.push(projectId ? `/projects/${projectId}/new` : "/projects");
     },
   });
 
@@ -189,8 +187,8 @@ export default function DiscoverPanel() {
       : radarTargets.length === 0
         ? "Các dự án chưa có tên để tìm radar."
         : radarUpdatedLabel
-        ? `Tối đa ${RADAR_VISIBLE} bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Đã cập nhật lúc ${radarUpdatedLabel}.`
-        : `Tối đa ${RADAR_VISIBLE} bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Làm mới sau 30 phút khi mở lại tab.`;
+        ? `Tối đa ${RADAR_VISIBLE} bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Đã cập nhật lúc ${radarUpdatedLabel}. Lần tải tiếp theo sau 7 giờ sáng.`
+        : `Tối đa ${RADAR_VISIBLE} bài từ ${radarTargets.length} dự án, ưu tiên lượt xem và bình luận. Radar tải một lần, sau 7 giờ sáng giờ Việt Nam.`;
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8">

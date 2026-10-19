@@ -112,12 +112,20 @@ export interface ProjectContentOptions {
   customInstructions: string;
 }
 
+export interface ProjectWritingStyle {
+  kolId: string | null;
+  savedStyleId: string | null;
+  discovered: DiscoveredStyle | null;
+  source: "manual" | "auto";
+}
+
 export interface Project {
   id: string;
   name: string;
   description: string;
   imageUrl: string | null;
   contentOptions: ProjectContentOptions;
+  writingStyle: ProjectWritingStyle | null;
   createdAt: string;
   updatedAt: string;
 }

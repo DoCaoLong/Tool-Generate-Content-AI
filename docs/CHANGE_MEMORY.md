@@ -1,5 +1,10 @@
 # CHANGE_MEMORY
 
+## 2026-10-19
+
+- Phong cách đang dùng được lưu trên từng dự án. Qua lại giữa các dự án thì mỗi dự án mở lại đúng phong cách đã chọn, không phải chọn lại. Dự án chưa từng chọn vẫn tự khớp phong cách nếu tên hoặc @handle trùng, trừ phong cách KOL trên brief Nucleus. Bỏ phong cách thì dự án đó để trống.
+- Radar ở tab Khám phá chỉ gọi API bài viết một lần cho mỗi dự án, rồi giữ đến 7 giờ sáng hôm sau theo giờ Việt Nam. Lần mở trước 7 giờ sáng không gọi thêm khi đúng 7 giờ cùng ngày.
+
 ## 2026-10-06
 
 - Khám phá, Radar, ảnh KOL và Nucleus chỉ nhận request từ chính ứng dụng. Radar chỉ chạy cho dự án của tài khoản đó, mỗi câu tìm một lần trong 30 phút, không phân trang, tối đa 60 lần mỗi 10 phút và 240 lần mỗi ngày. Tìm bài tối đa 20 lần mỗi 10 phút và 80 lần mỗi ngày. Ảnh KOL còn thiếu tối đa 6 lần mỗi ngày. Nucleus tối đa 80 lần mỗi 10 phút.

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { getDb } from "@/lib/mongodb";
 import { normalizeProjectContentOptions } from "@/lib/project-options";
+import { nextRadarRefreshAt, radarStillFresh } from "@/lib/radar-schedule";
 import { buildRadarQuery, projectXHandle } from "@/lib/radar-query";
 import { errorResponse } from "@/lib/server-utils";
 
@@ -10,7 +11,6 @@ const SEARCH_DAY = 80;
 const SEARCH_DAY_MS = 24 * 60 * 60_000;
 const RADAR_BURST = 60;
 const RADAR_DAY = 240;
-const RADAR_COOLDOWN_MS = 30 * 60_000;
 const AVATAR_DAY = 6;
 const NUCLEUS_BURST = 80;
 const NUCLEUS_BURST_MS = 10 * 60_000;
@@ -124,13 +124,16 @@ export async function reserveRadar(userId: string, query: string) {
   const id = radarId(userId, query);
   const collection = await guards();
   const existing = await collection.findOne({ _id: id as never });
-  if (existing?.at instanceof Date && now.getTime() - existing.at.getTime() < RADAR_COOLDOWN_MS) return false;
+  if (existing?.at instanceof Date && radarStillFresh(existing.at.getTime(), now.getTime())) {
+    const retryAfter = Math.max(1, Math.ceil((nextRadarRefreshAt(existing.at.getTime()) - now.getTime()) / 1000));
+    return { ok: false as const, retryAfter };
+  }
   await collection.updateOne(
     { _id: id as never },
-    { $set: { at: now, userId, expiresAt: new Date(now.getTime() + RADAR_COOLDOWN_MS + 5 * 60_000) } },
+    { $set: { at: now, userId, expiresAt: new Date(nextRadarRefreshAt(now.getTime())) } },
     { upsert: true },
   );
-  return true;
+  return { ok: true as const };
 }
 
 export async function releaseRadar(userId: string, query: string) {

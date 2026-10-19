@@ -13,8 +13,7 @@ import { useAppStore } from "@/lib/app-store";
 import { apiRequest } from "@/lib/http";
 import { applyNucleusOptions, findExistingStudioProject, nucleusFieldLabels, nucleusXUsername } from "@/lib/nucleus-brief";
 import { fetchNucleusDetail, fetchNucleusDetailDescription, fetchNucleusList, isAboutRewardsTitle, nucleusCacheOptions, nucleusDetailParam, nucleusKeys, nucleusListNextPageParam, prefetchNucleusDetail } from "@/lib/nucleus-query";
-import { resolveStyleCategory } from "@/lib/style-category";
-import type { NucleusProject, Project, SavedStyle } from "@/lib/types";
+import type { NucleusProject, Project } from "@/lib/types";
 
 type NucleusStatusFilter = "ALL" | "OPEN" | "CLOSED";
 type NucleusSortKey = "name" | "status" | "start" | "end";
@@ -401,19 +400,8 @@ function NucleusDetail({ slug }: { slug: string }) {
       await apiRequest<{ contentOptions: Project["contentOptions"] }>(`/api/projects/${projectId}/options`, { method: "PATCH", body: JSON.stringify(contentOptions) });
       return { projectId, created: selectedTarget === "new" };
     },
-    onSuccess: async ({ projectId, created }) => {
+    onSuccess: async ({ projectId }) => {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
-      if (created) {
-        const store = useAppStore.getState();
-        const keepManual = store.styleSource !== "auto" && Boolean(store.selectedKolId || store.selectedSavedStyleId || store.discoveredStyle);
-        if (!keepManual) {
-          store.setSelectedKolId(null);
-          store.setDiscoveredStyle(null);
-          const styles = queryClient.getQueryData<{ styles: SavedStyle[] }>(["styles"]);
-          const current = styles?.styles.find((style) => style.id === store.selectedSavedStyleId);
-          if (current && resolveStyleCategory(current) === "kol") store.setSelectedSavedStyleId(null);
-        }
-      }
       setSelectedProjectId(projectId);
       setOptionsOpen(true);
       router.push(`/projects/${projectId}/new`);

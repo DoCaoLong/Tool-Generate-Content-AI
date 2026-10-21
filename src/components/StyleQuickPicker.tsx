@@ -3,13 +3,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Palette } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
+import { ProjectStyleFaces } from "@/components/ProjectStyleFaces";
 import PromptAvatar from "@/components/PromptAvatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/http";
 import { commitWritingStyle } from "@/lib/writing-style-client";
 import { kolAvatarSrc, kolStyles, type KOLStyle } from "@/lib/kol-styles";
+import { projectStyleFace } from "@/lib/project-style-face";
 import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
-import type { SavedStyle } from "@/lib/types";
+import type { Project, SavedStyle } from "@/lib/types";
 
 const groups: Array<{ id: StyleCategory; title: string }> = [
   { id: "kol", title: "Phong cách KOL" },
@@ -41,8 +43,10 @@ export default function StyleQuickPicker({ hidden = false }: { hidden?: boolean 
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const stylesQuery = useQuery({ queryKey: ["styles"], queryFn: () => apiRequest<{ styles: SavedStyle[] }>("/api/styles") });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiRequest<{ projects: Project[] }>("/api/projects") });
   const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: KOLStyle[] }>("/api/prompt-styles"), enabled: open });
   const saved = useMemo(() => stylesQuery.data?.styles || [], [stylesQuery.data?.styles]);
+  const projects = projectsQuery.data?.projects || [];
   const builtins = promptQuery.data?.styles?.length ? promptQuery.data.styles : kolStyles;
   if (hidden && open) setOpen(false);
   if (hidden) return null;
@@ -67,9 +71,13 @@ export default function StyleQuickPicker({ hidden = false }: { hidden?: boolean 
                 <section key={group.id}>
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{group.title}</h3>
                   <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {items.map((style) => (
-                      <StyleChoice key={style.id} name={style.name} meta={[style.username ? `@${style.username.replace(/^@/, "")}` : "", style.projectName || ""].filter(Boolean).join(" · ")} avatar={<PromptAvatar src={resolveStyleCategory(style) === "kol" ? kolAvatarSrc({ username: style.username, avatarUrl: style.avatarUrl }) : undefined} name={style.username || style.projectName || style.name} className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />} onPick={() => { pickSaved(queryClient, style); setOpen(false); }} />
-                    ))}
+                    {items.map((style) => {
+                      if (group.id === "project") {
+                        const face = projectStyleFace(style, projects);
+                        return <StyleChoice key={style.id} name={face.title} meta={face.meta} avatar={<ProjectStyleFaces userSrc={face.userSrc} userName={face.userHandle ? `@${face.userHandle}` : face.title} projectSrc={face.projectSrc} projectName={face.projectHandle ? `@${face.projectHandle}` : face.title} distinct={face.distinct} className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-white" userClassName="bg-violet-500" projectClassName="bg-sky-500" />} onPick={() => { pickSaved(queryClient, style); setOpen(false); }} />;
+                      }
+                      return <StyleChoice key={style.id} name={style.name} meta={[style.username ? `@${style.username.replace(/^@/, "")}` : "", style.projectName || ""].filter(Boolean).join(" · ")} avatar={<PromptAvatar src={resolveStyleCategory(style) === "kol" ? kolAvatarSrc({ username: style.username, avatarUrl: style.avatarUrl }) : undefined} name={style.username || style.projectName || style.name} className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />} onPick={() => { pickSaved(queryClient, style); setOpen(false); }} />;
+                    })}
                     {preset.map((style) => (
                       <StyleChoice key={style.id} name={style.name} meta="KOL dựng sẵn" avatar={<PromptAvatar src={kolAvatarSrc({ profileImgUrl: style.profileImgUrl, username: style.username, text: style.content })} name={style.name} className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-[11px] font-bold text-slate-600" />} onPick={() => { pickKol(queryClient, style.id); setOpen(false); }} />
                     ))}

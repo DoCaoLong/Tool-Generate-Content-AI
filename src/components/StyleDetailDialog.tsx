@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ProjectStyleFaces } from "@/components/ProjectStyleFaces";
 import PromptAvatar from "@/components/PromptAvatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,9 +20,11 @@ interface StyleDetailDialogProps {
   kindLabel: string;
   description?: string | null;
   instruction: string;
+  displayName?: string;
   username?: string | null;
   projectName?: string | null;
   avatarUrl?: string | null;
+  faces?: { userSrc: string; userHandle: string; projectSrc: string; projectHandle: string; title: string; distinct: boolean } | null;
   active?: boolean;
   canEdit?: boolean;
   editing?: boolean;
@@ -41,12 +44,14 @@ interface StyleDetailDialogProps {
 export function StyleDetailDialog({
   open,
   name,
+  displayName,
   kindLabel,
   description,
   instruction,
   username,
   projectName,
   avatarUrl,
+  faces,
   active = false,
   canEdit = false,
   editing = false,
@@ -68,12 +73,14 @@ export function StyleDetailDialog({
         <StyleDetailBody
           key={`${open}-${editing}-${name}`}
           name={name}
+          displayName={displayName}
           kindLabel={kindLabel}
           description={description}
           instruction={instruction}
           username={username}
           projectName={projectName}
           avatarUrl={avatarUrl}
+          faces={faces}
           active={active}
           canEdit={canEdit}
           editing={editing}
@@ -96,12 +103,14 @@ export function StyleDetailDialog({
 
 function StyleDetailBody({
   name,
+  displayName,
   kindLabel,
   description,
   instruction,
   username,
   projectName,
   avatarUrl,
+  faces,
   active,
   canEdit,
   editing,
@@ -150,9 +159,9 @@ function StyleDetailBody({
       <DialogHeader className="shrink-0 space-y-1 border-b border-slate-100 px-6 py-4 pr-12 text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            {avatarUrl ? <PromptAvatar src={avatarUrl} name={username || name} className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-violet-500 text-xs font-bold text-white" /> : null}
+            {faces ? <ProjectStyleFaces userSrc={faces.userSrc} userName={faces.userHandle ? `@${faces.userHandle}` : faces.title} projectSrc={faces.projectSrc} projectName={faces.projectHandle ? `@${faces.projectHandle}` : faces.title} distinct={faces.distinct} className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold text-white" userClassName="bg-violet-500" projectClassName="bg-sky-500" /> : avatarUrl ? <PromptAvatar src={avatarUrl} name={username || name} className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-violet-500 text-xs font-bold text-white" /> : null}
             <div className="min-w-0">
-              <DialogTitle>{editing ? "Sửa phong cách" : name}</DialogTitle>
+              <DialogTitle>{editing ? "Sửa phong cách" : displayName || name}</DialogTitle>
               <DialogDescription className="mt-1">{meta}</DialogDescription>
             </div>
           </div>

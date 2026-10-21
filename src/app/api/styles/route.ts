@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
 import { fetchKolAvatars } from "@/lib/kol-avatars";
-import { normalizeSorsaAvatar } from "@/lib/sorsa-avatar";
+import { normalizeSorsaAvatar, storedStyleAvatar } from "@/lib/sorsa-avatar";
 import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
 import { errorResponse, requireUser } from "@/lib/server-utils";
 import { assertAppRequest, consumeAvatarQuota } from "@/lib/x-api-guard";
@@ -17,6 +17,7 @@ const createSchema = z.object({
   username: z.string().trim().max(30).nullable().default(null),
   projectName: z.string().trim().max(120).nullable().default(null),
   avatarUrl: z.string().trim().max(500).nullable().optional().default(null),
+  projectAvatarUrl: z.string().trim().max(500).nullable().optional().default(null),
   samples: z.array(sampleSchema).max(20).default([]),
 });
 
@@ -37,34 +38,53 @@ function serialize(style: Record<string, unknown> & { _id: { toHexString(): stri
     username: style.username || null,
     projectName: style.projectName || null,
     avatarUrl: normalizeSorsaAvatar(style.avatarUrl) || null,
+    projectAvatarUrl: storedStyleAvatar(style.projectAvatarUrl) || null,
     samples: style.samples || [],
     createdAt: style.createdAt.toISOString(),
     updatedAt: style.updatedAt.toISOString(),
   };
 }
 
-async function fillKolAvatars(userId: string, styles: Array<Record<string, unknown> & { _id: ObjectId }>) {
-  const missing = styles.filter((style) => {
+function styleHandle(value: unknown) {
+  if (typeof value !== "string") return "";
+  const handle = value.trim().replace(/^@/, "");
+  return /^[A-Za-z0-9_]{1,15}$/.test(handle) ? handle : "";
+}
+
+async function fillStyleAvatars(userId: string, styles: Array<Record<string, unknown> & { _id: ObjectId }>) {
+  const jobs: Array<{ style: Record<string, unknown> & { _id: ObjectId }; field: "avatarUrl" | "projectAvatarUrl"; handle: string }> = [];
+  for (const style of styles) {
     const category = resolveStyleCategory({
       category: typeof style.category === "string" ? style.category : null,
       kind: typeof style.kind === "string" ? style.kind : null,
       username: typeof style.username === "string" ? style.username : null,
       projectName: typeof style.projectName === "string" ? style.projectName : null,
     });
-    const username = typeof style.username === "string" ? style.username.replace(/^@/, "") : "";
-    return category === "kol" && /^[A-Za-z0-9_]{1,15}$/.test(username) && !normalizeSorsaAvatar(style.avatarUrl);
-  });
-  if (!missing.length) return;
+    const username = styleHandle(style.username);
+    const project = styleHandle(style.projectName);
+    if ((category === "kol" || category === "project") && username && !normalizeSorsaAvatar(style.avatarUrl)) {
+      jobs.push({ style, field: "avatarUrl", handle: username });
+    }
+    if (category === "project" && project && project.toLowerCase() !== username.toLowerCase() && !storedStyleAvatar(style.projectAvatarUrl)) {
+      jobs.push({ style, field: "projectAvatarUrl", handle: project });
+    }
+  }
+  if (!jobs.length) return;
   const limited = await consumeAvatarQuota(userId);
   if (limited) return;
-  const found = await fetchKolAvatars(missing.map((style) => String(style.username)));
+  const found = await fetchKolAvatars(jobs.map((job) => job.handle));
   const db = await getDb();
-  await Promise.all(missing.map(async (style) => {
-    const image = found.get(String(style.username).replace(/^@/, "").toLowerCase());
-    if (!image) return;
-    style.avatarUrl = image;
-    await db.collection("styles").updateOne({ _id: style._id }, { $set: { avatarUrl: image } });
-  }));
+  const updates = new Map<string, { style: Record<string, unknown> & { _id: ObjectId }; set: Record<string, string> }>();
+  for (const job of jobs) {
+    const image = found.get(job.handle.toLowerCase());
+    if (!image) continue;
+    job.style[job.field] = image;
+    const id = job.style._id.toHexString();
+    const current = updates.get(id) || { style: job.style, set: {} };
+    current.set[job.field] = image;
+    updates.set(id, current);
+  }
+  await Promise.all([...updates.values()].map(({ style, set }) => db.collection("styles").updateOne({ _id: style._id }, { $set: set })));
 }
 
 export async function GET(request: Request) {
@@ -75,7 +95,7 @@ export async function GET(request: Request) {
   const db = await getDb();
   const styles = await db.collection("styles").find({ userId: auth.user.id }).sort({ updatedAt: -1 }).toArray();
   try {
-    await fillKolAvatars(auth.user.id, styles);
+    await fillStyleAvatars(auth.user.id, styles);
   } catch {
     // Giữ danh sách phong cách khi API ảnh không trả về.
   }
@@ -110,6 +130,7 @@ export async function POST(request: Request) {
     username: parsed.data.username,
     projectName: parsed.data.projectName,
     avatarUrl: normalizeSorsaAvatar(parsed.data.avatarUrl) || null,
+    projectAvatarUrl: storedStyleAvatar(parsed.data.projectAvatarUrl) || null,
     createdAt: now,
     updatedAt: now,
   };

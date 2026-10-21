@@ -111,7 +111,7 @@ export default function DiscoverPanel() {
   });
 
   const saveStyle = useMutation({
-    mutationFn: (payload: { name: string; description: string; instruction: string; username: string; projectName: string | null; samples: Array<{ id: string; text: string }> }) => apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "project", ...payload }) }),
+    mutationFn: (payload: { name: string; description: string; instruction: string; username: string; projectName: string | null; avatarUrl: string | null; projectAvatarUrl: string | null; samples: Array<{ id: string; text: string }> }) => apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "project", ...payload }) }),
     onSuccess: async ({ style }) => {
       await queryClient.invalidateQueries({ queryKey: ["styles"] });
       const projects = queryClient.getQueryData<{ projects: Project[] }>(["projects"])?.projects || [];
@@ -127,18 +127,30 @@ export default function DiscoverPanel() {
     if (!samples.length) return;
     const handle = lastSearch.username || lastSearch.handle || samples[0]?.text.match(/@([A-Za-z0-9_]{1,15})/)?.[1] || tweets.find((tweet) => selectedIds.includes(tweet.id))?.username;
     if (!handle) return;
-    const scopeName = lastSearch.projectName || (lastSearch.source === "mentions" ? "Mentions nhiều bình luận" : "Bài viết gần đây");
+    const author = handle.replace(/^@/, "");
+    const projectRaw = (lastSearch.projectName || "").trim();
+    const projectHandle = projectRaw.replace(/^@/, "");
+    const same = Boolean(projectHandle) && author.toLowerCase() === projectHandle.toLowerCase();
+    const title = !projectRaw || same ? `@${author}` : (/^[A-Za-z0-9_]{1,15}$/.test(projectHandle) ? `@${projectHandle}` : projectRaw);
+    const avatarFor = (name: string) => {
+      const key = name.replace(/^@/, "").toLowerCase();
+      if (!key) return "";
+      const selected = tweets.find((tweet) => selectedIds.includes(tweet.id) && tweet.username.replace(/^@/, "").toLowerCase() === key && tweet.avatarUrl);
+      return selected?.avatarUrl || tweets.find((tweet) => tweet.username.replace(/^@/, "").toLowerCase() === key && tweet.avatarUrl)?.avatarUrl || "";
+    };
     const scopeInstruction = lastSearch.projectName
       ? `trong các bài nói về ${lastSearch.projectName}`
       : lastSearch.source === "mentions"
         ? "trong các bài mention có nhiều bình luận nhất"
         : "trong các bài gần đây";
     saveStyle.mutate({
-      name: `@${handle} · ${scopeName}`,
+      name: (title.length >= 2 ? title : `@${author}`).slice(0, 100),
       description: `${samples.length} bài mẫu công khai được tìm qua Sorsa.`,
-      instruction: `Học cách viết của @${handle} ${scopeInstruction}: giọng điệu, nhịp câu, cách mở bài, cấu trúc, từ vựng và cách kết thúc. Không sao chép nguyên văn và không giả danh tác giả.`,
-      username: handle,
+      instruction: `Học cách viết của @${author} ${scopeInstruction}: giọng điệu, nhịp câu, cách mở bài, cấu trúc, từ vựng và cách kết thúc. Không sao chép nguyên văn và không giả danh tác giả.`,
+      username: author,
       projectName: lastSearch.projectName || null,
+      avatarUrl: avatarFor(author) || null,
+      projectAvatarUrl: !same && projectHandle ? (avatarFor(projectHandle) || null) : null,
       samples,
     });
   };

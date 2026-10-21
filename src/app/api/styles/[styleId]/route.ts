@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getDb } from "@/lib/mongodb";
-import { normalizeSorsaAvatar } from "@/lib/sorsa-avatar";
+import { normalizeSorsaAvatar, storedStyleAvatar } from "@/lib/sorsa-avatar";
 import { resolveStyleCategory } from "@/lib/style-category";
 import { errorResponse, parseObjectId, requireUser } from "@/lib/server-utils";
 
@@ -47,6 +47,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       username: result.username || null,
       projectName: result.projectName || null,
       avatarUrl: normalizeSorsaAvatar(result.avatarUrl) || null,
+      projectAvatarUrl: storedStyleAvatar(result.projectAvatarUrl) || null,
       samples: result.samples || [],
       createdAt: result.createdAt.toISOString(),
       updatedAt: result.updatedAt.toISOString(),

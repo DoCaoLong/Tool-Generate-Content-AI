@@ -5,6 +5,7 @@ import { Check, Eye, LoaderCircle, Pencil, Plus, Search, Sparkles, Trash2, X } f
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { ProjectStyleFaces } from "@/components/ProjectStyleFaces";
 import PromptAvatar from "@/components/PromptAvatar";
 import { StyleDetailDialog } from "@/components/StyleDetailDialog";
 import { Button } from "@/components/ui/button";
@@ -18,9 +19,10 @@ import { ApiError, apiRequest } from "@/lib/http";
 import { commitWritingStyle } from "@/lib/writing-style-client";
 import { getKOLInitials, kolAvatarSrc, kolStyles, type KOLStyle } from "@/lib/kol-styles";
 import { providerLabels } from "@/lib/providers";
+import { projectStyleFace } from "@/lib/project-style-face";
 import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
 import { buildStyleAnalysisPrompt, parseStyleAnalysis } from "@/lib/style-analysis";
-import type { DiscoveredTweet, SavedStyle, UserProfile } from "@/lib/types";
+import type { DiscoveredTweet, Project, SavedStyle, UserProfile } from "@/lib/types";
 
 interface ManualStyleValues { name: string; description: string; instruction: string; sampleText: string }
 interface AnalyzedAuthor { username: string; projectName: string | null; avatarUrl: string; samples: Array<{ id: string; text: string }> }
@@ -47,27 +49,29 @@ function categoryLabel(category: StyleCategory) {
   return "Phong cách bài viết";
 }
 
-function SavedStyleCard({ style, active, color, onChoose, onView, onEdit, onDelete }: { style: SavedStyle; active: boolean; color: string; onChoose: () => void; onView: () => void; onEdit: () => void; onDelete: () => void }) {
+function SavedStyleCard({ style, projects, active, color, onChoose, onView, onEdit, onDelete }: { style: SavedStyle; projects: Project[]; active: boolean; color: string; onChoose: () => void; onView: () => void; onEdit: () => void; onDelete: () => void }) {
   const category = resolveStyleCategory(style);
-  const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (style.projectName || (style.username ? `@${style.username}` : "Dự án")) : style.username && style.projectName ? `@${style.username} · @${style.projectName.replace(/^@/, "")}` : "Bài viết";
+  const face = category === "project" ? projectStyleFace(style, projects) : null;
+  const title = face?.title || style.name;
+  const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (face?.meta || "Dự án") : style.username && style.projectName ? `@${style.username} · @${style.projectName.replace(/^@/, "")}` : "Bài viết";
   const mark = getKOLInitials(style.username || style.projectName || style.name);
   const tone = category === "kol" ? "bg-violet-500" : category === "project" ? "bg-sky-500" : color;
   const avatar = category === "kol" ? kolAvatarSrc({ username: style.username, avatarUrl: style.avatarUrl }) : "";
   return <article className={`group relative rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${active ? "border-slate-950 shadow-sm" : "border-slate-200"}`}>
     <button className="w-full text-left" onClick={onChoose}>
       <div className="flex items-start gap-3">
-        {avatar ? <PromptAvatar src={avatar} name={style.username || style.name} className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white ${tone}`} /> : <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-bold text-white ${tone}`}>{mark}</span>}
+        {face ? <ProjectStyleFaces userSrc={face.userSrc} userName={face.userHandle ? `@${face.userHandle}` : title} projectSrc={face.projectSrc} projectName={face.projectHandle ? `@${face.projectHandle}` : title} distinct={face.distinct} className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold text-white" userClassName="bg-violet-500" projectClassName="bg-sky-500" /> : avatar ? <PromptAvatar src={avatar} name={style.username || style.name} className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white ${tone}`} /> : <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xs font-bold text-white ${tone}`}>{mark}</span>}
         <div className="min-w-0 flex-1 pr-20">
-          <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{style.name}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div>
+          <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold" title={title}>{title}</h3>{active && <Check className="h-4 w-4 text-emerald-600" />}</div>
           <p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{style.description || compact(style.instruction)}</p>
         </div>
       </div>
       <div className="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-violet-500"><Sparkles className="h-3 w-3" />{badge}</div>
     </button>
     <div className="absolute right-3 top-3 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
-      <button type="button" aria-label={`Xem ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={onView}><Eye className="h-4 w-4" /></button>
-      <button type="button" aria-label={`Sửa ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={onEdit}><Pencil className="h-4 w-4" /></button>
-      <button type="button" aria-label={`Xoá ${style.name}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500" onClick={onDelete}><Trash2 className="h-4 w-4" /></button>
+      <button type="button" aria-label={`Xem ${title}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={onView}><Eye className="h-4 w-4" /></button>
+      <button type="button" aria-label={`Sửa ${title}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={onEdit}><Pencil className="h-4 w-4" /></button>
+      <button type="button" aria-label={`Xoá ${title}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500" onClick={onDelete}><Trash2 className="h-4 w-4" /></button>
     </div>
   </article>;
 }
@@ -98,10 +102,12 @@ export default function StyleLibraryPage() {
   const selectedKolId = useAppStore((state) => state.selectedKolId);
   const selectedSavedStyleId = useAppStore((state) => state.selectedSavedStyleId);
   const stylesQuery = useQuery({ queryKey: ["styles"], queryFn: () => apiRequest<{ styles: SavedStyle[] }>("/api/styles") });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiRequest<{ projects: Project[] }>("/api/projects") });
   const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: KOLStyle[] }>("/api/prompt-styles") });
   const styles = useMemo(() => stylesQuery.data?.styles || [], [stylesQuery.data?.styles]);
+  const projects = projectsQuery.data?.projects || [];
   const kolList = promptQuery.data?.styles || kolStyles;
-  const filteredStyles = useMemo(() => styles.filter((style) => `${style.name} ${style.description} ${style.instruction}`.toLowerCase().includes(search.toLowerCase())), [styles, search]);
+  const filteredStyles = useMemo(() => styles.filter((style) => `${style.name} ${style.username || ""} ${style.projectName || ""} ${style.description} ${style.instruction}`.toLowerCase().includes(search.toLowerCase())), [styles, search]);
   const groupedStyles = useMemo(() => ({
     kol: filteredStyles.filter((style) => resolveStyleCategory(style) === "kol"),
     writing: filteredStyles.filter((style) => resolveStyleCategory(style) === "writing"),
@@ -265,6 +271,7 @@ export default function StyleLibraryPage() {
   const chooseSaved = (style: SavedStyle) => { commitWritingStyle(queryClient, { kolId: null, savedStyleId: style.id, discovered: null, source: "manual" }); };
   const chooseKOL = (id: string) => { commitWritingStyle(queryClient, { kolId: id, savedStyleId: null, discovered: null, source: "manual" }); };
   const clearStyle = () => { commitWritingStyle(queryClient, null); };
+  const detailFace = detail?.type === "saved" && resolveStyleCategory(detail.style) === "project" ? projectStyleFace(detail.style, projects) : null;
 
   return <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-6xl">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Cá nhân hoá</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Thư viện phong cách</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Phong cách KOL lấy từ username trên X. Phong cách bài viết có thể tự mô tả, hoặc phân tích bài của một KOL về một dự án. Phong cách dự án đến từ tab Khám phá.</p></div><div className="flex gap-2"><Button variant="outline" className="gap-1 rounded-xl" onClick={clearStyle}><X className="h-4 w-4" />Dùng mặc định</Button><Button className="gap-1 rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCreating(!creating)}><Plus className="h-4 w-4" />Tạo phong cách</Button></div></div>
@@ -320,7 +327,7 @@ export default function StyleLibraryPage() {
       const items = groupedStyles[group.id];
       return <section key={group.id} className="mt-7">
         <div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-semibold">{group.title}</h2><p className="mt-1 text-xs text-slate-500">{group.hint}</p></div><span className="text-xs text-slate-400">{items.length}</span></div>
-        {items.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map((style, index) => <SavedStyleCard key={style.id} style={style} active={selectedSavedStyleId === style.id} color={colors[index % colors.length]} onChoose={() => chooseSaved(style)} onView={() => { setEditing(false); setDetail({ type: "saved", style }); }} onEdit={() => { updateStyle.reset(); setEditing(true); setDetail({ type: "saved", style }); }} onDelete={() => setStyleToDelete(style)} />)}</div> : <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-8 text-center text-sm text-slate-500">{search.trim() ? "Không có phong cách khớp." : group.empty}</div>}
+        {items.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map((style, index) => <SavedStyleCard key={style.id} style={style} projects={projects} active={selectedSavedStyleId === style.id} color={colors[index % colors.length]} onChoose={() => chooseSaved(style)} onView={() => { setEditing(false); setDetail({ type: "saved", style }); }} onEdit={() => { updateStyle.reset(); setEditing(true); setDetail({ type: "saved", style }); }} onDelete={() => setStyleToDelete(style)} />)}</div> : <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-8 text-center text-sm text-slate-500">{search.trim() ? "Không có phong cách khớp." : group.empty}</div>}
       </section>;
     })}
 
@@ -328,11 +335,13 @@ export default function StyleLibraryPage() {
     <StyleDetailDialog
       open={Boolean(detail)}
       name={detail?.style.name || ""}
+      displayName={detailFace?.title}
       kindLabel={detail?.type === "saved" ? categoryLabel(resolveStyleCategory(detail.style)) : "KOL dựng sẵn"}
       description={detail?.type === "saved" ? detail.style.description : detail?.type === "kol" ? detail.style.style_vi || detail.style.style : ""}
       instruction={detail?.type === "saved" ? detail.style.instruction : detail?.type === "kol" ? detail.style.content : ""}
-      username={detail?.type === "saved" ? detail.style.username : null}
-      projectName={detail?.type === "saved" ? detail.style.projectName : null}
+      username={detail?.type === "saved" ? (detailFace ? (detailFace.meta ? detail.style.username : null) : detail.style.username) : null}
+      projectName={detail?.type === "saved" && !detailFace ? detail.style.projectName : null}
+      faces={detailFace}
       avatarUrl={detail?.type === "saved" ? (resolveStyleCategory(detail.style) === "kol" ? kolAvatarSrc({ username: detail.style.username, avatarUrl: detail.style.avatarUrl }) : "") : detail?.type === "kol" ? kolAvatarSrc({ profileImgUrl: detail.style.profileImgUrl, username: detail.style.username, text: detail.style.content }) : ""}
       active={detail?.type === "saved" ? selectedSavedStyleId === detail.style.id : selectedKolId === detail?.style.id}
       canEdit={detail?.type === "saved"}

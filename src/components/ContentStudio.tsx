@@ -29,6 +29,7 @@ import { useAppStore } from "@/lib/app-store";
 import { apiRequest, ApiError } from "@/lib/http";
 import { buildContentPrompt } from "@/lib/prompt-builder";
 import { getKOLStyle } from "@/lib/kol-styles";
+import { styleDisplayName } from "@/lib/project-style-label";
 import { forgetBrowserAccessCode } from "@/lib/sorsa-access";
 import { displayWritingStyle, emptyWritingStyle, writingStyleChosen, writingStyleEqual } from "@/lib/writing-style";
 import { applyWritingStyle, bindWritingProject, commitWritingStyle, saveProjectWritingStyle } from "@/lib/writing-style-client";
@@ -329,10 +330,11 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
   const setProviderConfig = useAppStore((state) => state.setProviderConfig);
   const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: Array<{ id: string; name: string; style?: string; content: string }> }>("/api/prompt-styles") });
   const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedKolId) || getKOLStyle(selectedKolId);
+  const styleLabel = savedStyle ? styleDisplayName(savedStyle) : selectedKOL?.name || (discoveredStyle ? `@${discoveredStyle.username}` : null);
   const [optionsSaveState, setOptionsSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const form = useForm<ComposerValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { mode: composerMode, kolStyle: selectedKOL ? { id: selectedKOL.id, name: selectedKOL.name, instruction: selectedKOL.style || selectedKOL.content } : null, discoveredStyle, libraryStyle: savedStyle ? { id: savedStyle.id, name: savedStyle.name, instruction: savedStyle.instruction, samples: savedStyle.samples } : null, topic: "", sourceText: "", ...project.contentOptions, provider: savedProvider, model: savedModel, apiKey: savedApiKey },
+    defaultValues: { mode: composerMode, kolStyle: selectedKOL ? { id: selectedKOL.id, name: selectedKOL.name, instruction: selectedKOL.style || selectedKOL.content } : null, discoveredStyle, libraryStyle: savedStyle ? { id: savedStyle.id, name: styleLabel || savedStyle.name, instruction: savedStyle.instruction, samples: savedStyle.samples } : null, topic: "", sourceText: "", ...project.contentOptions, provider: savedProvider, model: savedModel, apiKey: savedApiKey },
   });
   useEffect(() => {
     form.setValue("mode", composerMode, { shouldValidate: true });
@@ -345,8 +347,8 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
     form.setValue("discoveredStyle", discoveredStyle);
   }, [discoveredStyle, form]);
   useEffect(() => {
-    form.setValue("libraryStyle", savedStyle ? { id: savedStyle.id, name: savedStyle.name, instruction: savedStyle.instruction, samples: savedStyle.samples } : null);
-  }, [form, savedStyle]);
+    form.setValue("libraryStyle", savedStyle ? { id: savedStyle.id, name: styleLabel || savedStyle.name, instruction: savedStyle.instruction, samples: savedStyle.samples } : null);
+  }, [form, savedStyle, styleLabel]);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let hasPendingChanges = false;
@@ -448,14 +450,14 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
     <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-3xl space-y-8">
       {!history.isLoading && items.length === 0 && !pendingVisible && <div className="py-16 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"><Sparkles className="h-6 w-6 text-emerald-600" /></div><h2 className="mt-5 text-2xl font-semibold tracking-tight">Bạn muốn viết gì hôm nay?</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">Nhập chủ đề hoặc ý tưởng. Nếu đã có rule, tài liệu hoặc style, có thể gửi trống.</p></div>}
       {items.map((item) => <HistoryTurn key={item.id} item={item} />)}
-      {pendingVisible && pendingTurn && <UserBubble topic={pendingTurn.topic} mode={composerMode} styleLabel={savedStyle?.name || selectedKOL?.name || (discoveredStyle ? `@${discoveredStyle.username}` : null)} meta={`${form.getValues("language").toUpperCase()} · ${form.getValues("tone")} · ${form.getValues("model")}`} />}
+      {pendingVisible && pendingTurn && <UserBubble topic={pendingTurn.topic} mode={composerMode} styleLabel={styleLabel} meta={`${form.getValues("language").toUpperCase()} · ${form.getValues("tone")} · ${form.getValues("model")}`} />}
       {generate.isPending && <div className="flex items-center gap-3 text-sm text-slate-500"><span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-400 text-slate-950"><Sparkles className="h-3.5 w-3.5" /></span>Đang tạo nội dung...</div>}
     </div></div>
     <div className="shrink-0 px-4 pb-5 sm:px-8"><div className="mx-auto max-w-3xl">
       <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
         <div className="mx-2 mb-1 flex flex-wrap items-center gap-1.5">
           <StyleQuickPicker hidden={Boolean(selectedKOL || discoveredStyle || savedStyle)} />
-          {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {savedStyle?.name || selectedKOL?.name || `@${discoveredStyle?.username}`}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { commitWritingStyle(queryClient, null, project.id); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
+          {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {styleLabel}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { commitWritingStyle(queryClient, null, project.id); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
           {keywordChips.slice(0, 6).map((keyword) => <span key={keyword} className="inline-flex max-w-48 items-center truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700" title={keyword}>Từ khóa: {keyword}</span>)}
           {keywordChips.length > 6 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">+{keywordChips.length - 6}</span>}
         </div>

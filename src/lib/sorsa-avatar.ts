@@ -12,6 +12,22 @@ export function normalizeSorsaAvatar(value: unknown) {
   }
 }
 
+export function storedStyleAvatar(value: unknown) {
+  const twimg = normalizeSorsaAvatar(value);
+  if (twimg) return twimg;
+  if (typeof value !== "string") return "";
+  const raw = value.trim();
+  if (!raw || raw.length > 500) return "";
+  if (raw.startsWith("/uploads/")) return raw;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.hostname === "unavatar.io") return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
 function getJson(path: string, apiKey: string) {
   return new Promise<Record<string, unknown>>((resolve, reject) => {
     const request = https.request({

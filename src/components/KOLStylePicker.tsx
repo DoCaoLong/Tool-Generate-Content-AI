@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/app-store";
 import { commitWritingStyle } from "@/lib/writing-style-client";
 import { apiRequest } from "@/lib/http";
 import { getKOLStyle } from "@/lib/kol-styles";
+import { styleDisplayName } from "@/lib/project-style-label";
 import type { DiscoveredStyle, SavedStyle } from "@/lib/types";
 
 export default function KOLStylePicker({ selectedId, customStyle, selectedSavedStyle, collapsed }: { selectedId: string | null; customStyle: DiscoveredStyle | null; selectedSavedStyle: SavedStyle | null; collapsed?: boolean }) {
@@ -16,7 +17,7 @@ export default function KOLStylePicker({ selectedId, customStyle, selectedSavedS
   const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
   const promptQuery = useQuery({ queryKey: ["prompt-styles"], queryFn: () => apiRequest<{ styles: Array<{ id: string; name: string }> }>("/api/prompt-styles") });
   const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedId) || getKOLStyle(selectedId);
-  const activeName = selectedSavedStyle?.name || selectedKOL?.name || (customStyle ? `@${customStyle.username}` : null);
+  const activeName = (selectedSavedStyle ? styleDisplayName(selectedSavedStyle) : null) || selectedKOL?.name || (customStyle ? `@${customStyle.username}` : null);
   const isStylesRoute = pathname === "/styles";
   const label = activeName || "Phong cách";
 

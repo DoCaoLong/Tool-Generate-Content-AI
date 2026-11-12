@@ -17,6 +17,7 @@ const requestSchema = z.object({
   projectName: z.string().trim().max(100).optional().default(""),
   nextCursor: z.string().max(4000).optional(),
   radar: z.boolean().optional().default(false),
+  order: z.enum(["popular", "latest"]).optional().default("popular"),
 }).superRefine((data, context) => {
   if (!data.username && !data.projectName) {
     context.addIssue({ code: "custom", message: "Hãy nhập username hoặc tên dự án." });
@@ -129,18 +130,18 @@ function mapTweets(tweets: SorsaTweet[], fallbackUsername: string) {
 
 function sorsaError(status: number, data: SorsaResponse) {
   const fallback = status === 400
-    ? "Tham số gửi tới Sorsa không hợp lệ."
+    ? "Tham số tìm bài viết không hợp lệ."
     : status === 401
-      ? "Sorsa API key không hợp lệ."
+      ? "API key lấy bài viết không hợp lệ."
       : status === 403
-        ? "Sorsa API đã hết quota hoặc gói dịch vụ đã hết hạn."
+        ? "Dịch vụ lấy bài viết đã hết quota hoặc gói dịch vụ đã hết hạn."
         : status === 404
           ? "Không tìm thấy tài khoản hoặc bài viết công khai trên X."
           : status === 429
-            ? "Đang vượt giới hạn Sorsa API. Hãy thử lại sau ít phút."
+            ? "Đang vượt giới hạn lấy bài viết. Hãy thử lại sau ít phút."
             : status >= 500
-              ? "Sorsa đang lỗi. Hãy thử lại sau."
-              : "Không thể lấy dữ liệu từ Sorsa API.";
+              ? "Dịch vụ lấy bài viết đang lỗi. Hãy thử lại sau."
+              : "Không thể lấy dữ liệu bài viết trên X.";
   return errorResponse(data.message || fallback, status >= 400 && status < 600 ? status : 502);
 }
 
@@ -150,7 +151,7 @@ function parseSorsaBody(raw: string): SorsaResponse {
     const data = JSON.parse(raw) as SorsaResponse;
     return data && typeof data === "object" ? data : {};
   } catch {
-    return { message: "Sorsa trả về dữ liệu không đọc được." };
+    return { message: "Dịch vụ lấy bài viết trả về dữ liệu không đọc được." };
   }
 }
 
@@ -237,7 +238,7 @@ function discoverError(error: unknown) {
   if (error instanceof TwitterApisHttpError) return twitterApisError(error.status);
   if (error instanceof Error && error.message === "connect-twitterapis") return errorResponse("Không thể kết nối đến TwitterAPIs. Hãy thử lại sau.", 502);
   if (error instanceof SorsaHttpError) return sorsaError(error.status, error.data);
-  if (error instanceof Error && error.message === "connect") return errorResponse("Không thể kết nối đến Sorsa API. Hãy thử lại sau.", 502);
+  if (error instanceof Error && error.message === "connect") return errorResponse("Không thể kết nối đến dịch vụ lấy bài viết. Hãy thử lại sau.", 502);
   return errorResponse("Không thể lấy dữ liệu từ API bài viết trên X.", 502);
 }
 
@@ -259,7 +260,7 @@ export async function POST(request: Request) {
 
   const xApi = await getXApiConfig();
   if (!xApi.apiKey) {
-    return errorResponse(xApi.provider === "twitterapis" ? "TwitterAPIs API key chưa được cấu hình (env hoặc Admin)." : "Sorsa API key chưa được cấu hình (env hoặc Admin).", 503);
+    return errorResponse(xApi.provider === "twitterapis" ? "TwitterAPIs API key chưa được cấu hình (env hoặc Admin)." : "API key lấy bài viết chưa được cấu hình (env hoặc Admin).", 503);
   }
 
   const username = parsed.data.username;
@@ -295,6 +296,7 @@ export async function POST(request: Request) {
   const source = radar ? "radar" : useMentions ? "mentions" : username ? "author" : "topic";
   const fallbackUsername = username || projectHandle || "unknown";
   const cursor = parsed.data.nextCursor ? { next_cursor: parsed.data.nextCursor } : {};
+  const mentionOrder = parsed.data.order;
 
   let endpoint = "search-tweets";
   let body: Record<string, unknown>;
@@ -304,10 +306,10 @@ export async function POST(request: Request) {
     body = { query: radarQuery, order: "latest", ...cursor };
   } else if (useMentions && projectHandle) {
     endpoint = "mentions";
-    body = { query: projectHandle, order: "popular", ...cursor };
+    body = { query: projectHandle, order: mentionOrder, ...cursor };
     queryLabel = `@${projectHandle}`;
   } else if (!username && projectName) {
-    body = { query: `${projectQuery(projectName)} -filter:retweets`, order: "popular", ...cursor };
+    body = { query: `${projectQuery(projectName)} -filter:retweets`, order: mentionOrder, ...cursor };
     queryLabel = String(body.query);
   } else {
     const projectFilter = projectName ? projectQuery(projectName) : "";
@@ -320,7 +322,7 @@ export async function POST(request: Request) {
   try {
     if (xApi.provider === "twitterapis") {
       const searchQuery = endpoint === "mentions" && projectHandle ? `@${projectHandle} -filter:retweets` : String(body.query);
-      const order = endpoint === "mentions" ? "popular" : String(body.order || "latest");
+      const order = endpoint === "mentions" ? mentionOrder : String(body.order || "latest");
       data = await searchTwitterApisWithRetry(searchQuery, order, parsed.data.nextCursor, xApi.apiKey);
     } else {
       try {
@@ -329,7 +331,7 @@ export async function POST(request: Request) {
         const mentionsDown = error instanceof Error && error.message === "connect" || error instanceof SorsaHttpError && (error.status === 404 || error.status >= 500);
         const fallback = endpoint === "mentions" && projectHandle && mentionsDown;
         if (!fallback) throw error;
-        data = await sorsaPostWithRetry("search-tweets", { query: `@${projectHandle} -filter:retweets`, order: "popular", ...cursor }, xApi.apiKey);
+        data = await sorsaPostWithRetry("search-tweets", { query: `@${projectHandle} -filter:retweets`, order: mentionOrder, ...cursor }, xApi.apiKey);
       }
     }
   } catch (error) {
@@ -338,7 +340,7 @@ export async function POST(request: Request) {
   }
 
   let tweets = mapTweets(data.tweets || [], fallbackUsername);
-  if (source !== "author" && source !== "radar") {
+  if (source !== "author" && source !== "radar" && mentionOrder !== "latest") {
     tweets = [...tweets].sort((left, right) => right.replies - left.replies || right.likes - left.likes);
   }
 

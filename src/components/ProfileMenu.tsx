@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, CircleHelp, LogOut, Settings, SlidersHorizontal, Sparkles, UserRound } from "lucide-react";
+import { ChevronRight, CircleHelp, LogOut, Settings, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { UserProfile } from "@/lib/types";
@@ -8,14 +8,14 @@ import type { UserProfile } from "@/lib/types";
 export default function ProfileMenu({ user, onLogout, collapsed }: { user: UserProfile; onLogout: () => void; collapsed?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const plan = user.sorsaAccess === true ? "Plus" : "Free";
   const go = (href: string) => { setOpen(false); router.push(href); };
 
   return <div className={`relative border-t border-white/10 p-3 ${collapsed ? "md:p-2" : ""}`}>
     {open && <><button aria-label="Đóng menu tài khoản" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} /><div className={`absolute z-50 overflow-hidden rounded-3xl border border-white/10 bg-[#343434] p-2 text-white shadow-2xl ${collapsed ? "bottom-[72px] left-3 right-3 md:bottom-2 md:left-[calc(100%+8px)] md:right-auto md:w-64" : "bottom-[72px] left-3 right-3"}`}>
-      <div className="flex items-center gap-3 px-3 py-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-300 font-bold text-slate-950">{user.name.slice(0, 1).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-slate-400">Plus</p></div></div>
+      <div className="flex items-center gap-3 px-3 py-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-300 font-bold text-slate-950">{user.name.slice(0, 1).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-slate-400">{plan}</p></div></div>
       <div className="mx-2 border-t border-white/15" />
-      <MenuItem icon={Sparkles} label="Nâng cấp gói" onClick={() => go("/settings#billing")} />
-      <MenuItem icon={SlidersHorizontal} label="Cá nhân hoá" onClick={() => go("/styles")} />
+      {/* Tạm ẩn: "Nâng cấp gói" (/settings#billing) và "Cá nhân hoá" (/styles). */}
       <MenuItem icon={UserRound} label="Hồ sơ" onClick={() => go("/profile")} />
       <MenuItem icon={Settings} label="Cài đặt" onClick={() => go("/settings")} />
       <div className="mx-2 my-1 border-t border-white/15" />
@@ -24,7 +24,7 @@ export default function ProfileMenu({ user, onLogout, collapsed }: { user: UserP
     </div></>}
     <button title={collapsed ? user.name : undefined} className={`flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors ${collapsed ? "md:justify-center md:gap-0 md:p-1.5" : ""} ${open ? "bg-white/10" : "hover:bg-white/5"}`} onClick={() => setOpen(!open)}>
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-300 font-semibold text-slate-950">{user.name.slice(0, 1).toUpperCase()}</span>
-      <span className={`min-w-0 flex-1 ${collapsed ? "md:hidden" : ""}`}><span className="block truncate text-sm font-medium">{user.name}</span><span className="block truncate text-xs text-slate-500">Plus</span></span>
+      <span className={`min-w-0 flex-1 ${collapsed ? "md:hidden" : ""}`}><span className="block truncate text-sm font-medium">{user.name}</span><span className="block truncate text-xs text-slate-500">{plan}</span></span>
       <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${open ? "-rotate-90" : ""} ${collapsed ? "md:hidden" : ""}`} />
     </button>
   </div>;

@@ -1,5 +1,21 @@
 # CHANGE_MEMORY
 
+## 2026-11-12
+
+- Chip "Viết từ bài mới nhất" nay hiện với mọi phong cách dự án, kể cả khi tên dự án không phải @handle hợp lệ (khi đó tìm theo cụm tên, `order: latest`). `/api/discover` áp dụng `order` cho cả nhánh tìm theo tên dự án.
+- Bỏ dòng "Cá nhân hoá" ở đầu Thư viện phong cách. Đổi icon màu tím sang xanh lá: Khám phá và Phong cách ở sidebar, chip "Viết từ bài mới nhất", icon và nhãn loại trên thẻ phong cách.
+- Bỏ tên "Sorsa" khỏi mọi thông báo và văn bản người dùng thấy (lỗi của `/api/discover`, mô tả bài mẫu ở Khám phá, huy hiệu cạnh nút Khám phá trong sidebar). Tên Sorsa chỉ còn ở trang Admin (chọn nhà cung cấp và nhập API key), tên biến, route và cờ `sorsaAccess`.
+- Bỏ tiêu đề "Cài đặt" và "Hồ sơ" (kèm dòng "Tài khoản") trong nội dung trang vì header đã hiện tiêu đề.
+- Thư viện phong cách: gọn form Tạo phong cách từ 3 tab xuống 2 lựa chọn dạng thẻ, "Tự mô tả" và "Phân tích từ X". Phân tích từ X dùng một form: username bắt buộc, dự án không bắt buộc (để trống thì lưu Phong cách KOL, có dự án thì lưu Phong cách bài viết). Các trường tên, mô tả, hướng dẫn chỉ hiện sau khi phân tích xong (hoặc ngay với Tự mô tả).
+- Tab Khám phá: bỏ dòng "Sorsa · X discovery" và icon ở đầu mục tìm kiếm, giữ tiêu đề và mô tả.
+- Thêm đổi tên hiển thị ở trang Hồ sơ và `PATCH /api/auth/profile` (2–60 ký tự). Tên nằm trong JWT phiên nên route cấp lại phiên; client cập nhật cache `me`.
+- Nhãn gói trong menu tài khoản mặc định là "Free", chỉ hiện "Plus" khi tài khoản đã nhập access code đúng (`user.sorsaAccess`).
+- Thư viện phong cách: thêm tab tạo "Của bạn" (mặc định) để tự mô tả văn phong mà không cần KOL hay dự án, và nhóm "Phong cách của bạn" trong danh sách. Lưu bằng `category: writing` không kèm username/projectName, nên không đổi API. Tab "Bài viết" nay chỉ dùng để phân tích bài của KOL về dự án (bắt buộc phân tích trước khi lưu); nhóm "Phong cách bài viết" chỉ chứa loại có username và dự án.
+- Tạm ẩn mục "Nâng cấp gói" và "Cá nhân hoá" trong menu tài khoản (`ProfileMenu`), route `/settings#billing` và `/styles` vẫn còn.
+- Thêm form đổi mật khẩu ở trang Hồ sơ và `POST /api/auth/change-password` (cần mật khẩu hiện tại, mật khẩu mới tối thiểu 8 ký tự và khác mật khẩu cũ, không tạo lại session).
+- Thêm chip "Viết từ bài mới nhất" ở composer khi dự án đang dùng phong cách dự án (chế độ Viết mới). Khi bấm Gửi, app gọi `/api/discover` với @mention của dự án và `order: latest`, lấy bài đầu tiên làm nội dung nguồn rồi chạy chế độ Viết lại theo phong cách đã chọn. `/api/discover` nhận thêm `order` (`popular` mặc định, `latest`) cho nhánh mention.
+- Lưu trạng thái chip "Viết từ bài mới nhất" theo từng dự án: thêm `writeFromLatest` (boolean, mặc định `false`) vào `contentOptions`, tự lưu cùng autosave tuỳ chọn qua `PATCH /api/projects/[projectId]/options`.
+
 ## 2026-10-19
 
 - Phong cách đang dùng được lưu trên từng dự án. Qua lại giữa các dự án thì mỗi dự án mở lại đúng phong cách đã chọn, không phải chọn lại. Dự án chưa từng chọn vẫn tự khớp phong cách nếu tên hoặc @handle trùng, trừ phong cách KOL trên brief Nucleus. Bỏ phong cách thì dự án đó để trống.

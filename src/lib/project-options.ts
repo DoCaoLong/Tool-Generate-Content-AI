@@ -8,6 +8,7 @@ export const defaultProjectContentOptions: ProjectContentOptions = {
   tone: "natural",
   length: "medium",
   customInstructions: "",
+  writeFromLatest: false,
 };
 
 export function normalizeProjectContentOptions(value?: Partial<ProjectContentOptions> | null): ProjectContentOptions {

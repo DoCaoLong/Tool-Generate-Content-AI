@@ -29,13 +29,14 @@ import { useAppStore } from "@/lib/app-store";
 import { apiRequest, ApiError } from "@/lib/http";
 import { buildContentPrompt } from "@/lib/prompt-builder";
 import { getKOLStyle } from "@/lib/kol-styles";
-import { styleDisplayName } from "@/lib/project-style-label";
+import { projectStyleLabel, styleDisplayName } from "@/lib/project-style-label";
+import { resolveStyleCategory } from "@/lib/style-category";
 import { forgetBrowserAccessCode } from "@/lib/sorsa-access";
 import { displayWritingStyle, emptyWritingStyle, writingStyleChosen, writingStyleEqual } from "@/lib/writing-style";
 import { applyWritingStyle, bindWritingProject, commitWritingStyle, saveProjectWritingStyle } from "@/lib/writing-style-client";
 import { providerLabels, providerModels, providers } from "@/lib/providers";
 import { prefetchNucleusList } from "@/lib/nucleus-query";
-import type { Generation, Project, ProjectContentOptions, ProjectWritingStyle, Provider, SavedStyle, UserProfile } from "@/lib/types";
+import type { DiscoveredTweet, Generation, Project, ProjectContentOptions, ProjectWritingStyle, Provider, SavedStyle, UserProfile } from "@/lib/types";
 
 const formSchema = z.object({
   mode: z.enum(["new", "rewrite"]),
@@ -51,6 +52,7 @@ const formSchema = z.object({
   tone: z.string(),
   length: z.string(),
   customInstructions: z.string(),
+  writeFromLatest: z.boolean(),
   provider: z.enum(["openai", "gemini", "deepseek", "anthropic", "xai", "openrouter"]),
   model: z.string().min(1),
   apiKey: z.string().min(1, "Bạn cần nhập API key."),
@@ -76,7 +78,7 @@ function fallbackTopic(values: Pick<ComposerValues, "rules" | "documents" | "kol
 
 type ComposerValues = z.infer<typeof formSchema>;
 
-const projectOptionFieldNames: Array<keyof ProjectContentOptions> = ["keywords", "rules", "documents", "language", "tone", "length", "customInstructions"];
+const projectOptionFieldNames: Array<keyof ProjectContentOptions> = ["keywords", "rules", "documents", "language", "tone", "length", "customInstructions", "writeFromLatest"];
 const quickSelectClass = "h-9 rounded-xl border border-slate-200 bg-slate-50 pl-2 text-xs text-slate-700 outline-none focus:border-emerald-400";
 const toneOptions = [
   ["natural", "Tự nhiên"],
@@ -105,6 +107,7 @@ function projectOptionsFromForm(values: ComposerValues): ProjectContentOptions {
     tone: values.tone,
     length: values.length,
     customInstructions: values.customInstructions,
+    writeFromLatest: values.writeFromLatest,
   };
 }
 
@@ -237,7 +240,7 @@ function Workspace({ user }: { user: UserProfile }) {
           <div className="space-y-1">
             <button type="button" aria-label="Dự án mới" title={sidebarCollapsed ? "Dự án mới" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} text-slate-300 hover:bg-white/5 hover:text-white`} onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 shrink-0" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Dự án mới</span></button>
             <KOLStylePicker selectedId={sidebarKolId} customStyle={sidebarDiscovered} selectedSavedStyle={selectedSavedStyle} collapsed={sidebarCollapsed} />
-            <button title={sidebarCollapsed ? "Khám phá" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} ${isDiscoverRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onClick={() => { router.push("/discover"); setSidebarOpen(false); }}><Compass className="h-4 w-4 shrink-0 text-violet-400" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Khám phá</span>{!sidebarCollapsed && <span className="rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold text-violet-300">Sorsa</span>}</button>
+            <button title={sidebarCollapsed ? "Khám phá" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} ${isDiscoverRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onClick={() => { router.push("/discover"); setSidebarOpen(false); }}><Compass className="h-4 w-4 shrink-0 text-emerald-400" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Khám phá</span></button>
             <button title={sidebarCollapsed ? "Nucleus" : undefined} className={`flex h-11 w-full items-center rounded-xl text-sm transition-colors ${sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3 text-left"} ${isNucleusRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`} onMouseEnter={() => prefetchNucleusList(queryClient)} onFocus={() => prefetchNucleusList(queryClient)} onClick={() => { router.push("/nucleus"); setSidebarOpen(false); }}><Image src="/nucleus-logo.png" alt="Nucleus" width={18} height={18} className="h-4 w-4 shrink-0 rounded-sm object-contain" /><span className={`flex-1 ${sidebarCollapsed ? "md:hidden" : ""}`}>Nucleus</span>{!sidebarCollapsed && <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">InfoFi</span>}</button>
           </div>
         </div>
@@ -332,6 +335,11 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
   const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedKolId) || getKOLStyle(selectedKolId);
   const styleLabel = savedStyle ? styleDisplayName(savedStyle) : selectedKOL?.name || (discoveredStyle ? `@${discoveredStyle.username}` : null);
   const [optionsSaveState, setOptionsSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [fetchingLatest, setFetchingLatest] = useState(false);
+  const [latestError, setLatestError] = useState<string | null>(null);
+  const latestMentionHandle = savedStyle && resolveStyleCategory(savedStyle) === "project" ? (projectStyleLabel(savedStyle).projectHandle || (savedStyle.projectName || "").trim().replace(/^@/, "") || projectStyleLabel(savedStyle).userHandle) : "";
+  const latestMentionIsHandle = /^[A-Za-z0-9_]{1,15}$/.test(latestMentionHandle);
+  const latestMentionQuery = latestMentionIsHandle ? `@${latestMentionHandle}` : latestMentionHandle;
   const form = useForm<ComposerValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { mode: composerMode, kolStyle: selectedKOL ? { id: selectedKOL.id, name: selectedKOL.name, instruction: selectedKOL.style || selectedKOL.content } : null, discoveredStyle, libraryStyle: savedStyle ? { id: savedStyle.id, name: styleLabel || savedStyle.name, instruction: savedStyle.instruction, samples: savedStyle.samples } : null, topic: "", sourceText: "", ...project.contentOptions, provider: savedProvider, model: savedModel, apiKey: savedApiKey },
@@ -395,6 +403,7 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
   const listRef = useRef<HTMLDivElement>(null);
   const [pendingTurn, setPendingTurn] = useState<{ topic: string; startedAt: number } | null>(null);
   const pendingVisible = Boolean(pendingTurn && !items.some((item) => item.input.topic === pendingTurn.topic && new Date(item.createdAt).getTime() >= pendingTurn.startedAt - 2000));
+  const fromLatest = useWatch({ control: form.control, name: "writeFromLatest" });
   const activeProvider = useWatch({ control: form.control, name: "provider" });
   const activeKeywords = useWatch({ control: form.control, name: "keywords" });
   const keywordChips = useMemo(() => Array.from(new Set(activeKeywords.split(/[\n,]/).map((keyword) => keyword.trim()).filter(Boolean))), [activeKeywords]);
@@ -444,7 +453,30 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
   }, [items.length, generate.isPending, pendingVisible]);
 
   const topicField = form.register("topic");
-  const submitCompose = form.handleSubmit((values) => generate.mutate(values));
+  const submitForm = form.handleSubmit((values) => generate.mutate(values));
+  const submitCompose = async (event?: React.BaseSyntheticEvent) => {
+    event?.preventDefault();
+    if (!latestMentionHandle || !fromLatest || composerMode !== "new") return submitForm();
+    setLatestError(null);
+    setFetchingLatest(true);
+    try {
+      const data = await apiRequest<{ tweets: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ projectName: latestMentionQuery, order: "latest" }) });
+      const latest = data.tweets[0];
+      if (!latest) throw new Error(`Chưa tìm thấy bài mới nhất về ${latestMentionQuery}.`);
+      form.setValue("mode", "rewrite");
+      form.setValue("sourceText", latest.text);
+      try {
+        await submitForm();
+      } finally {
+        form.setValue("mode", composerMode);
+        form.setValue("sourceText", "");
+      }
+    } catch (error) {
+      setLatestError(error instanceof Error ? error.message : "Không thể lấy bài mới nhất.");
+    } finally {
+      setFetchingLatest(false);
+    }
+  };
 
   return <FormProvider {...form}><form className="flex min-h-0 flex-1 flex-col" onSubmit={submitCompose}>
     <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-3xl space-y-8">
@@ -458,6 +490,7 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
         <div className="mx-2 mb-1 flex flex-wrap items-center gap-1.5">
           <StyleQuickPicker hidden={Boolean(selectedKOL || discoveredStyle || savedStyle)} />
           {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {styleLabel}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { commitWritingStyle(queryClient, null, project.id); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
+          {latestMentionHandle && composerMode === "new" && <button type="button" aria-pressed={fromLatest} title={`Lấy bài mới nhất về ${latestMentionQuery} rồi viết lại theo phong cách đã chọn`} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${fromLatest ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50"}`} onClick={() => { form.setValue("writeFromLatest", !fromLatest); setLatestError(null); }}><Compass className="h-3 w-3" />Viết từ bài mới nhất</button>}
           {keywordChips.slice(0, 6).map((keyword) => <span key={keyword} className="inline-flex max-w-48 items-center truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700" title={keyword}>Từ khóa: {keyword}</span>)}
           {keywordChips.length > 6 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">+{keywordChips.length - 6}</span>}
         </div>
@@ -468,9 +501,9 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
           <NativeSelect aria-label="Ngôn ngữ" className={quickSelectClass} {...form.register("language")}><option value="vi">Tiếng Việt</option><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ko">한국어</option></NativeSelect>
           <NativeSelect aria-label="Giọng điệu" className={quickSelectClass} {...form.register("tone")}>{toneOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</NativeSelect>
           <NativeSelect aria-label="Độ dài" className={quickSelectClass} {...form.register("length")}><option value="short">Ngắn</option><option value="medium">Vừa</option><option value="long">Dài</option></NativeSelect>
-        </div><Button className="h-9 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800" disabled={generate.isPending}><Send className="mr-2 h-4 w-4" />{composerMode === "rewrite" ? "Viết lại" : "Tạo nội dung"}</Button></div>
+        </div><Button className="h-9 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800" disabled={generate.isPending || fetchingLatest}><Send className="mr-2 h-4 w-4" />{fetchingLatest ? "Đang lấy bài mới nhất..." : composerMode === "rewrite" ? "Viết lại" : "Tạo nội dung"}</Button></div>
       </div>
-      {(form.formState.errors.topic || form.formState.errors.sourceText || form.formState.errors.apiKey || generate.error) && <p className="mt-2 text-sm text-red-600">{generate.error?.message || form.formState.errors.topic?.message || form.formState.errors.sourceText?.message || form.formState.errors.apiKey?.message}</p>}
+      {(latestError || form.formState.errors.topic || form.formState.errors.sourceText || form.formState.errors.apiKey || generate.error) && <p className="mt-2 text-sm text-red-600">{latestError || generate.error?.message || form.formState.errors.topic?.message || form.formState.errors.sourceText?.message || form.formState.errors.apiKey?.message}</p>}
       <p className="mt-2 text-center text-[11px] text-slate-400">Thiếu API key? Mở Cài đặt từ menu tài khoản.</p>
     </div></div>
   </form>{optionsOpen && <OptionsPanel saveState={optionsSaveState} />}</FormProvider>;

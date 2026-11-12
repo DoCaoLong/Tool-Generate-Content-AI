@@ -122,4 +122,8 @@
 - Priority: low
 - Scope: ở form Phong cách bài viết, sau khi Sorsa trả bài của KOL về một dự án, cho chọn bài mẫu rồi mới phân tích, giống ô chọn bài ở tab Khám phá. Hiện lấy tối đa 20 bài đầu.
 
+### Backlog-020: Chọn bài trong danh sách mention mới nhất
 
+- Status: proposed
+- Priority: low
+- Scope: thay vì tự lấy bài mention đầu tiên khi bấm Gửi, cho xem vài bài mention mới nhất để chọn bài cần viết lại, và bỏ qua bài trùng bài đã viết trước đó.

@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LoaderCircle, Search, Sparkles, UserRoundSearch } from "lucide-react";
+import { LoaderCircle, Search, Sparkles } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
@@ -145,7 +145,7 @@ export default function DiscoverPanel() {
         : "trong các bài gần đây";
     saveStyle.mutate({
       name: (title.length >= 2 ? title : `@${author}`).slice(0, 100),
-      description: `${samples.length} bài mẫu công khai được tìm qua Sorsa.`,
+      description: `${samples.length} bài mẫu công khai được tìm trên X.`,
       instruction: `Học cách viết của @${author} ${scopeInstruction}: giọng điệu, nhịp câu, cách mở bài, cấu trúc, từ vựng và cách kết thúc. Không sao chép nguyên văn và không giả danh tác giả.`,
       username: author,
       projectName: lastSearch.projectName || null,
@@ -207,8 +207,7 @@ export default function DiscoverPanel() {
       <div className="mx-auto max-w-5xl">
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="flex items-start gap-4">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-700"><UserRoundSearch className="h-6 w-6" /></span>
-            <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Sorsa · X discovery</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">Tìm bài mẫu theo tác giả hoặc dự án</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Nhập username tác giả và/hoặc @mention của dự án. Tìm theo dự án ưu tiên bài mention có nhiều bình luận nhất.</p></div>
+            <div><h2 className="text-2xl font-semibold tracking-tight">Tìm bài mẫu theo tác giả hoặc dự án</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Nhập username tác giả và/hoặc @mention của dự án. Tìm theo dự án ưu tiên bài mention có nhiều bình luận nhất.</p></div>
           </div>
 
           <form className="mt-7 grid gap-4 sm:grid-cols-[0.8fr_1.2fr_auto]" onSubmit={form.handleSubmit((values) => runSearch({ values }))}>

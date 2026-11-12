@@ -40,8 +40,8 @@ export default function SettingsPage() {
     setCheckMessage(result.valid ? `${providerLabels[values.provider]} hoạt động bình thường.` : result.error || "API không hoạt động.");
   };
 
-  return <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-3xl"><h1 className="text-3xl font-semibold tracking-tight">Cài đặt</h1>
-    <form className="mt-8 space-y-6" onSubmit={form.handleSubmit(save)}>
+  return <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-3xl">
+    <form className="space-y-6" onSubmit={form.handleSubmit(save)}>
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700"><KeyRound className="h-5 w-5" /></span><h2 className="font-semibold">API key</h2></div>
         <div className="relative mt-5"><Input type={visible ? "text" : "password"} className="h-12 rounded-xl pr-12 font-mono" placeholder="Nhập API key của provider" autoComplete="off" {...form.register("apiKey")} /><button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" onClick={() => setVisible(!visible)}>{visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>

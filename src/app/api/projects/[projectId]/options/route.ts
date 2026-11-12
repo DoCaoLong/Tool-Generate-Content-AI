@@ -12,6 +12,7 @@ const optionsSchema = z.object({
   tone: z.string().max(60).default("natural"),
   length: z.string().max(40).default("medium"),
   customInstructions: z.string().max(4000).default(""),
+  writeFromLatest: z.boolean().default(false),
 });
 
 export async function PATCH(request: Request, context: RouteContext) {

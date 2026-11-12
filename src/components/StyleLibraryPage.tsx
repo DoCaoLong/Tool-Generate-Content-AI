@@ -20,7 +20,7 @@ import { commitWritingStyle } from "@/lib/writing-style-client";
 import { getKOLInitials, kolAvatarSrc, kolStyles, type KOLStyle } from "@/lib/kol-styles";
 import { providerLabels } from "@/lib/providers";
 import { projectStyleFace } from "@/lib/project-style-face";
-import { resolveStyleCategory, type StyleCategory } from "@/lib/style-category";
+import { resolveStyleCategory } from "@/lib/style-category";
 import { buildStyleAnalysisPrompt, parseStyleAnalysis } from "@/lib/style-analysis";
 import type { DiscoveredTweet, Project, SavedStyle, UserProfile } from "@/lib/types";
 
@@ -43,17 +43,20 @@ const handlePattern = /^[A-Za-z0-9_]{1,15}$/;
 
 function compact(value: string) { return value.replace(/[#\s]+/g, " ").trim(); }
 function normalizeHandle(value: string) { return value.trim().replace(/^@/, ""); }
-function categoryLabel(category: StyleCategory) {
+type CreateMode = "custom" | "x";
+function isCustomStyle(style: SavedStyle) { return resolveStyleCategory(style) === "writing" && !style.username && !style.projectName; }
+function categoryLabel(style: SavedStyle) {
+  const category = resolveStyleCategory(style);
   if (category === "kol") return "Phong cách KOL";
   if (category === "project") return "Phong cách dự án";
-  return "Phong cách bài viết";
+  return isCustomStyle(style) ? "Phong cách của bạn" : "Phong cách bài viết";
 }
 
 function SavedStyleCard({ style, projects, active, color, onChoose, onView, onEdit, onDelete }: { style: SavedStyle; projects: Project[]; active: boolean; color: string; onChoose: () => void; onView: () => void; onEdit: () => void; onDelete: () => void }) {
   const category = resolveStyleCategory(style);
   const face = category === "project" ? projectStyleFace(style, projects) : null;
   const title = face?.title || style.name;
-  const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (face?.meta || "Dự án") : style.username && style.projectName ? `@${style.username} · @${style.projectName.replace(/^@/, "")}` : "Bài viết";
+  const badge = category === "kol" ? (style.username ? `@${style.username}` : "KOL") : category === "project" ? (face?.meta || "Dự án") : style.username && style.projectName ? `@${style.username} · @${style.projectName.replace(/^@/, "")}` : isCustomStyle(style) ? "Của bạn" : "Bài viết";
   const mark = getKOLInitials(style.username || style.projectName || style.name);
   const tone = category === "kol" ? "bg-violet-500" : category === "project" ? "bg-sky-500" : color;
   const avatar = category === "kol" ? kolAvatarSrc({ username: style.username, avatarUrl: style.avatarUrl }) : "";
@@ -66,7 +69,7 @@ function SavedStyleCard({ style, projects, active, color, onChoose, onView, onEd
           <p className="mt-1.5 line-clamp-3 text-xs leading-5 text-slate-500">{style.description || compact(style.instruction)}</p>
         </div>
       </div>
-      <div className="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-violet-500"><Sparkles className="h-3 w-3" />{badge}</div>
+      <div className="mt-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-emerald-600"><Sparkles className="h-3 w-3" />{badge}</div>
     </button>
     <div className="absolute right-3 top-3 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
       <button type="button" aria-label={`Xem ${title}`} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-100 hover:text-slate-700" onClick={onView}><Eye className="h-4 w-4" /></button>
@@ -79,10 +82,9 @@ function SavedStyleCard({ style, projects, active, color, onChoose, onView, onEd
 export default function StyleLibraryPage() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [createCategory, setCreateCategory] = useState<StyleCategory>("kol");
+  const [createCategory, setCreateCategory] = useState<CreateMode>("custom");
   const [search, setSearch] = useState("");
   const [username, setUsername] = useState("");
-  const [writingKol, setWritingKol] = useState("");
   const [writingProject, setWritingProject] = useState("");
   const [analyzed, setAnalyzed] = useState<AnalyzedAuthor | null>(null);
   const pendingAnalyze = useRef<AnalyzeTarget | null>(null);
@@ -109,18 +111,16 @@ export default function StyleLibraryPage() {
   const kolList = promptQuery.data?.styles || kolStyles;
   const filteredStyles = useMemo(() => styles.filter((style) => `${style.name} ${style.username || ""} ${style.projectName || ""} ${style.description} ${style.instruction}`.toLowerCase().includes(search.toLowerCase())), [styles, search]);
   const groupedStyles = useMemo(() => ({
+    custom: filteredStyles.filter(isCustomStyle),
     kol: filteredStyles.filter((style) => resolveStyleCategory(style) === "kol"),
-    writing: filteredStyles.filter((style) => resolveStyleCategory(style) === "writing"),
+    writing: filteredStyles.filter((style) => resolveStyleCategory(style) === "writing" && !isCustomStyle(style)),
     project: filteredStyles.filter((style) => resolveStyleCategory(style) === "project"),
   }), [filteredStyles]);
   const filteredKOLs = useMemo(() => kolList.filter((style) => `${style.name} ${style.content}`.toLowerCase().includes(search.toLowerCase())), [kolList, search]);
   const form = useForm<ManualStyleValues>({ defaultValues: { name: "", description: "", instruction: "", sampleText: "" } });
   const handle = normalizeHandle(username);
-  const writingKolHandle = normalizeHandle(writingKol);
   const writingProjectHandle = normalizeHandle(writingProject);
-  const kolMatch = analyzed && !analyzed.projectName && analyzed.username === handle ? analyzed : null;
-  const writingMatch = analyzed?.projectName && analyzed.username === writingKolHandle && analyzed.projectName === writingProjectHandle ? analyzed : null;
-  const writingHandlesFilled = Boolean(writingKolHandle || writingProjectHandle);
+  const xMatch = analyzed && analyzed.username === handle && (analyzed.projectName || "") === writingProjectHandle ? analyzed : null;
 
   const analyzeAuthor = useMutation({
     mutationFn: async ({ username: author, projectName }: AnalyzeTarget) => {
@@ -172,11 +172,13 @@ export default function StyleLibraryPage() {
   });
 
   const requestAnalyze = () => {
-    const target: AnalyzeTarget = createCategory === "writing"
-      ? { username: writingKolHandle, projectName: writingProjectHandle }
-      : { username: handle, projectName: "" };
-    if (!handlePattern.test(target.username) || (createCategory === "writing" && !handlePattern.test(target.projectName))) {
-      setLocalError(createCategory === "writing" ? "Hãy nhập đủ username KOL và username dự án." : "Username X chưa hợp lệ.");
+    const target: AnalyzeTarget = { username: handle, projectName: writingProjectHandle };
+    if (!handlePattern.test(target.username)) {
+      setLocalError("Username X chưa hợp lệ.");
+      return;
+    }
+    if (target.projectName && !handlePattern.test(target.projectName)) {
+      setLocalError("Username dự án chưa hợp lệ.");
       return;
     }
     if (!apiKey.trim()) {
@@ -195,13 +197,13 @@ export default function StyleLibraryPage() {
 
   const createStyle = useMutation({
     mutationFn: (values: ManualStyleValues) => {
-      if (createCategory === "kol") {
-        if (!kolMatch) throw new Error("Hãy phân tích username trước khi lưu phong cách KOL.");
-        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "kol", name: values.name, description: values.description, instruction: values.instruction, username: kolMatch.username, projectName: null, avatarUrl: kolMatch.avatarUrl || null, samples: kolMatch.samples }) });
+      if (createCategory === "x" && !writingProjectHandle) {
+        if (!xMatch) throw new Error("Hãy phân tích username trước khi lưu.");
+        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "discovered", category: "kol", name: values.name, description: values.description, instruction: values.instruction, username: xMatch.username, projectName: null, avatarUrl: xMatch.avatarUrl || null, samples: xMatch.samples }) });
       }
-      if (writingKolHandle || writingProjectHandle) {
-        if (!writingMatch) throw new Error("Hãy phân tích hai username trước khi lưu.");
-        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "manual", category: "writing", name: values.name, description: values.description, instruction: values.instruction, username: writingMatch.username, projectName: writingMatch.projectName, samples: writingMatch.samples }) });
+      if (createCategory === "x") {
+        if (!xMatch) throw new Error("Hãy phân tích trước khi lưu.");
+        return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "manual", category: "writing", name: values.name, description: values.description, instruction: values.instruction, username: xMatch.username, projectName: xMatch.projectName, samples: xMatch.samples }) });
       }
       return apiRequest<{ style: SavedStyle }>("/api/styles", { method: "POST", body: JSON.stringify({ kind: "manual", category: "writing", name: values.name, description: values.description, instruction: values.instruction, username: null, projectName: null, samples: values.sampleText.trim() ? [{ id: crypto.randomUUID(), text: values.sampleText.trim().slice(0, 5000) }] : [] }) });
     },
@@ -210,10 +212,9 @@ export default function StyleLibraryPage() {
       commitWritingStyle(queryClient, { kolId: null, savedStyleId: style.id, discovered: null, source: "manual" });
       form.reset();
       setUsername("");
-      setWritingKol("");
       setWritingProject("");
       setAnalyzed(null);
-      setCreateCategory("kol");
+      setCreateCategory("custom");
       setLocalError("");
       setCreating(false);
     },
@@ -274,54 +275,48 @@ export default function StyleLibraryPage() {
   const detailFace = detail?.type === "saved" && resolveStyleCategory(detail.style) === "project" ? projectStyleFace(detail.style, projects) : null;
 
   return <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8"><div className="mx-auto max-w-6xl">
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Cá nhân hoá</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Thư viện phong cách</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Phong cách KOL lấy từ username trên X. Phong cách bài viết có thể tự mô tả, hoặc phân tích bài của một KOL về một dự án. Phong cách dự án đến từ tab Khám phá.</p></div><div className="flex gap-2"><Button variant="outline" className="gap-1 rounded-xl" onClick={clearStyle}><X className="h-4 w-4" />Dùng mặc định</Button><Button className="gap-1 rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCreating(!creating)}><Plus className="h-4 w-4" />Tạo phong cách</Button></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-3xl font-semibold tracking-tight">Thư viện phong cách</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Tự tạo phong cách riêng bằng cách mô tả văn phong, không cần KOL hay dự án. Phong cách KOL lấy từ username trên X, phong cách bài viết phân tích bài của một KOL về một dự án, phong cách dự án đến từ tab Khám phá.</p></div><div className="flex gap-2"><Button variant="outline" className="gap-1 rounded-xl" onClick={clearStyle}><X className="h-4 w-4" />Dùng mặc định</Button><Button className="gap-1 rounded-xl bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCreating(!creating)}><Plus className="h-4 w-4" />Tạo phong cách</Button></div></div>
 
     {creating && <section className="mt-7 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold">Phong cách mới</h2><p className="mt-1 text-xs text-slate-500">{createCategory === "kol" ? "Phân tích username trên X. Kết quả được xếp vào Phong cách KOL." : "Tự mô tả, hoặc lấy bài của một KOL về một dự án. Kết quả được xếp vào Phong cách bài viết."}</p></div><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100" onClick={() => setCreating(false)}><X className="h-4 w-4" /></button></div>
-      <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
-        <button type="button" className={`h-10 rounded-xl text-sm font-medium ${createCategory === "kol" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setCreateCategory("kol"); setLocalError(""); }}>Phong cách KOL</button>
-        <button type="button" className={`h-10 rounded-xl text-sm font-medium ${createCategory === "writing" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`} onClick={() => { setCreateCategory("writing"); setLocalError(""); }}>Phong cách bài viết</button>
+      <div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold">Phong cách mới</h2><p className="mt-1 text-xs text-slate-500">Chọn cách tạo. Bạn luôn chỉnh lại được nội dung trước khi lưu.</p></div><button type="button" aria-label="Đóng" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100" onClick={() => setCreating(false)}><X className="h-4 w-4" /></button></div>
+      <div className="mb-5 grid gap-3 sm:grid-cols-2" role="tablist" aria-label="Cách tạo phong cách">
+        {([
+          { id: "custom" as const, title: "Tự mô tả", hint: "Viết ra văn phong bạn muốn. Không cần tài khoản X.", icon: Pencil },
+          { id: "x" as const, title: "Phân tích từ X", hint: "Nhập username một người trên X, AI học văn phong từ bài của họ.", icon: Search },
+        ]).map((option) => { const selected = createCategory === option.id; const Icon = option.icon; return <button key={option.id} type="button" role="tab" aria-selected={selected} className={`flex items-start gap-3 rounded-2xl p-4 text-left ring-1 transition-all ${selected ? "bg-emerald-50 ring-2 ring-emerald-300" : "bg-slate-50/70 ring-slate-200 hover:bg-white hover:ring-emerald-200"}`} onClick={() => { setCreateCategory(option.id); setLocalError(""); }}><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl transition-colors ${selected ? "bg-emerald-600 text-white" : "bg-white text-slate-400 ring-1 ring-slate-200"}`}><Icon className="h-4 w-4" /></span><span className="min-w-0"><span className={`block text-sm font-semibold ${selected ? "text-emerald-900" : "text-slate-700"}`}>{option.title}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{option.hint}</span></span></button>; })}
       </div>
       <form onSubmit={form.handleSubmit((values) => createStyle.mutate(values))}>
-        {createCategory === "kol" && <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
-          <label className="text-sm font-medium text-slate-800" htmlFor="style-username">Username trên X</label>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <div className="relative min-w-0 flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input id="style-username" className="h-11 rounded-xl bg-white pl-7" placeholder="elonmusk" value={username} autoComplete="off" onChange={(event) => { setUsername(event.target.value); setLocalError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); requestAnalyze(); } }} /></div>
-            <Button type="button" className="h-11 gap-1 rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800" disabled={analyzeAuthor.isPending} onClick={requestAnalyze}>{analyzeAuthor.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{analyzeAuthor.isPending ? (analyzePhase === "analyze" ? "Đang phân tích..." : "Đang lấy bài viết...") : "Phân tích"}</Button>
-          </div>
-          <p className="mt-2 text-xs leading-5 text-slate-500">{apiKey.trim() ? <>Dùng {providerLabels[provider]} · {model}. Kết quả chỉ là văn phong, không hiện bài viết.</> : <>Chưa có API key. <Link className="font-medium text-violet-700 hover:text-violet-900" href="/settings">Mở Cài đặt</Link> để lưu key trước khi phân tích.</>}</p>
-          {(localError || analyzeAuthor.error) && <p className="mt-2 text-sm text-red-600">{localError || analyzeAuthor.error?.message}</p>}
-          {kolMatch && <p className="mt-2 text-xs font-medium text-violet-700">Đã điền văn phong của @{kolMatch.username}. Sửa rồi lưu nếu cần.</p>}
-          {analyzed && handle && !kolMatch && <p className="mt-2 text-xs font-medium text-amber-700">Username đã đổi so với lần phân tích @{analyzed.username}. Bấm Phân tích lại trước khi lưu.</p>}
-        </div>}
-        {createCategory === "writing" && <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+        {createCategory === "x" && <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-slate-800" htmlFor="writing-kol">Username KOL<div className="relative mt-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input id="writing-kol" className="h-11 rounded-xl bg-white pl-7" placeholder="elonmusk" value={writingKol} autoComplete="off" onChange={(event) => { setWritingKol(event.target.value); setLocalError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); requestAnalyze(); } }} /></div></label>
-            <label className="block text-sm font-medium text-slate-800" htmlFor="writing-project">Username dự án<div className="relative mt-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input id="writing-project" className="h-11 rounded-xl bg-white pl-7" placeholder="PlayOnMint" value={writingProject} autoComplete="off" onChange={(event) => { setWritingProject(event.target.value); setLocalError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); requestAnalyze(); } }} /></div></label>
+            <label className="block text-sm font-medium text-slate-800" htmlFor="style-username">Username trên X<div className="relative mt-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input id="style-username" className="h-11 rounded-xl bg-white pl-7" placeholder="elonmusk" value={username} autoComplete="off" onChange={(event) => { setUsername(event.target.value); setLocalError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); requestAnalyze(); } }} /></div></label>
+            <label className="block text-sm font-medium text-slate-800" htmlFor="writing-project">Dự án <span className="font-normal text-slate-400">(không bắt buộc)</span><div className="relative mt-2"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">@</span><Input id="writing-project" className="h-11 rounded-xl bg-white pl-7" placeholder="PlayOnMint" value={writingProject} autoComplete="off" onChange={(event) => { setWritingProject(event.target.value); setLocalError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); requestAnalyze(); } }} /></div></label>
           </div>
-          <div className="mt-3 flex justify-end"><Button type="button" className="h-11 gap-1 rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800" disabled={analyzeAuthor.isPending} onClick={requestAnalyze}>{analyzeAuthor.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{analyzeAuthor.isPending ? (analyzePhase === "analyze" ? "Đang phân tích..." : "Đang lấy bài viết...") : "Phân tích"}</Button></div>
-          <p className="mt-2 text-xs leading-5 text-slate-500">{apiKey.trim() ? <>Lấy bài của KOL nói về dự án qua Sorsa, rồi phân tích bằng {providerLabels[provider]} · {model}. Không hiện nội dung bài.</> : <>Chưa có API key. <Link className="font-medium text-violet-700 hover:text-violet-900" href="/settings">Mở Cài đặt</Link> để lưu key trước khi phân tích.</>}</p>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{writingProjectHandle ? "Chỉ học văn phong khi người này viết về dự án trên. Lưu vào Phong cách bài viết." : "Để trống dự án để học văn phong chung của người này. Lưu vào Phong cách KOL."}</p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs leading-5 text-slate-500">{apiKey.trim() ? <>Dùng {providerLabels[provider]} · {model}. Không hiện nội dung bài.</> : <>Chưa có API key. <Link className="font-medium text-emerald-700 hover:text-emerald-900" href="/settings">Mở Cài đặt</Link> để lưu key trước khi phân tích.</>}</p>
+            <Button type="button" className="h-11 gap-1 rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800" disabled={analyzeAuthor.isPending || !handle} onClick={requestAnalyze}>{analyzeAuthor.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{analyzeAuthor.isPending ? (analyzePhase === "analyze" ? "Đang phân tích..." : "Đang lấy bài viết...") : xMatch ? "Phân tích lại" : "Phân tích"}</Button></div>
           {(localError || analyzeAuthor.error) && <p className="mt-2 text-sm text-red-600">{localError || analyzeAuthor.error?.message}</p>}
-          {writingMatch && <p className="mt-2 text-xs font-medium text-violet-700">Đã điền văn phong của @{writingMatch.username} về @{writingMatch.projectName}. Sửa rồi lưu nếu cần.</p>}
-          {writingHandlesFilled && !writingMatch && <p className="mt-2 text-xs font-medium text-amber-700">{analyzed?.projectName ? `Username đã đổi so với lần phân tích @${analyzed.username} · @${analyzed.projectName}. Bấm Phân tích lại trước khi lưu.` : "Phân tích hai username trước khi lưu."}</p>}
+          {analyzed && !xMatch && <p className="mt-2 text-xs font-medium text-amber-700">Thông tin đã đổi so với lần phân tích @{analyzed.username}{analyzed.projectName ? ` · @${analyzed.projectName}` : ""}. Bấm Phân tích lại trước khi lưu.</p>}
         </div>}
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
-          <label className="text-sm font-medium">Tên phong cách<Input className="mt-2 rounded-xl" placeholder="Founder thẳng thắn" {...form.register("name", { required: true, minLength: 2 })} /></label>
-          <label className="text-sm font-medium">Mô tả ngắn<Input className="mt-2 rounded-xl" placeholder="Dùng cho bài xây dựng thương hiệu cá nhân" {...form.register("description", { maxLength: 300 })} /></label>
-          <label className={`text-sm font-medium ${createCategory === "kol" || writingMatch ? "md:col-span-2" : ""}`}>Hướng dẫn văn phong<Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Giọng điệu, nhịp câu, cách mở bài, cấu trúc và điều cần tránh..." {...form.register("instruction", { required: true, minLength: 10, maxLength: 5000 })} /></label>
-          {createCategory === "writing" && !writingMatch && <label className="text-sm font-medium">Bài mẫu <span className="font-normal text-slate-400">(không bắt buộc)</span><Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Dán bài viết thể hiện đúng phong cách..." {...form.register("sampleText", { maxLength: 5000 })} /></label>}
-        </div>
-        {createCategory === "kol" && !kolMatch && <p className="mt-4 text-xs text-slate-500">Phân tích username trước khi lưu vào Phong cách KOL.</p>}
-        {createStyle.error && <p className="mt-4 text-sm text-red-600">{createStyle.error.message}</p>}
-        <div className="mt-5 flex justify-end"><Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={createStyle.isPending || analyzeAuthor.isPending || (createCategory === "kol" && !kolMatch) || (createCategory === "writing" && writingHandlesFilled && !writingMatch)}>{createStyle.isPending ? "Đang lưu..." : "Lưu và áp dụng"}</Button></div>
+        {(createCategory === "custom" || xMatch) && <>
+          {xMatch && <p className="mt-4 text-xs font-medium text-emerald-700">Đã điền văn phong của @{xMatch.username}{xMatch.projectName ? ` về @${xMatch.projectName}` : ""}. Sửa rồi lưu nếu cần.</p>}
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <label className="text-sm font-medium">Tên phong cách<Input className="mt-2 rounded-xl" placeholder="Founder thẳng thắn" {...form.register("name", { required: true, minLength: 2 })} /></label>
+            <label className="text-sm font-medium">Mô tả ngắn <span className="font-normal text-slate-400">(không bắt buộc)</span><Input className="mt-2 rounded-xl" placeholder="Dùng cho bài xây dựng thương hiệu cá nhân" {...form.register("description", { maxLength: 300 })} /></label>
+            <label className={`text-sm font-medium ${createCategory === "x" ? "md:col-span-2" : ""}`}>Hướng dẫn văn phong<Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Giọng điệu, nhịp câu, cách mở bài, cấu trúc và điều cần tránh..." {...form.register("instruction", { required: true, minLength: 10, maxLength: 5000 })} /></label>
+            {createCategory === "custom" && <label className="text-sm font-medium">Bài mẫu <span className="font-normal text-slate-400">(không bắt buộc)</span><Textarea className="mt-2 min-h-36 rounded-xl" placeholder="Dán bài viết thể hiện đúng phong cách..." {...form.register("sampleText", { maxLength: 5000 })} /></label>}
+          </div>
+          {createStyle.error && <p className="mt-4 text-sm text-red-600">{createStyle.error.message}</p>}
+          <div className="mt-5 flex justify-end"><Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={createStyle.isPending || analyzeAuthor.isPending}>{createStyle.isPending ? "Đang lưu..." : "Lưu và áp dụng"}</Button></div>
+        </>}
       </form>
     </section>}
 
     <div className="relative mt-7 max-w-md"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input className="h-11 rounded-xl bg-white pl-9" placeholder="Tìm trong thư viện..." value={search} onChange={(event) => setSearch(event.target.value)} /></div>
 
     {([
+      { id: "custom" as const, title: "Phong cách của bạn", hint: "Tự mô tả văn phong, không gắn với KOL hay dự án.", empty: "Chưa có phong cách riêng. Bấm Tạo phong cách để thêm." },
       { id: "kol" as const, title: "Phong cách KOL", hint: "Tạo từ username trên X.", empty: "Chưa có phong cách KOL." },
-      { id: "writing" as const, title: "Phong cách bài viết", hint: "Tự mô tả, hoặc phân tích bài của một KOL về một dự án.", empty: "Chưa có phong cách bài viết." },
+      { id: "writing" as const, title: "Phong cách bài viết", hint: "Phân tích bài của một KOL về một dự án.", empty: "Chưa có phong cách bài viết." },
       { id: "project" as const, title: "Phong cách dự án", hint: "Lưu từ tab Khám phá.", empty: "Chưa có phong cách dự án." },
     ]).map((group) => {
       const items = groupedStyles[group.id];
@@ -336,7 +331,7 @@ export default function StyleLibraryPage() {
       open={Boolean(detail)}
       name={detail?.style.name || ""}
       displayName={detailFace?.title}
-      kindLabel={detail?.type === "saved" ? categoryLabel(resolveStyleCategory(detail.style)) : "KOL dựng sẵn"}
+      kindLabel={detail?.type === "saved" ? categoryLabel(detail.style) : "KOL dựng sẵn"}
       description={detail?.type === "saved" ? detail.style.description : detail?.type === "kol" ? detail.style.style_vi || detail.style.style : ""}
       instruction={detail?.type === "saved" ? detail.style.instruction : detail?.type === "kol" ? detail.style.content : ""}
       username={detail?.type === "saved" ? (detailFace ? (detailFace.meta ? detail.style.username : null) : detail.style.username) : null}

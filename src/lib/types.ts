@@ -111,6 +111,7 @@ export interface ProjectContentOptions {
   tone: string;
   length: string;
   customInstructions: string;
+  writeFromLatest: boolean;
 }
 
 export interface ProjectWritingStyle {

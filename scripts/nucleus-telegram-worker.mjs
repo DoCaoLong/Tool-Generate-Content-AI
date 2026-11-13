@@ -163,10 +163,69 @@ async function check(collection) {
   }
 }
 
+async function reply(targetChat, text) {
+  await telegram("sendMessage", { chat_id: targetChat, text, parse_mode: "HTML", disable_web_page_preview: true });
+}
+
+async function handleUpdate(update) {
+  const message = update.message;
+  const text = typeof message?.text === "string" ? message.text.trim() : "";
+  if (!message?.chat || !text.startsWith("/")) return;
+  const command = text.split(/[\s@]/)[0].toLowerCase();
+  if (command !== "/start" && command !== "/id") return;
+  const id = String(message.chat.id);
+  const configured = chatId && chatId === id;
+  const lines = [`Chat id của bạn: <code>${escapeHtml(id)}</code>`];
+  if (configured) lines.push("", "✅ Chat này đang là nơi nhận thông báo campaign Nucleus mới.");
+  else lines.push("", "Muốn nhận thông báo campaign mới ở chat này, đặt <code>TELEGRAM_CHAT_ID=" + escapeHtml(id) + "</code> trong .env rồi restart worker.");
+  await reply(message.chat.id, lines.join("\n"));
+  log(`Đã trả lời ${command} cho chat ${id}.`);
+}
+
+// Nhận tin đến bằng long polling để bot trả lời /start và /id.
+async function pollCommands(isStopping) {
+  let offset = 0;
+  let warned = false;
+  while (!isStopping()) {
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ offset, timeout: 25, allowed_updates: ["message"] }),
+        signal: AbortSignal.timeout(35_000),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        if (!warned) log(`getUpdates lỗi ${response.status}: ${data.description || "không rõ"} (nếu bot đang dùng webhook thì cần xoá webhook).`);
+        warned = true;
+        await sleep(10_000);
+        continue;
+      }
+      warned = false;
+      for (const update of data.result || []) {
+        offset = update.update_id + 1;
+        await handleUpdate(update).catch((error) => log(`Lỗi trả lời lệnh: ${error.message}`));
+      }
+    } catch (error) {
+      if (!isStopping()) log(`Lỗi nhận lệnh: ${error.message}`);
+      await sleep(5_000);
+    }
+  }
+}
+
 async function main() {
-  if (!botToken || !chatId) {
-    console.error("Thiếu TELEGRAM_BOT_TOKEN hoặc TELEGRAM_CHAT_ID trong .env.");
+  if (!botToken) {
+    console.error("Thiếu TELEGRAM_BOT_TOKEN trong .env.");
     process.exit(1);
+  }
+  if (!chatId) {
+    // Chưa có chat id: chỉ trả lời /start để người dùng lấy chat id, chưa theo dõi campaign.
+    log("Chưa có TELEGRAM_CHAT_ID: chỉ trả lời /start và /id. Nhắn /start cho bot để lấy chat id.");
+    let quit = false;
+    process.on("SIGINT", () => { quit = true; });
+    process.on("SIGTERM", () => { quit = true; });
+    await pollCommands(() => quit);
+    return;
   }
   if (args.has("--test")) {
     await sendText("🔔 Tin nhắn thử từ bot Nucleus.");
@@ -186,6 +245,7 @@ async function main() {
   const stop = () => { stopping = true; };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
+  if (!args.has("--once")) void pollCommands(() => stopping);
 
   // Báo vào Telegram khi lỗi liên tiếp (một lần cho mỗi đợt lỗi) và khi hoạt động lại.
   let failures = 0;
@@ -216,6 +276,7 @@ Lỗi: ${escapeHtml(error.message)}`).catch((sendError) => log(sendError.message
   } while (!stopping);
 
   await client.close();
+  process.exit(0);
 }
 
 main().catch((error) => {

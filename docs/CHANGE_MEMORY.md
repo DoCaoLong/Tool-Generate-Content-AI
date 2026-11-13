@@ -5,6 +5,7 @@
 - Thêm bot Telegram báo campaign Nucleus mới: worker `scripts/nucleus-telegram-worker.mjs` và app PM2 `nucleus-telegram`, gửi vào một nhóm/kênh chung.
 - Worker Telegram lưu snapshot mọi campaign Nucleus vào MongoDB `nucleus_campaigns` và so sánh mỗi lượt để báo campaign vừa ra mắt (thay cho collection `nucleus_notified`).
 - Worker Telegram báo vào nhóm khi lấy dữ liệu Nucleus lỗi 3 lượt liên tiếp và báo lại khi hoạt động bình thường; chu kỳ kiểm tra mặc định đổi từ 10 xuống 1 phút.
+- Worker Telegram trả lời `/start` và `/id` bằng chat id của chat (nhận tin qua `getUpdates`); chạy được cả khi chưa có `TELEGRAM_CHAT_ID`.
 
 ## 2026-11-12
 

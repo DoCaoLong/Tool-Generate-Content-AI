@@ -30,5 +30,18 @@ module.exports = {
         PORT: port,
       },
     },
+    {
+      name: "nucleus-telegram",
+      script: "scripts/nucleus-telegram-worker.mjs",
+      cwd: __dirname,
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "200M",
+      env: {
+        NODE_ENV: "production",
+      },
+    },
   ],
 };

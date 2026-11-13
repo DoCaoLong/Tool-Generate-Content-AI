@@ -1,5 +1,11 @@
 # CHANGE_MEMORY
 
+## 2026-11-13
+
+- Thêm bot Telegram báo campaign Nucleus mới: worker `scripts/nucleus-telegram-worker.mjs` và app PM2 `nucleus-telegram`, gửi vào một nhóm/kênh chung.
+- Worker Telegram lưu snapshot mọi campaign Nucleus vào MongoDB `nucleus_campaigns` và so sánh mỗi lượt để báo campaign vừa ra mắt (thay cho collection `nucleus_notified`).
+- Worker Telegram báo vào nhóm khi lấy dữ liệu Nucleus lỗi 3 lượt liên tiếp và báo lại khi hoạt động bình thường; chu kỳ kiểm tra mặc định đổi từ 10 xuống 1 phút.
+
 ## 2026-11-12
 
 - Chip "Viết từ bài mới nhất" nay hiện với mọi phong cách dự án, kể cả khi tên dự án không phải @handle hợp lệ (khi đó tìm theo cụm tên, `order: latest`). `/api/discover` áp dụng `order` cho cả nhánh tìm theo tên dự án.

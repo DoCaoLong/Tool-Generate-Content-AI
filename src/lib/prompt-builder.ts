@@ -68,6 +68,9 @@ export function buildContentPrompt(input: GenerationInput) {
         : input.libraryStyle
           ? "Use the saved style instructions and examples as stylistic guidance only."
           : "Use the requested tone consistently.",
+      "Never use the em dash character (—) anywhere in the content. Use a comma, a period, or a new sentence instead.",
+      "Never start the post with an @mention. The first word of the post must not be an @handle.",
+      "Write in plain text only. Do not use markdown emphasis such as **bold**, __bold__, *italic*, or any asterisks or underscores to highlight words, and do not bold text in any other way.",
       "Return only the finished content, without explaining your process.",
       !brief ? "Do not ask for a topic. Produce the piece from the rules and reference documents." : "",
       hasStyle ? "When a writing style is present, stay tightly aligned with it instead of falling back to a generic voice." : "",

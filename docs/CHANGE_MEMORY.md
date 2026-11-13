@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- "Viết từ bài mới nhất" nay gọi `/api/discover` với `username` = @mention đã nhập (`from:username`, bỏ reply và retweet, `order: latest`) để lấy bài mới nhất do chính tài khoản đó đăng, thay vì tìm bài nhắc tới @mention. @mention phải là username X hợp lệ (tối đa 15 ký tự chữ, số, gạch dưới), không còn nhận tên dự án nhiều chữ.
 - Prompt builder (`writing_rules`) thêm 3 rule cho mọi bài viết: không dùng ký tự gạch dài —, không mở bài bằng @mention, và chỉ dùng văn bản thuần, không bôi đậm hay nhấn mạnh bằng `**text**`.
 - "Viết từ bài mới nhất" nay lấy bài theo @mention nhập ở Tuỳ chọn nội dung (`contentOptions.latestMention`, lưu theo dự án), không còn suy ra từ @ của phong cách. Chip chỉ hiện khi đã điền @mention và đang ở chế độ Viết mới (mọi phong cách); xoá @mention thì chip ẩn và gửi bình thường.
 - Radar ở tab Khám phá: mỗi bài có nút "Viết lại bài này". Bấm thì chuyển sang `/projects/{id}/rewrite` của dự án chứa bài đó, mở panel tuỳ chọn và điền sẵn nội dung bài vào ô "Nội dung cần viết lại" (qua `pendingRewrite` trong `app-store`, không lưu vào localStorage).

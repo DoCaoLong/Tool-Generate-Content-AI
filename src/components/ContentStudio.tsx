@@ -412,7 +412,8 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
   const fromLatest = useWatch({ control: form.control, name: "writeFromLatest" });
   const latestMentionValue = useWatch({ control: form.control, name: "latestMention" }) || "";
   const latestMentionHandle = latestMentionValue.trim().replace(/^@/, "");
-  const latestMentionQuery = /^[A-Za-z0-9_]{1,15}$/.test(latestMentionHandle) ? `@${latestMentionHandle}` : latestMentionHandle;
+  const latestMentionValid = /^[A-Za-z0-9_]{1,15}$/.test(latestMentionHandle);
+  const latestMentionQuery = `@${latestMentionHandle}`;
   const activeProvider = useWatch({ control: form.control, name: "provider" });
   const activeKeywords = useWatch({ control: form.control, name: "keywords" });
   const keywordChips = useMemo(() => Array.from(new Set(activeKeywords.split(/[\n,]/).map((keyword) => keyword.trim()).filter(Boolean))), [activeKeywords]);
@@ -466,12 +467,16 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
   const submitCompose = async (event?: React.BaseSyntheticEvent) => {
     event?.preventDefault();
     if (!fromLatest || !latestMentionHandle || composerMode !== "new") return submitForm();
+    if (!latestMentionValid) {
+      setLatestError("@mention chưa hợp lệ. Hãy nhập username X của tài khoản, ví dụ @PlayOnMint.");
+      return;
+    }
     setLatestError(null);
     setFetchingLatest(true);
     try {
-      const data = await apiRequest<{ tweets: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ projectName: latestMentionQuery, order: "latest" }) });
+      const data = await apiRequest<{ tweets: DiscoveredTweet[] }>("/api/discover", { method: "POST", body: JSON.stringify({ username: latestMentionHandle, order: "latest" }) });
       const latest = data.tweets[0];
-      if (!latest) throw new Error(`Chưa tìm thấy bài mới nhất về ${latestMentionQuery}.`);
+      if (!latest) throw new Error(`Chưa tìm thấy bài đăng nào của ${latestMentionQuery}.`);
       form.setValue("mode", "rewrite");
       form.setValue("sourceText", latest.text);
       try {
@@ -499,7 +504,7 @@ function ComposerWorkspace({ project, optionsOpen, savedStyle, writingStyle }: {
         <div className="mx-2 mb-1 flex flex-wrap items-center gap-1.5">
           <StyleQuickPicker hidden={Boolean(selectedKOL || discoveredStyle || savedStyle)} />
           {(selectedKOL || discoveredStyle || savedStyle) && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 py-1 pl-2.5 pr-1 text-[11px] font-medium text-emerald-700"><UserRound className="h-3 w-3" />Style: {styleLabel}<button type="button" aria-label="Bỏ phong cách" className="ml-0.5 grid h-4 w-4 place-items-center rounded-full text-emerald-700/70 hover:bg-emerald-100 hover:text-emerald-900" onClick={() => { commitWritingStyle(queryClient, null, project.id); form.setValue("kolStyle", null); form.setValue("discoveredStyle", null); form.setValue("libraryStyle", null); }}><X className="h-3 w-3" /></button></span>}
-          {latestMentionHandle && composerMode === "new" && <button type="button" aria-pressed={fromLatest} title={`Lấy bài mới nhất về ${latestMentionQuery} rồi viết lại theo phong cách đã chọn`} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${fromLatest ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50"}`} onClick={() => { form.setValue("writeFromLatest", !fromLatest); setLatestError(null); }}><Compass className="h-3 w-3" />Viết từ bài mới nhất</button>}
+          {latestMentionHandle && composerMode === "new" && <button type="button" aria-pressed={fromLatest} title={`Lấy bài mới nhất do ${latestMentionQuery} đăng rồi viết lại theo phong cách đã chọn`} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${fromLatest ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50"}`} onClick={() => { form.setValue("writeFromLatest", !fromLatest); setLatestError(null); }}><Compass className="h-3 w-3" />Viết từ bài mới nhất</button>}
           {keywordChips.slice(0, 6).map((keyword) => <span key={keyword} className="inline-flex max-w-48 items-center truncate rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700" title={keyword}>Từ khóa: {keyword}</span>)}
           {keywordChips.length > 6 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">+{keywordChips.length - 6}</span>}
         </div>
@@ -534,7 +539,7 @@ function OptionsPanel({ saveState }: { saveState: "idle" | "saving" | "saved" | 
   const mode = useWatch({ control, name: "mode" });
   return <aside className="fixed inset-y-0 right-0 z-50 w-[min(340px,100vw)] overflow-y-auto border-l border-slate-200 bg-white px-5 py-5 shadow-2xl xl:z-20 xl:shadow-none"><div className="mb-6 flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h2 className="font-semibold">Tuỳ chọn nội dung</h2>{saveState !== "idle" && <span className={`text-[10px] font-medium ${saveState === "error" ? "text-red-500" : saveState === "saved" ? "text-emerald-600" : "text-slate-400"}`}>{saveState === "saving" ? "Đang lưu..." : saveState === "saved" ? "Đã lưu" : "Lưu thất bại"}</span>}</div><p className="mt-1 text-xs leading-5 text-slate-500">Tự động lưu riêng cho dự án này.</p></div><button type="button" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-900 xl:hidden" onClick={() => setOptionsOpen(false)}><X className="h-4 w-4" /></button></div><div className="space-y-5">
     <Field label="Từ khoá bắt buộc"><Input className="rounded-xl" placeholder="SEO, sản phẩm, thương hiệu" {...register("keywords")} /></Field>
-    <Field label="@mention lấy bài mới nhất"><Input className="rounded-xl" placeholder="@PlayOnMint" autoComplete="off" {...register("latestMention")} /><span className="mt-1.5 block text-xs font-normal leading-5 text-slate-400">Điền @mention (tài khoản hoặc dự án) thì ô chat hiện tuỳ chọn “Viết từ bài mới nhất”, bật lên sẽ lấy bài mới nhất nhắc tới @mention này rồi viết lại.</span></Field>
+    <Field label="@mention (tài khoản lấy bài mới nhất)"><Input className="rounded-xl" placeholder="@PlayOnMint" autoComplete="off" {...register("latestMention")} /><span className="mt-1.5 block text-xs font-normal leading-5 text-slate-400">Điền username X của tài khoản (người dùng hoặc dự án) thì ô chat hiện tuỳ chọn “Viết từ bài mới nhất”. Bật lên sẽ lấy bài mới nhất do tài khoản này đăng rồi viết lại.</span></Field>
     <Field label="Rule bắt buộc"><Textarea className="min-h-24 rounded-xl" placeholder="Ví dụ: không dùng emoji, không nhắc đối thủ, luôn có CTA ở cuối..." {...register("rules")} /></Field>
     <Field label="Tài liệu tham khảo"><Textarea className="min-h-32 rounded-xl" placeholder="Dán thông tin sản phẩm, báo cáo, dữ liệu hoặc tài liệu nền..." {...register("documents")} /></Field>
     {mode === "rewrite" && <Field label="Nội dung cần viết lại *"><Textarea className="min-h-28 rounded-xl" placeholder="Dán nội dung gốc cần viết lại..." {...register("sourceText")} /></Field>}

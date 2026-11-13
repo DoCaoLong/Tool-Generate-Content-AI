@@ -19,7 +19,7 @@ export default function KOLStylePicker({ selectedId, customStyle, selectedSavedS
   const selectedKOL = promptQuery.data?.styles.find((style) => style.id === selectedId) || getKOLStyle(selectedId);
   const activeName = (selectedSavedStyle ? styleDisplayName(selectedSavedStyle) : null) || selectedKOL?.name || (customStyle ? `@${customStyle.username}` : null);
   const isStylesRoute = pathname === "/styles";
-  const label = activeName || "Phong cách";
+  const label = "Phong cách";
 
   return <div className={`flex h-11 w-full items-center rounded-xl text-sm ${isStylesRoute ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
     <button type="button" title={collapsed ? label : undefined} aria-label={label} className={`flex h-full min-w-0 flex-1 items-center rounded-xl ${collapsed ? "justify-center gap-3 px-3 text-left md:gap-0 md:px-0" : "gap-3 px-3 text-left"}`} onClick={() => { router.push("/styles"); setSidebarOpen(false); }}>

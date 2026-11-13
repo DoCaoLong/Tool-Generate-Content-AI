@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Eye, Heart, MessageCircle } from "lucide-react";
+import { Check, Eye, Heart, MessageCircle, PenLine } from "lucide-react";
 import { useState } from "react";
 import { getKOLInitials } from "@/lib/kol-styles";
 import type { DiscoveredTweet } from "@/lib/types";
@@ -80,7 +80,7 @@ function TweetStats({ tweet }: { tweet: DiscoveredTweet }) {
   );
 }
 
-export default function TweetCard({ tweet, projectName, selected = false, onSelect, className = "" }: { tweet: DiscoveredTweet; projectName?: string; selected?: boolean; onSelect?: () => void; className?: string }) {
+export default function TweetCard({ tweet, projectName, selected = false, onSelect, onRewrite, className = "" }: { tweet: DiscoveredTweet; projectName?: string; selected?: boolean; onSelect?: () => void; onRewrite?: () => void; className?: string }) {
   const profileUrl = xProfileUrl(tweet.username);
   const openPost = () => openX(xStatusUrl(tweet.username, tweet.id));
   return (
@@ -103,6 +103,7 @@ export default function TweetCard({ tweet, projectName, selected = false, onSele
       <TweetText text={tweet.text} />
       {tweet.images.length > 0 && <div className="mt-3 space-y-2">{tweet.images.map((src) => <TweetPhoto key={src} src={src} />)}</div>}
       <TweetStats tweet={tweet} />
+      {onRewrite ? <button type="button" className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700" onClick={(event) => { event.stopPropagation(); onRewrite(); }} onKeyDown={(event) => event.stopPropagation()}><PenLine className="h-3.5 w-3.5" />Viết lại bài này</button> : null}
     </article>
   );
 }

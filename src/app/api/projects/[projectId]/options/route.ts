@@ -13,6 +13,7 @@ const optionsSchema = z.object({
   length: z.string().max(40).default("medium"),
   customInstructions: z.string().max(4000).default(""),
   writeFromLatest: z.boolean().default(false),
+  latestMention: z.string().trim().max(100).default(""),
 });
 
 export async function PATCH(request: Request, context: RouteContext) {

@@ -178,16 +178,24 @@ export default function DiscoverPanel() {
 
   const radarPosts = useMemo(() => {
     const seen = new Set<string>();
-    const posts: Array<{ tweet: DiscoveredTweet; projectName: string }> = [];
+    const posts: Array<{ tweet: DiscoveredTweet; projectName: string; projectId: string }> = [];
     for (const item of radarPlan) {
       for (const tweet of item.entry?.tweets || []) {
         if (!tweet.id || seen.has(tweet.id)) continue;
         seen.add(tweet.id);
-        posts.push({ tweet, projectName: item.name });
+        posts.push({ tweet, projectName: item.name, projectId: item.id });
       }
     }
     return posts.sort((left, right) => right.tweet.views - left.tweet.views || right.tweet.replies - left.tweet.replies || right.tweet.likes - left.tweet.likes).slice(0, RADAR_VISIBLE);
   }, [radarPlan]);
+  const rewriteRadarPost = (projectId: string, text: string) => {
+    const state = useAppStore.getState();
+    state.setPendingRewrite({ projectId, text });
+    state.setComposerMode("rewrite");
+    state.setOptionsOpen(true);
+    state.setSelectedProjectId(projectId);
+    router.push(`/projects/${projectId}/rewrite`);
+  };
   const radarLoading = projectsQuery.isPending || radar.isFetching;
   const radarUpdatedLabel = radarPlan.length && radarPlan.every((item) => item.fresh)
     ? new Date(Math.max(...radarPlan.flatMap((item) => item.entry ? [item.entry.fetchedAt] : [0]))).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
@@ -239,7 +247,7 @@ export default function DiscoverPanel() {
           </div>
           {radar.error && <p className="mb-3 text-sm text-red-600">{radar.error.message}</p>}
           {radarLoading && <div className="flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Đang tải radar...</div>}
-          {radarPosts.length > 0 && <div className="mt-4 columns-1 gap-3 md:columns-2 xl:columns-3">{radarPosts.map((item) => <TweetCard key={`${item.projectName}-${item.tweet.id}`} className="mb-3 break-inside-avoid" tweet={item.tweet} projectName={item.projectName} />)}</div>}
+          {radarPosts.length > 0 && <div className="mt-4 columns-1 gap-3 md:columns-2 xl:columns-3">{radarPosts.map((item) => <TweetCard key={`${item.projectName}-${item.tweet.id}`} className="mb-3 break-inside-avoid" tweet={item.tweet} projectName={item.projectName} onRewrite={() => rewriteRadarPost(item.projectId, item.tweet.text)} />)}</div>}
           {!radarLoading && !radar.error && radarPosts.length === 0 && radarTargets.length > 0 && <p className="text-sm text-slate-500">Chưa có bài mới.</p>}
         </section>
       </div>

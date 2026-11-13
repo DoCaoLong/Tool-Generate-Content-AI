@@ -2,6 +2,9 @@
 
 ## 2026-11-13
 
+- "Viết từ bài mới nhất" nay lấy bài theo @mention nhập ở Tuỳ chọn nội dung (`contentOptions.latestMention`, lưu theo dự án), không còn suy ra từ @ của phong cách. Chip hiện ở chế độ Viết mới với mọi phong cách; bật mà chưa nhập @mention thì báo lỗi.
+- Radar ở tab Khám phá: mỗi bài có nút "Viết lại bài này". Bấm thì chuyển sang `/projects/{id}/rewrite` của dự án chứa bài đó, mở panel tuỳ chọn và điền sẵn nội dung bài vào ô "Nội dung cần viết lại" (qua `pendingRewrite` trong `app-store`, không lưu vào localStorage).
+- Mục Phong cách ở sidebar luôn hiện nhãn "Phong cách", không đổi sang tên phong cách đang chọn. Nút bỏ phong cách (X) vẫn hiện khi đang có phong cách được chọn.
 - Thêm bot Telegram báo campaign Nucleus mới: worker `scripts/nucleus-telegram-worker.mjs` và app PM2 `nucleus-telegram`, gửi vào một nhóm/kênh chung.
 - Worker Telegram lưu snapshot mọi campaign Nucleus vào MongoDB `nucleus_campaigns` và so sánh mỗi lượt để báo campaign vừa ra mắt (thay cho collection `nucleus_notified`).
 - Worker Telegram báo vào nhóm khi lấy dữ liệu Nucleus lỗi 3 lượt liên tiếp và báo lại khi hoạt động bình thường; chu kỳ kiểm tra mặc định đổi từ 10 xuống 1 phút.

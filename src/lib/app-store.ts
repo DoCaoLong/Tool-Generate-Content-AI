@@ -13,6 +13,7 @@ interface AppState {
   model: string;
   apiKey: string;
   composerMode: ContentMode;
+  pendingRewrite: { projectId: string; text: string } | null;
   selectedKolId: string | null;
   discoveredStyle: DiscoveredStyle | null;
   selectedSavedStyleId: string | null;
@@ -23,6 +24,7 @@ interface AppState {
   setOptionsOpen: (open: boolean) => void;
   setProviderConfig: (provider: Provider, model: string, apiKey: string) => void;
   setComposerMode: (mode: ContentMode) => void;
+  setPendingRewrite: (value: { projectId: string; text: string } | null) => void;
   setSelectedKolId: (id: string | null) => void;
   setDiscoveredStyle: (style: DiscoveredStyle | null) => void;
   setSelectedSavedStyleId: (id: string | null) => void;
@@ -40,6 +42,7 @@ export const useAppStore = create<AppState>()(
       model: "gpt-5.6-terra",
       apiKey: "",
       composerMode: "new",
+      pendingRewrite: null,
       selectedKolId: null,
       discoveredStyle: null,
       selectedSavedStyleId: null,
@@ -50,6 +53,7 @@ export const useAppStore = create<AppState>()(
       setOptionsOpen: (optionsOpen) => set({ optionsOpen }),
       setProviderConfig: (provider, model, apiKey) => set({ provider, model, apiKey }),
       setComposerMode: (composerMode) => set({ composerMode }),
+      setPendingRewrite: (pendingRewrite) => set({ pendingRewrite }),
       setSelectedKolId: (selectedKolId) => set({ selectedKolId }),
       setDiscoveredStyle: (discoveredStyle) => set({ discoveredStyle }),
       setSelectedSavedStyleId: (selectedSavedStyleId) => set({ selectedSavedStyleId }),

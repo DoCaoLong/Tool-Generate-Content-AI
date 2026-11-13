@@ -112,6 +112,7 @@ export interface ProjectContentOptions {
   length: string;
   customInstructions: string;
   writeFromLatest: boolean;
+  latestMention: string;
 }
 
 export interface ProjectWritingStyle {

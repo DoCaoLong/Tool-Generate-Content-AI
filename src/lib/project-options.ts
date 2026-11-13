@@ -9,6 +9,7 @@ export const defaultProjectContentOptions: ProjectContentOptions = {
   length: "medium",
   customInstructions: "",
   writeFromLatest: false,
+  latestMention: "",
 };
 
 export function normalizeProjectContentOptions(value?: Partial<ProjectContentOptions> | null): ProjectContentOptions {

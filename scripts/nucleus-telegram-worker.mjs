@@ -177,7 +177,7 @@ async function handleUpdate(update) {
   const configured = chatId && chatId === id;
   const lines = [`Chat id của bạn: <code>${escapeHtml(id)}</code>`];
   if (configured) lines.push("", "✅ Chat này đang là nơi nhận thông báo campaign Nucleus mới.");
-  else lines.push("", "Muốn nhận thông báo campaign mới ở chat này, đặt <code>TELEGRAM_CHAT_ID=" + escapeHtml(id) + "</code> trong .env rồi restart worker.");
+  else lines.push("", "Hãy gửi ID này cho admin để được cấp quyền truy cập và nhận thông báo campaign mới.");
   await reply(message.chat.id, lines.join("\n"));
   log(`Đã trả lời ${command} cho chat ${id}.`);
 }
